@@ -100,7 +100,7 @@ jobs:
         run: poetry run coverage run -m pytest
 
       - name: Store coverage file
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           path: coverage
           name: coverage
