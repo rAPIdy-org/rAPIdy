@@ -1,0 +1,41 @@
+repos:
+  - repo: https://github.com/asottile/add-trailing-comma.git
+    rev: v3.1.0
+    hooks:
+      - id: add-trailing-comma
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-added-large-files
+      - id: check-ast
+      - id: check-json
+      - id: check-toml
+      - id: check-yaml
+        exclude: (.ci/helm|.gitlab-ci.yml)
+      - id: name-tests-test
+        args: [ --pytest-test-first ]
+
+  - repo: https://github.com/PyCQA/isort
+    rev: 5.13.1
+    hooks:
+      - id: isort
+
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.8.0
+    hooks:
+      - id: mypy
+        types_or:
+          - python
+          - pyi
+        require_serial: true
+
+  - repo: https://github.com/PyCQA/flake8
+    rev: 6.1.0
+    hooks:
+      - id: flake8
+        types:
+          - python
+        additional_dependencies: ["flake8-pyproject", "wemake-python-styleguide"]

@@ -1,0 +1,158 @@
+name: Test
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    types:
+      - opened
+      - synchronize
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        pydantic-version:
+          - "pydantic-v1"
+          - "pydantic-v2"
+    steps:
+      - name: Dump github context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
+
+      - name: Checkout git repository
+        uses: actions/checkout@v4
+
+      - name: Install poetry
+        run: pip install poetry==1.7.0
+
+      - name: Prepare python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+          cache: "poetry"
+
+      - name: Install Pydantic v1
+        if: matrix.pydantic-version == 'pydantic-v1'
+        run: poetry add "pydantic>=1.10.0,<2.0.0"
+
+      - name: Install Pydantic v2
+        if: matrix.pydantic-version == 'pydantic-v2'
+        run: poetry add "pydantic>=2.0.2,<3.0.0"
+
+      - name: Run pre-commit
+        uses: pre-commit/action@v3.0.0
+
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version:
+          - "3.12"
+          - "3.11"
+          - "3.10"
+          - "3.9"
+          - "3.8"
+        pydantic-version:
+          - "pydantic-v1"
+          - "pydantic-v2"
+    steps:
+      - name: Dump github context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
+
+      - name: Checkout git repository
+        uses: actions/checkout@v4
+
+      - name: Install poetry
+        run: pip install poetry==1.7.0
+
+      - name: Prepare python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "poetry"
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Install Pydantic v1
+        if: matrix.pydantic-version == 'pydantic-v1'
+        run: poetry add "pydantic>=1.10.0,<2.0.0"
+
+      - name: Install Pydantic v2
+        if: matrix.pydantic-version == 'pydantic-v2'
+        run: poetry add "pydantic>=2.0.2,<3.0.0"
+
+      - name: Create coverage dir
+        run: mkdir coverage
+
+      - name: Test with pytest
+        env:
+          CONTEXT: ${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.pydantic-version }}
+          COVERAGE_FILE: coverage/.coverage.${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.pydantic-version }}
+        run: poetry run coverage run -m pytest
+
+      - name: Store coverage file
+        uses: actions/upload-artifact@v3
+        with:
+          path: coverage
+          name: coverage
+
+  coverage-combine:
+    needs: [ test ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump github context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
+
+      - name: Checkout git repository
+        uses: actions/checkout@v4
+
+      - name: Prepare python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
+
+      - name: Get coverage files
+        uses: actions/download-artifact@v3
+        with:
+          name: coverage
+          path: coverage
+
+      - name: Install test dependencies
+        run: pip install coverage[toml]
+
+      - name: Dump coverage files
+        run: ls -la coverage
+
+      - name: Coverage combine
+        run: coverage combine coverage
+
+      - name: Coverage report
+        run: coverage report --fail-under=95
+
+  check:
+    if: always()
+    needs:
+      - coverage-combine
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dump github context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
+
+      # https://github.com/marketplace/actions/alls-green#why
+      - name: Decide whether the needed jobs succeeded or failed
+        uses: re-actors/alls-green@release/v1
+        with:
+          jobs: ${{ toJSON(needs) }}

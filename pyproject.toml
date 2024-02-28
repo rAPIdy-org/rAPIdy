@@ -1,0 +1,166 @@
+[tool.poetry]
+name = "rAPIdy"
+version = "0.1.0"
+description = "rAPIdy - write quickly - write beautifully"
+authors = ["Daniil Grois <daniil.grois@gmail.com>"]
+keywords = [
+    "rAPIdy",
+    "aiohttp",
+    "pydantic",
+    "api",
+    "fast",
+    "http server",
+    "Daniil Grois",
+]
+license = "MIT License"
+readme = "README.md"
+
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python",
+    "Topic :: Internet",
+    "Topic :: Internet :: WWW/HTTP",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Software Development :: Libraries",
+    "Topic :: Software Development",
+    "Typing :: Typed",
+    "Environment :: Web Environment",
+    "Framework :: AsyncIO",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.8",
+]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+aiohttp = "^3.9.3"
+pydantic = ">=1.7.4,!=1.8,!=1.8.1,!=1.8.2,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0"
+
+[tool.poetry.group.test.dependencies]
+pytest = "7.*"
+pytest-aiohttp = "^1.0.5"
+pytest-cov = "^4.1.0"
+pytest-httpserver = "^1.0.8"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+
+[tool.flake8]
+exclude = [
+    "tests/*",
+    "benchmarks/*",
+]
+max-line-length = 120
+max-complexity = 10
+ignore = [
+    "D100",    #  Missing docstring in public module
+    "D101",    #  Missing docstring in public class
+    "D102",    #  Missing docstring in public method
+    "D103",    #  Missing docstring in public function
+    "D104",    #  Missing docstring in public package
+    "D105",    #  Missing docstring in magic method
+    "D107",    #  Missing docstring in __init__"
+    "P101",    #  format string does contain unindexed parameters
+    "S101",    #  Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+    "WPS110",  #  Found wrong variable name: X
+    "WPS111",  #  Found too short name: d < X
+    "WPS114",  #  Found underscored number name pattern: X_1
+    "WPS115",  #  Found upper-case constant in a class: X
+    "WPS201",  #  Found module with too many imports: X > 12
+    "WPS202",  #  Found too many module members: X > 7
+    "WPS203",  #  Found module with too many imported names: X > 50
+    "WPS204",  #  Found overused expression: X; used 5 > 4
+    "WPS210",  #  Found too many local variables: X > 5
+    "WPS211",  #  Found too many arguments: X > 5
+    "WPS214",  #  Found too many methods: X > 7
+    "WPS217",  #  Found too many await expressions: X > 5
+    "WPS220",  #  Found overly complex annotation: X > 3
+    "WPS226",  #  Found string literal over-use: X > 3
+    "WPS231",  #  Found function with too much cognitive complexity: X > 12
+    "WPS234",  #  Found too deep nesting
+    "WPS235",  #  Found too many imported names from a module: X > 8
+    "WPS238",  #  Found too many raises in a function: X > 3
+    "WPS237",  #  Found a too complex `f` string
+    "WPS305",  #  Found `f` string
+    "WPS306",  #  Found class without a base class: X
+    "WPS318",  #  Found extra indentation
+    "WPS326",  #  Found implicit string concatenation
+    "WPS337",  #  Found multiline conditions
+    "WPS410",  #  Found wrong metadata variable: __all__
+    "WPS420",  #  Found wrong keyword
+    "WPS421",  #  Found wrong function call: vars
+    "WPS430",  #  Found nested function: X
+    "WPS436",  #  Found protected module import: X
+    "WPS437",  #  Found protected attribute usage: _X
+    "WPS450",  #  Found protected object import: X
+    "WPS454",  #  Found wrong `raise` exception type: X
+    "WPS467",  #  Found bare raise keyword
+    "WPS473",  #  Found too many empty lines in `def`: X > 23
+    "WPS510",  #  Found `in` used with a non-set container
+    "WPS529",  #  Found implicit `.get()` dict usage
+    "WPS600",  #  Found subclassing a builtin: X
+    "WPS604",  #  Found incorrect node inside `class` body
+    "W503",    #  line break before binary operator
+]
+per-file-ignores = [
+    'rapidy/web.py: WPS232',
+    'rapidy/__init__.py: WPS412',
+    'rapidy/fields.py: C901 WPS113 WPS433',
+    'rapidy/typedefs.py: WPS433 WPS113 WPS440',
+    'rapidy/_client_errors.py: C901 WPS433 WPS440',
+]
+
+
+[tool.mypy]
+pretty = true
+ignore_missing_imports = true
+check_untyped_defs = true
+strict = true
+show_error_codes = true
+show_column_numbers = true
+warn_return_any = false
+allow_subclassing_any = true
+implicit_reexport = true
+
+[[tool.mypy.overrides]]
+module = "tests.*"
+allow_untyped_defs = true
+allow_untyped_calls = true
+allow_subclassing_any = true
+allow_untyped_decorators = true
+disable_error_code = "var-annotated, has-type"
+
+[tool.isort]
+multi_line_output = 3
+include_trailing_comma = true
+use_parentheses = true
+line_length = 120
+order_by_type = false
+combine_as_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+log_cli = true
+filterwarnings = [
+    "ignore::DeprecationWarning:",
+]
+
+[tool.coverage.run]
+parallel = true
+source = [
+    "rapidy",
+    "tests",
+]
+relative_files = true
+context = '${CONTEXT}'
