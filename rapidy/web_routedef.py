@@ -1,0 +1,33 @@
+from aiohttp.web_routedef import (
+    AbstractRouteDef,
+    delete,
+    get,
+    head,
+    options,
+    patch,
+    post,
+    put,
+    route,
+    RouteDef,
+    RouteTableDef,
+    static,
+    StaticDef,
+    view,
+)
+
+__all__ = (
+    'AbstractRouteDef',
+    'RouteDef',
+    'StaticDef',
+    'RouteTableDef',
+    'head',
+    'options',
+    'get',
+    'post',
+    'patch',
+    'put',
+    'delete',
+    'route',
+    'view',
+    'static',
+)
