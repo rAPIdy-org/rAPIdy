@@ -1,8 +1,9 @@
 import inspect
 from abc import ABC, abstractmethod
 from types import FunctionType
-from typing import Any, Dict, Iterator, Set, Type
+from typing import Any, Dict, Iterator, Set, Type, Union
 
+from aiohttp.typedefs import Middleware
 from aiohttp.web_request import Request
 
 from rapidy._annotation_extractor import extract_handler_attr_annotations, UnknownParameterError
@@ -64,6 +65,10 @@ class ParamAnnotationContainerOnlyExtract(ParamAnnotationContainer):
             self,
             request: Request,
     ) -> ValidateReturn:
+        raw_data = request._cache.get(self.param_type)  # FIXME: cache management should be centralized
+        if raw_data:
+            return raw_data
+
         try:
             raw_data = await self.extractor(request)
         except ExtractError as exc:
@@ -71,6 +76,8 @@ class ParamAnnotationContainerOnlyExtract(ParamAnnotationContainer):
 
         if not raw_data and self.param_default:
             raw_data = self.param_default
+
+        request._cache[self.param_type] = raw_data  # FIXME: cache management should be centralized
 
         return {self.param_name: raw_data}, []
 
@@ -86,10 +93,14 @@ class ValidateParamAnnotationContainer(ParamAnnotationContainer, ABC):
             self,
             request: Request,
     ) -> ValidateReturn:
-        try:
-            raw_data = await self.extractor(request)
-        except ExtractError as exc:
-            return {}, [exc.get_error_info(loc=(self.param_type,))]
+        raw_data = request._cache.get(self.param_type)  # FIXME: cache management should be centralized
+        if not raw_data:
+            try:
+                raw_data = await self.extractor(request)
+            except ExtractError as exc:
+                return {}, [exc.get_error_info(loc=(self.param_type,))]
+
+            request._cache[self.param_type] = raw_data  # FIXME: cache management should be centralized
 
         return validate_request_param_data(
             required_fields_map=self.map_model_fields_by_alias,
@@ -172,7 +183,7 @@ def param_factory(
     raise  # pragma: no cover
 
 
-class HandlerAnnotationContainer:
+class AnnotationContainer:
     def __init__(self) -> None:
         self._params: Dict[str, ParamAnnotationContainer] = {}
 
@@ -230,8 +241,8 @@ class HandlerAnnotationContainer:
         return param_container
 
 
-def create_annotation_container(handler: FunctionType) -> HandlerAnnotationContainer:
-    container = HandlerAnnotationContainer()
+def create_annotation_container(handler: Union[FunctionType, Middleware]) -> AnnotationContainer:
+    container = AnnotationContainer()
 
     endpoint_signature = inspect.signature(handler)
     signature_params = endpoint_signature.parameters
