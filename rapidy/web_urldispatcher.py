@@ -24,7 +24,7 @@ from aiohttp.web_urldispatcher import (
 )
 
 from rapidy import hdrs
-from rapidy._annotation_container import create_annotation_container, HandlerAnnotationContainer
+from rapidy._annotation_container import AnnotationContainer, create_annotation_container
 
 __all__ = [
     'UrlDispatcher',
@@ -72,9 +72,9 @@ class ResourceRoute(AioHTTPResourceRoute, ABC):
                 if method_handler is None:  # NOTE: Scenario is impossible.  # pragma: no cover
                     raise
 
-                self.annotation_container[method.lower()] = create_annotation_container(method_handler)  # type: ignore
+                self.annotation_container[method.lower()] = create_annotation_container(method_handler)
 
-    def get_method_container(self, method: str) -> HandlerAnnotationContainer:
+    def get_method_container(self, method: str) -> AnnotationContainer:
         return self.annotation_container[method.lower()]
 
 
