@@ -2,23 +2,27 @@
 # rAPIdy 💮
 **write quickly** 🚀 **write beautifully** 🌸
 
-<a href="https://github.com/daniil-grois/rAPIdy">rAPIdy<a/> is a minimalistic, asynchronous, fast web framework based in aiohttp and pydantic.
+<a href="https://github.com/daniil-grois/rAPIdy">rAPIdy<a/>  is an asynchronous web framework built on aiohttp and pydantic, embodying speed and minimalism.
 
 ```
 pip install rapidy
 ```
 
 Key Features:
-* ✏️ easy to write and read code
-* 📔 <a href="https://github.com/pydantic/pydantic">pydantic<a/> native support -> **yes** we support **V**1️⃣ and **V**2️⃣❗
-* 🚀 <a href="https://github.com/aio-libs/aiohttp">aiohttp<a/> based and native features support - aiohttp one of the fastest and most productive HTTP servers
-* 📤 convenient support for basic types of incoming data extraction
+* ✏️ Enhanced code readability and ease of writing
+* 📔 Native support for <a href="https://github.com/pydantic/pydantic">pydantic<a/> -> **yes** we fully support **V**1️⃣ and **V**2️⃣❗
+* 🚀 Powered by <a href="https://github.com/aio-libs/aiohttp">Aiohttp<a/> with native feature support: Aiohttp, renowned for its speed and productivity, drives our framework
+* 📤 Convenient extraction of basic types from incoming data
 
 ## Quickstart
 
-### Create endpoint using RouteTableDef
+rAPIdy seamlessly integrates the foundational capabilities of aiohttp's <a href="https://docs.aiohttp.org/en/stable/web_quickstart.html">quickstart</a>
 
-rAPIdy inherits the basic functionality of aiohttp <a href="https://docs.aiohttp.org/en/stable/web_quickstart.html">quickstart</a>
+We offer multiple approaches for defining endpoints in our framework. Explore the following methods:
+
+### RouteTableDef Method:
+
+
 
 ```python
 from rapidy import web
@@ -33,7 +37,7 @@ async def hello(
         username: Annotated[str, web.JsonBody(min_length=3, max_length=20)],
         password: Annotated[str, web.JsonBody(min_length=8, max_length=40)],
 ) -> web.Response:
-  # write you business code here
+  # Write your code here
   return web.json_response({'username': username, 'password': password})
 
 
@@ -44,7 +48,7 @@ if __name__ == '__main__':
   web.run_app(app, port=8000)
 ```
 
-### Create endpoint using web.<method_name>
+### Using web.<method_name>:
 
 ```python
 from rapidy import web
@@ -56,7 +60,7 @@ async def hello(
         username: Annotated[str, web.JsonBody(min_length=3, max_length=20)],
         password: Annotated[str, web.JsonBody(min_length=8, max_length=40)],
 ) -> web.Response:
-  # write you business code here
+  # write your code here
   return web.json_response({'username': username, 'password': password})
 
 
@@ -67,7 +71,7 @@ if __name__ == '__main__':
   web.run_app(app, port=8000)
 ```
 
-### Create endpoint using web.view
+### Using web.view:
 
 ```python
 from rapidy import web
@@ -80,7 +84,7 @@ class Handler(web.View):
           username: Annotated[str, web.JsonBody(min_length=3, max_length=20)],
           password: Annotated[str, web.JsonBody(min_length=8, max_length=40)],
   ) -> web.Response:
-    # write you business code here
+    # write your code here
     return web.json_response({'username': username, 'password': password})
 
 
@@ -103,7 +107,7 @@ async def hello_handler(
         username: Annotated[str, web.JsonBody(min_length=3, max_length=20)],
         password: Annotated[str, web.JsonBody(min_length=8, max_length=40)],
 ) -> web.Response:
-  # write you business code here
+  # write your code here
   return web.json_response({'username': username, 'password': password})
 
 
@@ -149,7 +153,7 @@ http://127.0.0.1:8000/hello
 
 ## Choose your path
 
-* You can create APIs the way you want.
+* Unleash your creativity in shaping APIs
 * **rAPIdy** supports 3 basic types for defining incoming parameters
   * 🌒 param
     * Path
@@ -179,8 +183,13 @@ http://127.0.0.1:8000/hello
     * BytesBody - **bytes**
     * StreamBody - **aiohttp.streams.StreamReader**
 
+___
+
+\
+Explore different ways of defining request attributes in our framework. Below, we provide examples demonstrating the usage of param, schema, and raw data types:
+
+### Defining Request Attributes as Parameters 🌒
 ```python
-# defining request attributes as param 🌒
 from rapidy import web
 from typing_extensions import Annotated
 
@@ -202,7 +211,7 @@ async def hello_handler(
         username: Annotated[str, web.JsonBody(min_length=3, max_length=20)],
         password: Annotated[str, web.JsonBody(min_length=8, max_length=40)],
 ) -> web.Response:
-  # write you business code here
+  # write your code here
   # ...
   return web.Response()
 
@@ -210,8 +219,8 @@ async def hello_handler(
 app = web.Application()
 app.add_routes([web.post('/hello/{path_param}', hello_handler)])
 ```
+### Defining Request Attributes using Schema 🌕
 ```python
-# defining request attributes as schema 🌕
 from pydantic import BaseModel, Field
 
 class PathRequestSchema(BaseModel):
@@ -243,9 +252,8 @@ async def hello_handler(
 ) -> web.Response:
 
 ```
-
+### Defining Request Attributes with Raw Data 🌑
 ```python
-# defining request attributes as raw 🌑
 async def hello_handler(
         request: web.Request,
         path: Annotated[Dict[str, str], web.PathRaw],
@@ -255,9 +263,8 @@ async def hello_handler(
         body: Annotated[Dict[str, Any], web.JsonBodyRaw],
 ) -> web.Response:
 ```
-
+### Combining Different Approaches 🌒 🌕 🌑
 ```python
-# also you may to combine 🌒 🌕 🌑
 async def hello_handler(
         request: web.Request,
         path_param: Annotated[str, web.Path],
