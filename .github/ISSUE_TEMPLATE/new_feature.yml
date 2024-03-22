@@ -1,0 +1,41 @@
+name: "New Feature"
+description: Create an issue for a new feature request
+title: "New Feature: <title>"
+labels: ["feature"]
+projects: ["daniil-grois/rAPIdy"]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: "Summary"
+      description: Brief description of the feature request
+      placeholder: Briefly describe what you want to offer
+    validations:
+      required: true
+
+  - type: textarea
+    id: example
+    attributes:
+      label: "Code Example"
+      description: New feature code example
+      placeholder: Write an example of your idea like an a code
+    validations:
+      required: false
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: "What's the problem"
+      description: What problem are you solving with your solution?
+      placeholder: Briefly describe the problem you are solving
+    validations:
+      required: true
+
+  - type: textarea
+    id: question
+    attributes:
+      label: "Unresolved questions"
+      description: Describe what questions you still have
+      placeholder: Describe your questions here
+    validations:
+      required: false
