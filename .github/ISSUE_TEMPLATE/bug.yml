@@ -1,0 +1,57 @@
+name: "Bug Report"
+description: Create an issue for a bug.
+title: "[Bug] <title>"
+labels: ["bug"]
+projects: ["daniil-grois/rAPIdy"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: "Description"
+      description: Please enter an description of the bug you are encountering
+      placeholder:
+    validations:
+      required: true
+
+  - type: textarea
+    id: code
+    attributes:
+      label: "Python code"
+      description: "Please provide a minimal, complete, and verifiable example of the issue."
+      value: |
+        ```py
+        # Write your python code here ...
+        ```
+      render: python
+    validations:
+      required: false
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: "Logs"
+      description: Please copy and paste any relevant log output (auto formatted into code).
+      render: bash
+    validations:
+      required: false
+
+  - type: textarea
+    id: version
+    attributes:
+      label: "rAPIdy Version"
+      description: What version of rAPIdy are you using when encountering this issue?
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: platform
+    attributes:
+      label: "Platform"
+      description: What platform are you encountering the issue on?
+      options:
+        - label: "Linux"
+        - label: "Mac"
+        - label: "Windows"
+        - label: "Other (Please specify in the description above)"
+    validations:
+      required: true
