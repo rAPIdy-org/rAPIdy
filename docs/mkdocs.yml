@@ -107,10 +107,14 @@ nav:
 - Docs:
     - docs/introduction.md
     - HTTP Server:
+        - docs/server/index.md
         - Request:
-            - docs/server/request/ext_and_validate.md
+            - docs/server/request/index.md
+            - Extraction and validation:
+              - docs/server/request/extraction_and_validation/index.md
             - docs/server/request/annotation.md
             - Parameters:
+                - docs/server/request/parameters/index.md
                 - docs/server/request/parameters/path.md
                 - docs/server/request/parameters/headers.md
                 - docs/server/request/parameters/cookies.md
@@ -127,20 +131,26 @@ nav:
         - Response:
             - docs/server/response/index.md
         - Handlers:
+            - docs/server/handlers/index.md
             - docs/server/handlers/functional.md
             - docs/server/handlers/class_based_view.md
             - docs/server/handlers/middlewares.md
         - Lifespan:
             - docs/server/lifespan/index.md
         - Advanced Usages:
+            - docs/server/advanced_usages/index.md
             - Raw request management:
+                - docs/server/advanced_usages/raw_request_management/index.md
                 - docs/server/advanced_usages/raw_request_management/request.md
                 - docs/server/advanced_usages/raw_request_management/response.md
             - docs/server/advanced_usages/tips_and_tricks.md
     - HTTP Client:
         - docs/client/index.md
     - Encoders:
+        - docs/encoders/index.md
         - docs/encoders/json_compatible_encoder.md
+    - Enums:
+        - docs/enums/index.md
     - Testing:
         - docs/testing/index.md
 

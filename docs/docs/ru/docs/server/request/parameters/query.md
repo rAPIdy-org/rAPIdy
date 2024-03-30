@@ -158,3 +158,17 @@ async def handler(
 
 !!! warning "Нельзя использовать одновременно `dafault` и `default_factory`"
     Будет поднято исключение `pydantic` - `TypeError('cannot specify both default and default_factory')`
+
+## Как извлекаются сырые данные
+`Rapidy` внутри себя использует вызов `rel_url.query` объекта `Request`, а затем передает полученный объект на валидацию 
+в `pydantic` модель.
+
+!!! info "Как извлекаются данные внутри `Rapidy`"
+    ```python
+    async def extract_query(request: Request) -> MultiDictProxy[str]:
+        return request.rel_url.query
+    ```
+
+!!! note "Rapidy использует встроенные механизмы извлечения данных `aiohttp`"
+    Подробнее об объекте `aiohttp.web.Request` и способов извлечения из него данных можно ознакомиться 
+    **<a href="https://docs.aiohttp.org/en/stable/web_reference.html" target="_blank">здесь</a>**.

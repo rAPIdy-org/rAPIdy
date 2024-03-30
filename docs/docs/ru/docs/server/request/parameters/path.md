@@ -217,3 +217,17 @@ async def handler(
     path_data: PathData = web.PathParams(alias='SomeName'),  # <-- alias not working
 ) -> ...:
 ```
+
+## Как извлекаются сырые данные
+`Rapidy` внутри себя использует вызов `match_info` объекта `Request`, а затем передает полученный объект на валидацию 
+в `pydantic` модель.
+
+!!! info "Как извлекаются данные внутри `Rapidy`"
+    ```python
+    async def extract_path(request: Request) -> dict[str, str]:
+        return dict(request.match_info)
+    ```
+
+!!! note "Rapidy использует встроенные механизмы извлечения данных `aiohttp`"
+    Подробнее об объекте `aiohttp.web.Request` и способов извлечения из него данных можно ознакомиться 
+    **<a href="https://docs.aiohttp.org/en/stable/web_reference.html" target="_blank">здесь</a>**.

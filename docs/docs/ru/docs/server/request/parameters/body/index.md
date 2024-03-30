@@ -23,4 +23,103 @@ async def handler(
 
 !!! tip "Более детальные сценарии применения вы найдете в примерах - **[Examples](../../../../../examples.md)**."
 
-Типы body, поддерживаемые **rapidy**:
+## Аттрибуты Body
+### content_type
+```python
+# `application/json` by default
+content_type: Union[str, ContentType] = ContentType.json
+```
+Аттрибут указывает какой тип данных в body ожидает сервер.
+
+!!! tip "Подробнее про enum `ContentType` можно прочитать **[здесь](../../../../enums/index.md)**"
+
+`Rapidy` будет использовать ожидаемый `content_type` для извлечения данных.
+
+!!! info "Основные поддерживаемые типы" 
+
+    - application/json
+    - application/x-www-form-urlencoded
+    - multipart/form-data
+    - text/* - любой mime-type с типом текст
+    - application/octet-stream
+    
+    !!! warning ""
+        Если сервер ожидает тип, который `Rapidy` не поддерживает явно, например `video/mpeg`, то данные
+        будут извлечены как `bytes` и в таком виде будут переданы в модель `pydantic` для валидации.
+
+
+### check_content_type
+Аттрибут указывает нужно ли проверять значение заголовка `Content-Type`.
+
+При `True` *(значение по умолчанию)* будет выполнена проверка заголовка `Content-Type`, который присылает клиент, и 
+если он не совпадает с ожидаемым `content_type`, то клиенту будет возвращена ошибка:
+```json
+{
+    "errors": [
+        {
+            "type": "ExtractError",
+            "loc": [
+                "body"
+            ],
+            "msg": "Failed to extract body data: Expected Content-Type `text/plain` not `<current_request_content_type>`"
+        }
+    ]
+}
+```
+
+### json_decoder
+Аттрибут позволяет определить пользовательский `json_decoder` для извлечения данных из тела запроса.
+
+!!! note "Аттрибут будет работать только для `content_type="application/json"`."
+
+По умолчанию, для декодирования входящего Json, `Rapidy` использует `json.loads` без параметров.
+
+!!! example "Равнозначные примеры"
+    ```python
+    @routes.post('/')
+    async def handler(
+        data: str = web.Body(),
+    ) -> ...:
+    ```
+    или
+    ```python
+    import json
+    
+    @routes.post('/')
+    async def handler(
+        data: str = web.Body(json_decoder=json.loads),
+    ) -> ...:
+    ```
+
+Если вы хотите декодировать Json по своему, просто передайте в аттрибут `json_decoder` любой вызываемый объект,
+который принимает `str`.
+
+!!! note "Ожидаемый тип данных `Callable[[str], Any]`"
+
+!!! example "Пример с пользовательским декодером"
+    ```python
+    
+    def custom_json_decoder(data: str) -> ...:
+        ...
+
+    @routes.post('/')
+    async def handler(
+        data: Any = web.Body(json_decoder=custom_json_decoder),
+    ) -> ...:
+    ```
+
+Если вы хотите использовать `json.loads` с параметрами или хотите использовать свой декодер с параметрами, воспользуйтесь
+функцией `functools.partial`.
+
+```python
+import json
+from functools import partial
+from typing import Any, OrderedDict
+
+decoder = partial(json.loads, object_pairs_hook=OrderedDict)
+
+@routes.post('/')
+async def handler(
+    data: Any = web.Body(json_decoder=decoder),
+) -> ...:
+```

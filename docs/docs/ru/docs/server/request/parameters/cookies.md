@@ -194,3 +194,17 @@ async def handler(
     headers_data: CookieData = web.Cookies(alias='SomeName'),  # <-- alias not working
 ) -> ...:
 ```
+
+## Как извлекаются сырые данные
+`Rapidy` внутри себя использует вызов `cookies` объекта `Request`, а затем передает полученный объект на валидацию 
+в `pydantic` модель.
+
+!!! info "Как извлекаются данные внутри `Rapidy`"
+    ```python
+    async def extract_cookies(request: Request) -> Mapping[str, str]:
+        return request.cookies
+    ```
+
+!!! note "Rapidy использует встроенные механизмы извлечения данных `aiohttp`"
+    Подробнее об объекте `aiohttp.web.Request` и способов извлечения из него данных можно ознакомиться 
+    **<a href="https://docs.aiohttp.org/en/stable/web_reference.html" target="_blank">здесь</a>**.
