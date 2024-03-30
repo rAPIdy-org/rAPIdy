@@ -16,6 +16,11 @@
         , то увидите ответ: `{"user_id": "user_1", "some_param", "param_2"}`.
 
 ### HeaderSchema
+!!! example "HeaderSchema"
+    ```Python hl_lines="9 10 15"
+    {!> ./parameters/header/types/Header/ex_02.py !}
+    ```
+
 <details open>
 <summary><code>HeaderSchema</code></summary>
 

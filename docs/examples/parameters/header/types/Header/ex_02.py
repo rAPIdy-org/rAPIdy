@@ -1,16 +1,20 @@
+from pydantic import Field, BaseModel
 from typing_extensions import Annotated
 from rapidy import web
-from rapidy.request_params import Path
+from rapidy.request_params import HeaderSchema
 
 routes = web.RouteTableDef()
 
-@routes.get('/{user_id}/{some_param}')
+class HeadersRequestSchema(BaseModel):
+    host: str = Field(alias='Host')
+    auth_token: str = Field(alias='Authorization')
+
+@routes.get('/')
 async def handler(
-    request: web.Request,
-    user_id: Annotated[str, Path],
-    some_param: Annotated[str, Path],
+        request: web.Request,
+        headers: Annotated[HeadersRequestSchema, HeaderSchema],
 ) -> web.Response:
-    return web.json_response({'user_id': user_id, 'some_param': some_param})
+    return web.json_response({'headers': headers.dict()})
 
 app = web.Application()
 app.add_routes(routes)
