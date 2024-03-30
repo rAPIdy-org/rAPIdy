@@ -3,7 +3,7 @@ hide:
   - navigation
 ---
 
-# Bug
+# Bug report
 
 Ты мой супергерой!
 

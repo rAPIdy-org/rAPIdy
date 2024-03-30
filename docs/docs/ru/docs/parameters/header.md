@@ -2,21 +2,18 @@
 
 ## Типы данных
 ### Header
-<details open>
-<summary><code>Header</code></summary>
+!!! example "Header"
+    ```Python hl_lines="10 11"
+    {!> ./parameters/header/types/Header/ex_01.py !}
+    ```
+    !!! tip ""
+        Скопируйте пример в файл `main.py` и запустите `python3 main.py`.
 
-```Python hl_lines="6 7"
-from rapidy.request_params import Header
+        # TODO!!!! доделать -> curl или постман
 
-@routes.get('/')
-async def handler(
-        request: web.Request,
-        host: Annotated[str, Header(alias='Host')],
-        auth_token: Annotated[str, Header(alias='Authorization')],
-) -> web.Response:
-    return web.json_response({'data': 'success'})
-```
-</details>
+        После старта сервера, если вы перейдёте по адресу: 
+        <a href="http://127.0.0.1:8080/user_1/param_2" target="blank">http://127.0.0.1:8080/user_1/param_2</a>
+        , то увидите ответ: `{"user_id": "user_1", "some_param", "param_2"}`.
 
 ### HeaderSchema
 <details open>
