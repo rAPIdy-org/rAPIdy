@@ -1,0 +1,129 @@
+site_name: rAPIdy
+repo_name: daniil-grois/rAPIdy
+repo_url: https://github.com/daniil-grois/rAPIdy
+
+theme:
+  logo: assets/logo.png
+  favicon: assets/logo.png
+  name: material
+  palette:
+  - media: '(prefers-color-scheme: dark)'
+    scheme: default
+    primary: deep purple
+    accent: deep purple
+    toggle:
+      icon: material/weather-night
+      name: Switch to dark mode
+  - media: '(prefers-color-scheme: light)'
+    scheme: slate
+    primary: deep purple
+    accent: deep purple
+    toggle:
+      icon: material/weather-sunny
+      name: Switch to light mode
+  features:
+    # navigation
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.progress
+    - navigation.indexes
+    - navigation.path
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.expand
+    - navigation.top
+    - toc.follow
+
+    # search
+    - search.suggest
+    - search.highlight
+    - search.share
+
+    # content
+    - content.tabs.link
+    - content.tooltips  # вот с этим разобраться  https://squidfunk.github.io/mkdocs-material/reference/tooltips/?h=tooltips
+
+    # content.code
+    - content.code.annotate  # аннотации к коду https://squidfunk.github.io/mkdocs-material/reference/code-blocks/?h=code#__codelineno-4-1
+    - content.code.copy
+    - content.code.select
+
+    # https://squidfunk.github.io/mkdocs-material/reference/data-tables/ - таблицы данных
+    # https://squidfunk.github.io/mkdocs-material/reference/diagrams/ - диаграммы
+    # https://squidfunk.github.io/mkdocs-material/reference/lists/ - списки и тд
+plugins:
+  - search
+  - mike:
+      # These fields are all optional; the defaults are as below...
+      alias_type: symlink
+      redirect_template: null
+      deploy_prefix: ''
+      canonical_version: latest
+      version_selector: true
+      css_dir: css
+      javascript_dir: js
+  - i18n:
+      docs_structure: folder
+      languages:
+        - locale: en
+          default: true
+          name: English
+          link: /
+          build: true
+        - locale: ru
+          name: Русский
+          link: /ru/
+          build: true
+
+extra_css: [extra.css]
+
+extra:
+  version:
+    provider: mike  # TODO: донастроить версионирование
+    default: latest
+    # https://squidfunk.github.io/mkdocs-material/setup/setting-up-versioning/#publishing-a-new-version
+    # https://github.com/jimporter/mike
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - mdx_include:
+      base_path: ./examples
+
+nav:
+- rAPIdy: index.md
+- quickstart.md
+- examples.md
+- Docs:
+    - docs/index.md
+    - For Beginners:
+      - docs/beginners/index.md
+    - Request Parameters:
+      - docs/parameters/index.md
+      - docs/parameters/path.md
+      - docs/parameters/header.md
+      - docs/parameters/cookie.md
+      - docs/parameters/query.md
+      - Body parameters:
+          - docs/parameters/body/index.md
+          - docs/parameters/body/json.md
+          - docs/parameters/body/form_data.md
+          - docs/parameters/body/multipart.md
+    - docs/middlewares.md
+    - docs/dynamic_routes.md
+    - docs/default_values.md
+    - docs/raw_data.md
+    - docs/named_resources.md
+- roadmap.md
+- about.md
+- contributing.md
+- <b style="color:#f58080">Bug?</b>: bug.md
