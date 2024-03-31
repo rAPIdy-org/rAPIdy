@@ -25,63 +25,100 @@ Path-параметры позволяют строить **динамическ
     ```Python hl_lines="7 10"
     {!> ./parameters/path/types/Path/ex_01.py !}
     ```
-    !!! tip ""
-        Скопируйте пример в файл `main.py` и запустите `python3 main.py`.
-        После старта сервера, если вы перейдёте по адресу: 
-        <a href="http://127.0.0.1:8080/user_1" target="blank">http://127.0.0.1:8080/user_1</a>
-        , то увидите ответ: `{"user_id": "user_1"}`.
+    ??? tip "Пример запроса"
+        Скопируйте пример в файл `main.py` и запустите `python3 main.py`.<br/>
+        В браузере перейдите по адресу: <a href="http://127.0.0.1:8080/user_1" target="blank">http://127.0.0.1:8080/user_1</a>
+        или отправьте запрос с помощью `curl`:
+        ```
+        curl -X GET http://127.0.0.1:8080/user_1
+        ```
+        вы получите ответ:
+        ```
+        {"user_id": "user_1"}
+        ```
 
-??? example "Несколько параметров <code>Path</code>"
+!!! example "Несколько параметров <code>Path</code>"
     ```Python hl_lines="7 10 11"
     {!> ./parameters/path/types/Path/ex_02.py !}
     ```
-    !!! tip ""
-        Скопируйте пример в файл `main.py` и запустите `python3 main.py`.
-        После старта сервера, если вы перейдёте по адресу: 
-        <a href="http://127.0.0.1:8080/user_1/param_2" target="blank">http://127.0.0.1:8080/user_1/param_2</a>
-        , то увидите ответ: `{"user_id": "user_1", "some_param", "param_2"}`.
+    ??? tip "Пример запроса"
+        Скопируйте пример в файл `main.py` и запустите `python3 main.py`.<br/>
+        В браузере перейдите по адресу:  <a href="http://127.0.0.1:8080/user_1/param_2" target="blank">http://127.0.0.1:8080/user_1/param_2</a>
+        или отправьте запрос с помощью `curl`:
+        ```
+        curl -X GET http://127.0.0.1:8080/user_1/param_2
+        ```
+        вы получите ответ:
+        ```
+        {"user_id": "user_1", "some_param", "param_2"}
+        ```
+
 
 ### PathSchema
 !!! example "<code>PathSchema</code>"
     ```Python hl_lines="9 11 14"
     {!> ./parameters/path/types/PathSchema/ex_01.py !}
     ```
-    !!! tip ""
-        Скопируйте пример в файл `main.py` и запустите `python3 main.py`.
-        После старта сервера, если вы перейдёте по адресу: 
-        <a href="http://127.0.0.1:8080/user_1" target="blank">http://127.0.0.1:8080/user_1</a>
-        , то увидите ответ: `{"user_id": "user_1"}`.
+    ??? tip "Пример запроса"
+        Скопируйте пример в файл `main.py` и запустите `python3 main.py`.<br/>
+        В браузере перейдите по адресу: <a href="http://127.0.0.1:8080/user_1" target="blank">http://127.0.0.1:8080/user_1</a>
+        или отправьте запрос с помощью `curl`:
+        ```
+        curl -X GET http://127.0.0.1:8080/user_1
+        ```
+        вы получите ответ:
+        ```
+        {"user_id": "user_1"}
+        ```
 
 ??? example "<code>PathSchema</code> с несколькими параметрами"
     ```Python hl_lines="9 10 12 15"
     {!> ./parameters/path/types/PathSchema/ex_02.py !}
     ```
-    !!! tip ""
-        Скопируйте пример в файл `main.py` и запустите `python3 main.py`.
-        После старта сервера, если вы перейдёте по адресу: 
-        <a href="http://127.0.0.1:8080/user_1/param_2" target="blank">http://127.0.0.1:8080/user_1/param_2</a>
-        , то увидите ответ: `{"user_id": "user_1", "some_param", "param_2"}`.
+    ??? tip "Пример запроса"
+        Скопируйте пример в файл `main.py` и запустите `python3 main.py`.<br/>
+        В браузере перейдите по адресу:  <a href="http://127.0.0.1:8080/user_1/param_2" target="blank">http://127.0.0.1:8080/user_1/param_2</a>
+        или отправьте запрос с помощью `curl`:
+        ```
+        curl -X GET http://127.0.0.1:8080/user_1/param_2
+        ```
+        вы получите ответ:
+        ```
+        {"user_id": "user_1", "some_param", "param_2"}
+        ```
 
 ### PathRaw
 !!! example "<code>PathRaw</code>"
     ```Python hl_lines="8 11"
     {!> ./parameters/path/types/PathRaw/ex_01.py !}
     ```
-    !!! tip ""
-        Скопируйте пример в файл `main.py` и запустите `python3 main.py`.
-        После старта сервера, если вы перейдёте по адресу: 
-        <a href="http://127.0.0.1:8080/user_1" target="blank">http://127.0.0.1:8080/user_1</a>
-        , то увидите ответ: `{"path": {"user_id": "user_1"}}`.
+    ??? tip "Пример запроса"
+        Скопируйте пример в файл `main.py` и запустите `python3 main.py`.<br/>
+        В браузере перейдите по адресу: <a href="http://127.0.0.1:8080/user_1" target="blank">http://127.0.0.1:8080/user_1</a>
+        или отправьте запрос с помощью `curl`:
+        ```
+        curl -X GET http://127.0.0.1:8080/user_1
+        ```
+        вы получите ответ:
+        ```
+        {"path": {"user_id": "user_1"}}
+        ```
 
 ??? example "PathRaw с несколькими параметрами"
     ```Python hl_lines="8 11"
     {!> ./parameters/path/types/PathRaw/ex_02.py !}
     ```
-    !!! tip ""
-        Скопируйте пример в файл `main.py` и запустите `python3 main.py`.
-        После старта сервера, если вы перейдёте по адресу: 
-        <a href="http://127.0.0.1:8080/user_1/param_2" target="blank">http://127.0.0.1:8080/user_1/param_2</a>
-        , то увидите ответ: `{"path": {"user_id": "user_1", "some_param": "param_2"}}`.
+    ??? tip "Пример запроса"
+        Скопируйте пример в файл `main.py` и запустите `python3 main.py`.<br/>
+        В браузере перейдите по адресу: <a href="http://127.0.0.1:8080/user_1/param_2" target="blank">http://127.0.0.1:8080/user_1/param_2</a>
+        или отправьте запрос с помощью `curl`:
+        ```
+        curl -X GET http://127.0.0.1:8080/user_1/param_2
+        ```
+        вы получите ответ:
+        ```
+        {"path": {"user_id": "user_1", "some_param": "param_2"}}
+        ```
 
 !!! warning "Внимание"
     PathRaw не использует валидацию pydantic. Все данные содержащиеся в типе извлекаются как есть.
