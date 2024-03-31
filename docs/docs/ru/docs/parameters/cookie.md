@@ -9,7 +9,7 @@
         Скопируйте пример в файл `main.py` и запустите `python3 main.py`.<br/>
         Отправьте запрос с помощью `curl`:
         ```
-        curl -X GET --cookie "UserId=user_1;UserSession=awesome_session" http://127.0.0.1:8080
+        curl -X GET --cookie "userId=user_1;userSession=awesome_session" http://127.0.0.1:8080
         ```
         вы получите ответ:
         ```
@@ -25,7 +25,7 @@
         Скопируйте пример в файл `main.py` и запустите `python3 main.py`.<br/>
         Отправьте запрос с помощью `curl`:
         ```
-        curl -X GET --cookie "UserId=user_1;UserSession=awesome_session" http://127.0.0.1:8080
+        curl -X GET --cookie "userId=user_1;userSession=awesome_session" http://127.0.0.1:8080
         ```
         вы получите ответ:
         ```
@@ -41,11 +41,11 @@
         Скопируйте пример в файл `main.py` и запустите `python3 main.py`.<br/>
         Отправьте запрос с помощью `curl`:
         ```
-        curl -X GET --cookie "UserId=user_1;UserSession=awesome_session" http://127.0.0.1:8080
+        curl -X GET --cookie "userId=user_1;userSession=awesome_session" http://127.0.0.1:8080
         ```
         вы получите ответ:
         ```
-        {"cookies": {"UserId": "user_1", "UserSession": "awesome_session"}}
+        {"cookies": {userId": "user_1", "userSession": "awesome_session"}}
         ```
 
 !!! warning "Внимание"

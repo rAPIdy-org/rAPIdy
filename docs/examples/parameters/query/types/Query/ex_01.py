@@ -1,16 +1,16 @@
 from typing_extensions import Annotated
 from rapidy import web
-from rapidy.request_params import Cookie
+from rapidy.request_params import Query
 
 routes = web.RouteTableDef()
 
 @routes.get('/')
 async def handler(
         request: web.Request,
-        user_id: Annotated[str, Cookie(alias='userId')],
-        user_session: Annotated[str, Cookie(alias='userSession')],
+        user_id: Annotated[str, Query(alias='userId')],
+        user_filter_value: Annotated[str, Query(alias='userFilterValue')],
 ) -> web.Response:
-    return web.json_response({'user_id': user_id, 'user_session': user_session})
+    return web.json_response({'user_id': user_id, 'user_filter_value': user_filter_value})
 
 app = web.Application()
 app.add_routes(routes)

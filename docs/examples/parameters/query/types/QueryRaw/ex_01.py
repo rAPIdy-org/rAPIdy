@@ -1,0 +1,19 @@
+from typing import Dict
+from typing_extensions import Annotated
+from rapidy import web
+from rapidy.request_params import QueryRaw
+
+routes = web.RouteTableDef()
+
+@routes.get('/')
+async def handler(
+    request: web.Request,
+    query_parameters_raw: Annotated[Dict[str, str], QueryRaw],
+) -> web.Response:
+    return web.json_response({'query_parameters_raw': query_parameters_raw})
+
+app = web.Application()
+app.add_routes(routes)
+
+if __name__ == '__main__':
+    web.run_app(app, host='127.0.0.1', port=8080)

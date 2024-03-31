@@ -37,7 +37,7 @@ Path-параметры позволяют строить **динамическ
         {"user_id": "user_1"}
         ```
 
-!!! example "Несколько параметров <code>Path</code>"
+??? example "Несколько параметров <code>Path</code>"
     ```Python hl_lines="7 10 11"
     {!> ./parameters/path/types/Path/ex_02.py !}
     ```
