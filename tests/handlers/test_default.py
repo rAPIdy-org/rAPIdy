@@ -7,6 +7,7 @@ from pytest_aiohttp.plugin import AiohttpClient
 from typing_extensions import Annotated
 
 from rapidy import web
+from rapidy._annotation_extractor import ParameterCannotBeWithDefaultError
 from rapidy.request_params import (
     BytesBody,
     Cookie,
@@ -61,48 +62,69 @@ async def test_path_default() -> None:
     app = web.Application()
 
     exc_message = ''
-    with pytest.raises(AssertionError):
+    with pytest.raises(ParameterCannotBeWithDefaultError):
         try:
             app.add_routes([web.post('/', handler)])
-        except AssertionError as exc:
+        except ParameterCannotBeWithDefaultError as exc:
             exc_message = exc.args[0]
             raise exc
 
     assert exc_message.startswith("Handler attribute with Type `Path` cannot have a default value.")
 
 
+# NOTE: HeaderSchema and HeaderRaw cannot be checked because the http-client always send headers
+default_success_parameters = [
+    pytest.param(str, Header, id='header-param'),
+    pytest.param(str, Cookie, id='cookie-param'),
+    pytest.param(str, Query, id='query-param'),
+    pytest.param(str, JsonBody, id='body-json-param'),
+    pytest.param(str, FormDataBody, id='body-form-data-param'),
+    pytest.param(Schema, CookieSchema, id='cookie-schema'),
+    pytest.param(Schema, QuerySchema, id='query-schema'),
+    pytest.param(Schema, JsonBodySchema, id='body-json-schema'),
+    pytest.param(Schema, FormDataBodySchema, id='body-form-schema'),
+    pytest.param(Dict[str, Any], CookieRaw, id='cookie-raw'),
+    pytest.param(Dict[str, Any], QueryRaw, id='query-raw'),
+    pytest.param(Dict[str, Any], JsonBodyRaw, id='body-json-raw'),
+    pytest.param(Dict[str, Any], FormDataBodyRaw, id='body-form-data-raw'),
+]
+
+
 @pytest.mark.parametrize(
     "annotated_type, param_type",
-    [
-        pytest.param(str, Header, id='header-param'),
-        pytest.param(str, Cookie, id='cookie-param'),
-        pytest.param(str, Query, id='query-param'),
-        pytest.param(str, JsonBody, id='body-json-param'),
-        pytest.param(str, FormDataBody, id='body-form-data-param'),
-        pytest.param(str, MultipartBody, id='body-multipart'),
-        pytest.param(Schema, CookieSchema, id='cookie-schema'),
-        pytest.param(Schema, QuerySchema, id='query-schema'),
-        pytest.param(Schema, JsonBodySchema, id='body-json-schema'),
-        pytest.param(Schema, FormDataBodySchema, id='body-form-data-schema'),
-        pytest.param(Schema, MultipartBodySchema, id='body-multipart-schema'),
-        pytest.param(Dict[str, Any], CookieRaw, id='cookie-raw'),
-        pytest.param(Dict[str, Any], QueryRaw, id='query-raw'),
-        pytest.param(Dict[str, Any], JsonBodyRaw, id='body-json-raw'),
-        pytest.param(Dict[str, Any], FormDataBodyRaw, id='body-form-data-raw'),
-        pytest.param(Dict[str, Any], MultipartBodyRaw, id='body-multipart-raw'),
-        pytest.param(str, TextBody, id='body-text'),
-        pytest.param(bytes, BytesBody, id='body-bytes'),
-    ],
+    default_success_parameters,
 )
 @pytest.mark.parametrize("default_value", test_default_values)
-async def test_default(
+async def test_default_annotated_definition(
         aiohttp_client: AiohttpClient,
+        *,
         annotated_type: Any,
         param_type: Any,
         default_value: Any,
 ) -> None:
     async def handler(
             data: Annotated[annotated_type, param_type] = default_value,
+    ) -> web.Response:
+        assert data == default_value
+        return web.Response()
+
+    await _test(aiohttp_client, handler, {}, HTTPStatus.OK)
+
+
+@pytest.mark.parametrize(
+    "annotated_type, param_type",
+    default_success_parameters,
+)
+@pytest.mark.parametrize("default_value", test_default_values)
+async def test_success_default_definition(
+        aiohttp_client: AiohttpClient,
+        *,
+        annotated_type: Any,
+        param_type: Any,
+        default_value: Any,
+) -> None:
+    async def handler(
+            data: annotated_type = param_type(default=default_value),
     ) -> web.Response:
         assert data == default_value
         return web.Response()
@@ -166,7 +188,7 @@ async def test_optional(
         pytest.param(Dict[str, Any], JsonBodyRaw, {}, HTTPStatus.OK, id='body-json-raw'),
         pytest.param(Dict[str, Any], FormDataBodyRaw, {}, HTTPStatus.OK, id='body-form-data-raw'),
         pytest.param(Dict[str, Any], MultipartBodyRaw, {}, HTTPStatus.OK, id='body-multipart-raw'),
-        pytest.param(str, TextBody, '', HTTPStatus.OK,id='body-text'),
+        pytest.param(str, TextBody, '', HTTPStatus.OK, id='body-text'),
         pytest.param(bytes, BytesBody, b'', HTTPStatus.OK, id='body-bytes'),
     ],
 )

@@ -40,7 +40,7 @@ async def test_failure_json_with_default_decoder(aiohttp_client: AiohttpClient) 
 
 async def test_multipart_part_1_doesnt_has_name(
         aiohttp_client: AiohttpClient,
-        content_type_text_header: MultiDict,
+        content_type_text_header: MultiDict[str],
         multipart_writer: MultipartWriter,
 ) -> None:
     async def handler(
@@ -75,7 +75,7 @@ async def test_multipart_part_1_doesnt_has_name(
 async def test_multipart_part_2_doesnt_has_name(
     aiohttp_client: AiohttpClient,
     form_data_disptype_name: str,
-    content_type_text_header: MultiDict,
+    content_type_text_header: MultiDict[str],
     multipart_writer: MultipartWriter,
 ) -> None:
     async def handler(
@@ -112,7 +112,7 @@ async def test_multipart_part_2_doesnt_has_name(
 
 async def test_multipart_content_type_expected(
         aiohttp_client: AiohttpClient,
-        content_type_text_header: MultiDict,
+        content_type_text_header: MultiDict[str],
         multipart_writer: MultipartWriter,
 ) -> None:
     async def handler(

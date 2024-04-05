@@ -27,25 +27,32 @@ class Param:
 
 
 class ParamFieldInfo(FieldInfo, Param, ABC):
+    param_type: ParamType
+    extractor: Any
+    validate_type: ValidateType
+    can_default: bool = True
+
     def __init__(
             self,
-            param_type: ParamType,
-            extractor: Any,
-            validate_type: ValidateType,
-            can_default: bool = True,
+            default: Any = Undefined,
             **field_info_kwargs: Any,
     ) -> None:
         FieldInfo.__init__(
             self,
+            default=default,
             **field_info_kwargs,
         )
 
+        extractor = getattr(self, 'extractor') or getattr(self.__class__, 'extractor', None)  # noqa: B009
+        if not extractor:
+            raise
+
         Param.__init__(
             self,
-            param_type=param_type,
+            param_type=self.param_type,
             extractor=extractor,
-            validate_type=validate_type,
-            can_default=can_default,
+            validate_type=self.validate_type,
+            can_default=self.can_default,
         )
 
 

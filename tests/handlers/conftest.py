@@ -12,22 +12,22 @@ def form_data_disptype_name() -> str:
     return "form-data"
 
 
-def create_content_type_header(header: str) -> MultiDict:
+def create_content_type_header(header: str) -> MultiDict[str]:
     return MultiDict({"content-type": header})
 
 
 @pytest.fixture
-def content_type_text_header() -> MultiDict:
+def content_type_text_header() -> MultiDict[str]:
     return create_content_type_header(TextPlain)
 
 
 @pytest.fixture
-def content_type_json_header() -> MultiDict:
+def content_type_json_header() -> MultiDict[str]:
     return create_content_type_header(ApplicationJSON)
 
 
 @pytest.fixture
-def content_type_app_binary_header() -> MultiDict:
+def content_type_app_binary_header() -> MultiDict[str]:
     return create_content_type_header(ApplicationBytes)
 
 

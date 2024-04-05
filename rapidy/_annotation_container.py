@@ -8,7 +8,7 @@ from aiohttp.web_request import Request
 from typing_extensions import get_args
 
 from rapidy._annotation_extractor import extract_handler_attr_annotations, NotParameterError
-from rapidy._client_errors import _create_handler_info_msg, ExtractError
+from rapidy._client_errors import _create_handler_attr_info_msg, _create_handler_info_msg, ExtractError
 from rapidy._validators import validate_request_param_data
 from rapidy.fields import ModelField
 from rapidy.request_params import create_param_model_field_by_request_param, ParamFieldInfo, ParamType, ValidateType
@@ -34,6 +34,14 @@ class AnnotationContainerAddFieldError(TypeError):
 
 
 class RequestFieldAlreadyExistError(Exception):
+    pass
+
+
+class ParamAlreadyExistError(KeyError):
+    pass
+
+
+class AttributeDefinitionError(Exception):
     pass
 
 
@@ -141,6 +149,10 @@ class ValidateParamAnnotationContainer(ParamAnnotationContainer, ABC):
             param_default=param_default,
         )
         extraction_name = model_field.alias or model_field.name
+
+        if self.map_model_fields_by_alias.get(extraction_name):
+            raise ParamAlreadyExistError
+
         self.map_model_fields_by_alias[extraction_name] = model_field
 
 
@@ -257,12 +269,16 @@ class AnnotationContainer:
             param_name=param_name,
             field_info=field_info,
         )
-        param_container.add_field(
-            param_name=param_name,
-            annotated_type=annotated_type,
-            field_info=field_info,
-            param_default=param_default,
-        )
+        try:
+            param_container.add_field(
+                param_name=param_name,
+                annotated_type=annotated_type,
+                field_info=field_info,
+                param_default=param_default,
+            )
+        except ParamAlreadyExistError:
+            err_msg = f'Attribute is already defined. {_create_handler_attr_info_msg(self._handler, param_name)}'
+            raise AttributeDefinitionError(err_msg)
 
     def _get_or_create_param_container(
             self,
@@ -304,7 +320,7 @@ def create_annotation_container(
 
     for param_name, param in signature_params.items():
         try:
-            attribute_type, field_info = extract_handler_attr_annotations(param=param, handler=handler)
+            attribute_type, field_info, default = extract_handler_attr_annotations(param=param, handler=handler)
         except NotParameterError:
             if handler_type.is_func:
                 if not get_args(param.annotation):
@@ -320,7 +336,7 @@ def create_annotation_container(
                     field_info=field_info,
                     param_name=param_name,
                     param_type=field_info.param_type,
-                    param_default=param.default,
+                    param_default=default,
                 )
             except AnnotationContainerAddFieldError:
                 raise Exception(
