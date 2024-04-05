@@ -1,18 +1,16 @@
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Type, Union
 
-from aiohttp.abc import AbstractView
+from aiohttp.abc import AbstractView, Request
 from aiohttp.typedefs import (
     Byteish,
     DEFAULT_JSON_DECODER,
     DEFAULT_JSON_ENCODER,
-    Handler,
     JSONDecoder,
     JSONEncoder,
     LooseCookies,
     LooseCookiesIterables,
     LooseCookiesMappings,
     LooseHeaders,
-    Middleware,
     PathLike,
     RawHeaders,
     StrOrURL,
@@ -44,14 +42,18 @@ __all__ = (
 )
 
 DictStrAny = Dict[str, Any]
-MethodHandler = Callable[[], Awaitable[StreamResponse]]
-HandlerType = Union[Type[AbstractView], Handler]
+Handler = Callable[..., Awaitable[StreamResponse]]
+MethodHandler = Callable[..., Awaitable[StreamResponse]]
+HandlerType = Union[Handler, Type[AbstractView]]
+Middleware = Callable[[Request, Handler], Awaitable[StreamResponse]]
 
 HandlerOrMethod = Union[Handler, MethodHandler]
 
 ResultValidate: TypeAlias = Dict[str, Any]
 ErrorList: TypeAlias = List[Dict[str, Any]]
 ValidateReturn: TypeAlias = Tuple[Optional[ResultValidate], Optional[ErrorList]]
+
+RouterDeco = Callable[[HandlerType], HandlerType]
 
 
 if PYDANTIC_V1:

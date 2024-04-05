@@ -28,7 +28,6 @@ from rapidy.typedefs import HandlerType
 
 async def test_json_param(aiohttp_client: AiohttpClient) -> None:
     async def handler(
-            request: web.Request,
             attr1: Annotated[int, JsonBody()],
     ) -> web.Response:
         assert attr1 == 1
@@ -42,7 +41,6 @@ async def test_json_schema(aiohttp_client: AiohttpClient) -> None:
         attr1: int
 
     async def handler(
-            request: web.Request,
             body_data: Annotated[Schema, JsonBodySchema()],
     ) -> web.Response:
         assert body_data.attr1 == 1
@@ -53,7 +51,6 @@ async def test_json_schema(aiohttp_client: AiohttpClient) -> None:
 
 async def test_json_raw(aiohttp_client: AiohttpClient) -> None:
     async def handler(
-            request: web.Request,
             body_data: Annotated[Dict[str, Any], JsonBodyRaw()],
     ) -> web.Response:
         assert body_data == {"attr1": 1}
@@ -72,7 +69,6 @@ async def _success_json(aiohttp_client: AiohttpClient, handler: HandlerType) -> 
 
 async def test_form_data_param(aiohttp_client: AiohttpClient) -> None:
     async def handler(
-            request: web.Request,
             attr1: Annotated[int, FormDataBody()],
     ) -> web.Response:
         assert attr1 == 1
@@ -86,7 +82,6 @@ async def test_form_data_schema(aiohttp_client: AiohttpClient) -> None:
         attr1: int
 
     async def handler(
-            request: web.Request,
             body_data: Annotated[Schema, FormDataBodySchema()],
     ) -> web.Response:
         assert body_data.attr1 == 1
@@ -97,7 +92,6 @@ async def test_form_data_schema(aiohttp_client: AiohttpClient) -> None:
 
 async def test_form_data_raw(aiohttp_client: AiohttpClient) -> None:
     async def handler(
-            request: web.Request,
             body_data: Annotated[Dict[str, str], FormDataBodyRaw()],
     ) -> web.Response:
         assert body_data == {"attr1": "1"}
@@ -139,7 +133,6 @@ async def test_form_data_attributes(
     )
 
     async def handler(
-            request: web.Request,
             body_data: Annotated[Dict[str, str], body_param],
     ) -> web.Response:
         assert body_data == expected_body_data
@@ -160,7 +153,6 @@ async def test_multipart_param(
         multipart_writer: MultipartWriter,
 ) -> None:
     async def handler(
-            request: web.Request,
             attr1: Annotated[int, MultipartBody()],
     ) -> web.Response:
         assert attr1 == 1
@@ -181,7 +173,6 @@ async def test_multipart_schema(
         attr1: int
 
     async def handler(
-            request: web.Request,
             body_data: Annotated[Schema, MultipartBodySchema()],
     ) -> web.Response:
         assert body_data.attr1 == 1
@@ -199,7 +190,6 @@ async def test_multipart_raw(
         multipart_writer: MultipartWriter,
 ) -> None:
     async def handler(
-            request: web.Request,
             body_data: Annotated[Dict[str, str], MultipartBodyRaw()],
     ) -> web.Response:
         assert body_data == {"attr1": "1"}
@@ -256,7 +246,6 @@ async def test_multipart_attributes(
     )
 
     async def handler(
-            request: web.Request,
             body_data: Annotated[Dict[str, str], body_param],
     ) -> web.Response:
         assert body_data == expected_body_data
@@ -278,7 +267,6 @@ async def test_multipart_attributes(
 
 async def test_body_text(aiohttp_client: AiohttpClient) -> None:
     async def handler(
-            request: web.Request,
             attr1: Annotated[str, TextBody()],
     ) -> web.Response:
         assert attr1 == '{"attr1": 1}'
@@ -293,7 +281,6 @@ async def test_body_text(aiohttp_client: AiohttpClient) -> None:
 
 async def test_body_bytes(aiohttp_client: AiohttpClient) -> None:
     async def handler(
-            request: web.Request,
             attr1: Annotated[bytes, BytesBody()],
     ) -> web.Response:
         assert attr1 == b'{"attr1": 1}'
@@ -308,7 +295,6 @@ async def test_body_bytes(aiohttp_client: AiohttpClient) -> None:
 
 async def test_body_stream(aiohttp_client: AiohttpClient) -> None:
     async def handler(
-            request: web.Request,
             attr1: Annotated[StreamReader, StreamBody()],
     ) -> web.Response:
         assert isinstance(attr1, StreamReader)

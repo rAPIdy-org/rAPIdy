@@ -1,6 +1,5 @@
 import inspect
 from dataclasses import is_dataclass
-from types import FunctionType
 from typing import Any, Tuple, Union
 
 from pydantic import BaseModel
@@ -8,24 +7,24 @@ from typing_extensions import Annotated, get_args, get_origin
 
 from rapidy._client_errors import _create_handler_attr_info_msg
 from rapidy.request_params import ParamFieldInfo
-from rapidy.typedefs import Required, Undefined
+from rapidy.typedefs import Handler, Required, Undefined
 
 
-class UnknownParameterError(Exception):
+class NotParameterError(Exception):
     pass
 
 
 def extract_handler_attr_annotations(
         *,
-        handler: FunctionType,
+        handler: Handler,
         param: inspect.Parameter,
 ) -> Tuple[Any, ParamFieldInfo]:
     if get_origin(param.annotation) is not Annotated:
-        raise UnknownParameterError
+        raise NotParameterError
 
     annotated_args = get_args(param.annotation)
     if len(annotated_args) != 2:
-        raise UnknownParameterError
+        raise NotParameterError
 
     attribute_type, field_info = annotated_args[0], annotated_args[1]
 
@@ -33,7 +32,7 @@ def extract_handler_attr_annotations(
         if isinstance(field_info, type) and issubclass(field_info, ParamFieldInfo):
             field_info = field_info()  # type: ignore[call-arg]
         else:
-            raise UnknownParameterError
+            raise NotParameterError
 
     if field_info.validate_type.is_schema():
         checked_attr_type = attribute_type

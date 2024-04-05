@@ -66,10 +66,35 @@ async def test_success(aiohttp_client: AiohttpClient) -> None:
     async def simple_middleware(request: web.Request, handler: HandlerType) -> web.StreamResponse:
         return await handler(request)
 
-    async def handler(request: web.Request) -> web.Response:
+    async def handler() -> web.Response:
         return web.Response()
 
     app = web.Application(middlewares=[simple_middleware])
+    app.add_routes([web.post('/', handler)])
+    client = await aiohttp_client(app)
+    resp = await client.post('/', data='1')
+    assert resp.status == HTTPStatus.OK
+
+
+async def test_success_parametrized_middleware(aiohttp_client: AiohttpClient) -> None:
+    test_parameter: Final[str] = 'awesome'
+
+    def parametrized_middleware(parameter: str) -> Middleware:
+        @middleware
+        async def inner_middleware(
+                request: web.Request,
+                handler: HandlerType,
+        ) -> web.StreamResponse:
+            request['parameter'] = parameter
+            return await handler(request)
+
+        return inner_middleware
+
+    async def handler(request: web.Request) -> web.Response:
+        assert request['parameter'] == test_parameter
+        return web.Response()
+
+    app = web.Application(middlewares=[parametrized_middleware(parameter=test_parameter)])
     app.add_routes([web.post('/', handler)])
     client = await aiohttp_client(app)
     resp = await client.post('/', data='1')
@@ -88,7 +113,7 @@ async def test_multiple_new_style_middlewares_validation(
         auth_middleware: Middleware,
         request_id_middleware: Middleware,
 ) -> None:
-    async def handler(request: web.Request, body: Annotated[str, TextBody]) -> web.Response:
+    async def handler(body: Annotated[str, TextBody]) -> web.Response:
         assert body == BODY_DATA
         return web.Response()
 
@@ -118,7 +143,7 @@ async def test_multiple_new_style_middlewares_in_subapp_validation(
         auth_middleware: Middleware,
         request_id_middleware: Middleware,
 ) -> None:
-    async def protected_handler(request: web.Request, body: Annotated[str, TextBody]) -> web.Response:
+    async def protected_handler(body: Annotated[str, TextBody]) -> web.Response:
         assert body == BODY_DATA
         return web.Response()
 
@@ -141,7 +166,7 @@ async def test_multiple_new_style_middlewares_in_subapp_validation(
 
 
 async def test_unsupported_old_style_middleware(aiohttp_client: AiohttpClient) -> None:
-    async def handler(request: web.Request, body: Annotated[str, TextBody]) -> web.Response:
+    async def handler(body: Annotated[str, TextBody]) -> web.Response:
         assert body == BODY_DATA
         return web.Response()
 

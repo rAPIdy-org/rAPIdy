@@ -1,20 +1,39 @@
 import inspect
 from abc import ABC, abstractmethod
+from enum import Enum
 from types import FunctionType
-from typing import Any, Dict, Iterator, Set, Type, Union
+from typing import Any, Dict, Iterator, Optional, Set, Type, Union
 
-from aiohttp.typedefs import Middleware
 from aiohttp.web_request import Request
+from typing_extensions import get_args
 
-from rapidy._annotation_extractor import extract_handler_attr_annotations, UnknownParameterError
+from rapidy._annotation_extractor import extract_handler_attr_annotations, NotParameterError
 from rapidy._client_errors import _create_handler_info_msg, ExtractError
 from rapidy._validators import validate_request_param_data
 from rapidy.fields import ModelField
 from rapidy.request_params import create_param_model_field_by_request_param, ParamFieldInfo, ParamType, ValidateType
-from rapidy.typedefs import ValidateReturn
+from rapidy.typedefs import Handler, MethodHandler, Middleware, ValidateReturn
+
+
+class HandlerEnumType(str, Enum):
+    func = 'func'
+    method = 'method'
+    middleware = 'middleware'
+
+    @property
+    def is_func(self) -> bool:
+        return self == self.func
+
+    @property
+    def is_method(self) -> bool:
+        return self == self.method
 
 
 class AnnotationContainerAddFieldError(TypeError):
+    pass
+
+
+class RequestFieldAlreadyExistError(Exception):
     pass
 
 
@@ -130,7 +149,7 @@ class ParamAnnotationContainerValidateSchema(ValidateParamAnnotationContainer):
 
     def __init__(self, extractor: Any, param_type: ParamType):
         super().__init__(extractor, param_type)
-        self.already_define = False
+        self._already_define = False
 
     def add_field(
             self,
@@ -139,11 +158,11 @@ class ParamAnnotationContainerValidateSchema(ValidateParamAnnotationContainer):
             field_info: ParamFieldInfo,
             param_default: Any,
     ) -> None:
-        if self.already_define:
+        if self._already_define:
             raise AnnotationContainerAddFieldError
 
         self._add_field(param_name, annotated_type, field_info, param_default)
-        self.already_define = True
+        self._already_define = True
 
 
 class ParamAnnotationContainerValidateParams(ValidateParamAnnotationContainer):
@@ -184,13 +203,46 @@ def param_factory(
 
 
 class AnnotationContainer:
-    def __init__(self) -> None:
+    def __init__(
+            self,
+            handler: Union[Handler, MethodHandler, Middleware],
+            handler_type: HandlerEnumType,
+    ) -> None:
+        self._handler = handler
         self._params: Dict[str, ParamAnnotationContainer] = {}
+        self._request_exist: bool = False
+        self._request_param_name: Optional[str] = None
+        self._handler_type = handler_type
 
     def __iter__(self) -> Iterator[ParamAnnotationContainer]:
         for param_container in self._params.values():
             if param_container:
                 yield param_container
+
+    def set_request_field(self, request_param_name: str) -> None:
+        if self.request_exist:
+            err_msg = f'{_create_handler_info_msg(self._handler)}'
+            raise RequestFieldAlreadyExistError(
+                f'Error during attribute definition in the handler - request param defined twice. {err_msg}',
+            )
+
+        self._request_exist = True
+        self._request_param_name = request_param_name
+
+    @property
+    def request_exist(self) -> bool:
+        return self._request_exist
+
+    @property
+    def request_param_name(self) -> str:
+        if not self._request_exist or not self._request_param_name:
+            raise
+
+        return self._request_param_name
+
+    @property
+    def is_method_container(self) -> bool:
+        return self._handler_type.is_method
 
     def add_param(
             self,
@@ -241,8 +293,11 @@ class AnnotationContainer:
         return param_container
 
 
-def create_annotation_container(handler: Union[FunctionType, Middleware]) -> AnnotationContainer:
-    container = AnnotationContainer()
+def create_annotation_container(
+        handler: Union[FunctionType, Middleware],
+        handler_type: HandlerEnumType,
+) -> AnnotationContainer:
+    container = AnnotationContainer(handler=handler, handler_type=handler_type)
 
     endpoint_signature = inspect.signature(handler)
     signature_params = endpoint_signature.parameters
@@ -250,7 +305,12 @@ def create_annotation_container(handler: Union[FunctionType, Middleware]) -> Ann
     for param_name, param in signature_params.items():
         try:
             attribute_type, field_info = extract_handler_attr_annotations(param=param, handler=handler)
-        except UnknownParameterError:
+        except NotParameterError:
+            if handler_type.is_func:
+                if not get_args(param.annotation):
+                    if issubclass(Request, param.annotation):
+                        container.set_request_field(param_name)
+
             continue
 
         if isinstance(field_info, ParamFieldInfo):

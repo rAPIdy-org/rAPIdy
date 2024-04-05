@@ -42,7 +42,6 @@ class Schema(BaseModel):
 )
 async def test_body_size_exceeded(aiohttp_client: AiohttpClient, body_type: Any) -> None:
     async def handler(
-            request: web.Request,
             param: Annotated[Schema, body_type(body_max_size=1)],
     ) -> web.Response:
         return web.Response()
@@ -79,7 +78,6 @@ async def test_body_size_exceeded_multipart(
         multipart_writer: MultipartWriter,
 ) -> None:
     async def handler(
-            request: web.Request,
             param: Annotated[Schema, body_type(body_max_size=1)],
     ) -> web.Response:
         return web.Response()

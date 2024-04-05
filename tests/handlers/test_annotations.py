@@ -58,7 +58,6 @@ class SchemaDataclass:
 @pytest.mark.parametrize('type2', simple_param_checklist)
 async def test_check_simple_param_incorrect_annotations(type1: Type[HeaderBase], type2: Type[HeaderBase]) -> None:
     async def handler(
-            request: web.Request,
             attr1: Annotated[SchemaPydantic, type1()],
             attr2: Annotated[SchemaPydantic, type2()],
     ) -> web.Response:
@@ -85,7 +84,6 @@ async def test_check_simple_param_incorrect_annotations(type1: Type[HeaderBase],
 @pytest.mark.parametrize('type2', body_checklist)
 async def test_check_body_param_incorrect_annotations(type1: Type[Any], type2: Type[Any]) -> None:
     async def handler(
-            request: web.Request,
             attr1: Annotated[SchemaPydantic, type1()],
             attr2: Annotated[SchemaPydantic, type2()],
     ) -> web.Response:
@@ -120,7 +118,6 @@ async def test_check_annotation(
         attr_type: Any,
 ) -> None:
     async def handler(
-            request: web.Request,
             attr: Annotated[str, attr_type],
     ) -> web.Response:
         return web.Response()
@@ -143,7 +140,6 @@ async def test_check_annotation(
 )
 async def test_success_schema_annotation(attr_type: Any) -> None:
     async def handler(
-            request: web.Request,
             body: Annotated[attr_type, JsonBodySchema],
     ) -> web.Response:
         return web.Response()
@@ -162,7 +158,6 @@ async def test_success_schema_annotation(attr_type: Any) -> None:
 )
 async def test_failed_schema_annotation(attr_type: Any) -> None:
     async def handler(
-            request: web.Request,
             body: Annotated[str, attr_type],
     ) -> web.Response:
         pass
@@ -189,7 +184,6 @@ async def test_failed_schema_annotation(attr_type: Any) -> None:
 )
 async def test_incorrect_rapid_param(aiohttp_client: AiohttpClient, attr_type: Any) -> None:
     async def handler(
-            request: web.Request,
             any_param: attr_type,
             body: Annotated[str, str],
     ) -> web.Response:
