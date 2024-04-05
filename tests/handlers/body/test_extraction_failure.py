@@ -16,7 +16,6 @@ class Schema(BaseModel):
 
 async def test_failure_json_with_default_decoder(aiohttp_client: AiohttpClient) -> None:
     async def handler(
-            request: web.Request,
             body_data: Annotated[Schema, JsonBodySchema()],
     ) -> web.Response:
         pass
@@ -45,7 +44,6 @@ async def test_multipart_part_1_doesnt_has_name(
         multipart_writer: MultipartWriter,
 ) -> None:
     async def handler(
-            request: web.Request,
             body_data: Annotated[Schema, MultipartBodySchema()],
     ) -> web.Response:
         pass
@@ -81,7 +79,6 @@ async def test_multipart_part_2_doesnt_has_name(
     multipart_writer: MultipartWriter,
 ) -> None:
     async def handler(
-            request: web.Request,
             body_data: Annotated[Schema, MultipartBodySchema()],
     ) -> web.Response:
         pass
@@ -119,7 +116,6 @@ async def test_multipart_content_type_expected(
         multipart_writer: MultipartWriter,
 ) -> None:
     async def handler(
-            request: web.Request,
             body_data: Annotated[Schema, MultipartBodySchema()],
     ) -> web.Response:
         pass
@@ -146,7 +142,6 @@ async def test_multipart_content_type_expected(
 
 async def test_multipart_boundary_expected(aiohttp_client: AiohttpClient) -> None:
     async def handler(
-            request: web.Request,
             body_data: Annotated[Schema, MultipartBodySchema()],
     ) -> web.Response:
         pass
@@ -178,7 +173,6 @@ async def test_multipart_boundary_expected(aiohttp_client: AiohttpClient) -> Non
 
 async def test_multipart_part_cannot_find_part_boundary(aiohttp_client: AiohttpClient) -> None:
     async def handler(
-            request: web.Request,
             body_data: Annotated[Schema, MultipartBodySchema()],
     ) -> web.Response:
         pass
@@ -212,7 +206,6 @@ async def test_multipart_part_missing_content_type_error(
     aiohttp_client: AiohttpClient,
 ) -> None:
     async def handler(
-            request: web.Request,
             body_data: Annotated[Schema, MultipartBodySchema()],
     ) -> web.Response:
         pass

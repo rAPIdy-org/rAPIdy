@@ -54,7 +54,6 @@ test_default_values = [
 
 async def test_path_default() -> None:
     async def handler(
-            request: web.Request,
             path: Annotated[str, Path(alias='Host')] = '',
     ) -> web.Response:
         pass
@@ -103,7 +102,6 @@ async def test_default(
         default_value: Any,
 ) -> None:
     async def handler(
-            request: web.Request,
             data: Annotated[annotated_type, param_type] = default_value,
     ) -> web.Response:
         assert data == default_value
@@ -142,7 +140,6 @@ async def test_optional(
         expected_data: Any,
 ) -> None:
     async def handler(
-            request: web.Request,
             data: Annotated[Optional[annotated_type], param_type] = None,
     ) -> web.Response:
         assert data == expected_data
@@ -181,7 +178,6 @@ async def test_attrs_no_values_no_default(
         expected_data: Any,
 ) -> None:
     async def handler(
-            request: web.Request,
             data: Annotated[annotated_type, param_type],
     ) -> web.Response:
         assert data == expected_data
@@ -206,7 +202,6 @@ async def test_attrs_schema_one_param_exist_second_param_is_default(
         request_kw: Dict[str, Any],
 ) -> None:
     async def handler(
-            request: web.Request,
             schema: Annotated[SchemaWithOneDefaultParam, param_type],
     ) -> web.Response:
         assert schema == SchemaWithOneDefaultParam(attr2='attr2')

@@ -1,6 +1,6 @@
 from abc import ABC
 from types import FunctionType
-from typing import Any, Awaitable, Callable, cast, Optional, Type, Union
+from typing import Any, Awaitable, Callable, cast, Optional
 
 from aiohttp.abc import AbstractView
 from aiohttp.typedefs import Handler
@@ -24,7 +24,8 @@ from aiohttp.web_urldispatcher import (
 )
 
 from rapidy import hdrs
-from rapidy._annotation_container import AnnotationContainer, create_annotation_container
+from rapidy._annotation_container import AnnotationContainer, create_annotation_container, HandlerEnumType
+from rapidy.typedefs import HandlerType, MethodHandler
 
 __all__ = [
     'UrlDispatcher',
@@ -45,7 +46,7 @@ class ResourceRoute(AioHTTPResourceRoute, ABC):
     def __init__(
             self,
             method: str,
-            handler: Union[Handler, Type[AbstractView]],
+            handler: HandlerType,
             resource: AbstractResource,
             *,
             expect_handler: Optional[_ExpectHandler] = None,
@@ -57,32 +58,38 @@ class ResourceRoute(AioHTTPResourceRoute, ABC):
             resource=resource,
         )
 
-        self.annotation_container = {}
+        self.annotation_containers = {}
 
         if isinstance(handler, FunctionType):
-            self.annotation_container[method.lower()] = create_annotation_container(handler)
+            self.annotation_containers[method.lower()] = create_annotation_container(
+                handler,
+                handler_type=HandlerEnumType.func,
+            )
 
-        elif issubclass(handler, AbstractView):
+        elif issubclass(handler, AbstractView):  # type: ignore[arg-type]
             for method in (  # noqa: WPS335 WPS352 WPS440
                 handler_attr
                 for handler_attr in dir(handler)
                 if handler_attr.upper() in hdrs.METH_ALL
             ):
-                method_handler: Optional[Callable[[], Awaitable[StreamResponse]]] = getattr(handler, method, None)
+                method_handler: Optional[MethodHandler] = getattr(handler, method, None)
                 if method_handler is None:  # NOTE: Scenario is impossible.  # pragma: no cover
                     raise
 
-                self.annotation_container[method.lower()] = create_annotation_container(method_handler)
+                self.annotation_containers[method.lower()] = create_annotation_container(
+                    method_handler,
+                    handler_type=HandlerEnumType.method,
+                )
 
     def get_method_container(self, method: str) -> AnnotationContainer:
-        return self.annotation_container[method.lower()]
+        return self.annotation_containers[method.lower()]
 
 
 class Resource(AioHTTPResource, ABC):
     def add_route(
         self,
         method: str,
-        handler: Union[Type[AbstractView], Handler],
+        handler: Handler,
         *,
         expect_handler: Optional[_ExpectHandler] = None,
     ) -> 'ResourceRoute':

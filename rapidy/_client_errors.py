@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from types import FunctionType
 from typing import Any, Dict, List, Tuple, Type, Union
 
 from pydantic import BaseModel, create_model
@@ -130,12 +129,12 @@ class ExtractMultipartPartError(ExtractMultipartError):
     msg_template = 'Failed to extract body data as Multipart. Failed to read part `{part_num}`: {multipart_error}'
 
 
-def _create_handler_info_msg(handler: FunctionType) -> str:
+def _create_handler_info_msg(handler: Any) -> str:
     return (
-        f'Handler path: `{handler.__code__.co_filename}`.\n'
-        f'Handler name: `{handler.__name__}`.\n'
+        f'\nHandler path: `{handler.__code__.co_filename}`.'
+        f'\nHandler name: `{handler.__name__}`.\n'
     )
 
 
-def _create_handler_attr_info_msg(handler: FunctionType, attr_name: str) -> str:
+def _create_handler_attr_info_msg(handler: Any, attr_name: str) -> str:
     return f'{_create_handler_info_msg(handler)} Attribute name: `{attr_name}`.\n'

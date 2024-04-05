@@ -93,14 +93,12 @@ async def test_success_func_def(
         expected_data: Any,
 ) -> None:
     async def post(
-            request: web.Request,
             attr: Annotated[annotated_type, param_type],
     ) -> web.Response:
         assert attr == expected_data
         return web.Response()
 
     async def put(
-            request: web.Request,
             attr: Annotated[annotated_type, param_type],
     ) -> web.Response:
         assert attr == expected_data
@@ -143,7 +141,6 @@ async def test_success_func_def_with_routes_deco(
 
     @routes.post('/')
     async def post(
-            request: web.Request,
             attr: Annotated[annotated_type, param_type],
     ) -> web.Response:
         assert attr == expected_data
@@ -151,7 +148,6 @@ async def test_success_func_def_with_routes_deco(
 
     @routes.put('/')
     async def put(
-            request: web.Request,
             attr: Annotated[annotated_type, param_type],
     ) -> web.Response:
         assert attr == expected_data
@@ -245,7 +241,7 @@ async def test_not_found(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_not_allowed(aiohttp_client: AiohttpClient) -> None:
-    async def handler(request: web.Request) -> web.Response:
+    async def handler() -> web.Response:
         pass
 
     app = Application()
