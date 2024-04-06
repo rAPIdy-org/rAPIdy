@@ -121,6 +121,8 @@ per-file-ignores = [
     'rapidy/fields.py: C901 WPS113 WPS433',
     'rapidy/typedefs.py: WPS433 WPS113 WPS440',
     'rapidy/_client_errors.py: C901 WPS433 WPS440',
+    'rapidy/mypy/__init__.py: WPS412',
+    'rapidy/mypy/*: WPS433',
 ]
 
 

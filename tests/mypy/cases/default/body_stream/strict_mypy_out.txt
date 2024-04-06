@@ -1,0 +1,4 @@
+mypy/cases/default/body_stream/module.py:3: error: "default" or "default_factory" cannot be specified for "rapidy.request_params.StreamBody"  [rapidy-param]
+mypy/cases/default/body_stream/module.py:4: error: "default" or "default_factory" cannot be specified for "rapidy.request_params.StreamBody"  [rapidy-param]
+mypy/cases/default/body_stream/module.py:5: error: "default" or "default_factory" cannot be specified for "rapidy.request_params.StreamBody"  [rapidy-param]
+Found 3 errors in 1 file (checked 1 source file)
