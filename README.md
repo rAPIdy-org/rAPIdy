@@ -272,3 +272,25 @@ async def hello_handler(
         body: Annotated[BodyRequestSchema, web.JsonBodySchema],
 ) -> web.Response:
 ```
+
+## For Developers
+
+### pipx
+
+We recommend using [pipx](https://pipx.pypa.io/stable/installation/) for Linux/WSL to install specific(or latest) `poetry` and `pre-commit` versions.
+
+### Poetry
+
+The minimum Poetry version is `1.3.0`, but we recommend using `1.7.1`.
+
+```shell
+poetry install   # install all dev/test dependencies
+ ```
+
+### pre-commit
+
+We don't have `pre-commint` in dependencies, but we recommend using the [latest version](https://pre-commit.com/#install) of `pre-commit`.
+
+```shell
+pre-commit install  # setup our rules for your repo
+```
