@@ -272,3 +272,13 @@ async def hello_handler(
         body: Annotated[BodyRequestSchema, web.JsonBodySchema],
 ) -> web.Response:
 ```
+
+## For Developers
+
+The minimum Poetry version is `1.3.0`, but we recommend using `1.7.1`.
+
+```shell
+poetry install
+```
+
+Linux/WSL recommend using [pipx](https://pipx.pypa.io/stable/installation/) to install specific `poetry` version.
