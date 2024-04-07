@@ -277,7 +277,7 @@ async def hello_handler(
 
 ### pipx
 
-Linux/WSL recommend using [pipx](https://pipx.pypa.io/stable/installation/) to install specific(or latest) `poetry` and `pre-commit` versions.
+We recommend using [pipx](https://pipx.pypa.io/stable/installation/) for Linux/WSL to install specific(or latest) `poetry` and `pre-commit` versions.
 
 ### Poetry
 
