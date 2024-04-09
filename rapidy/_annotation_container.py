@@ -12,7 +12,7 @@ from rapidy._client_errors import _create_handler_attr_info_msg, _create_handler
 from rapidy._validators import validate_request_param_data
 from rapidy.fields import ModelField
 from rapidy.request_params import create_param_model_field_by_request_param, ParamFieldInfo, ParamType, ValidateType
-from rapidy.typedefs import Handler, MethodHandler, Middleware, ValidateReturn
+from rapidy.typedefs import Handler, MethodHandler, Middleware, NoArgAnyCallable, ValidateReturn
 
 
 class HandlerEnumType(str, Enum):
@@ -34,15 +34,41 @@ class AnnotationContainerAddFieldError(TypeError):
 
 
 class RequestFieldAlreadyExistError(Exception):
-    pass
+    _base_err_msg = 'Error during attribute definition in the handler - request param defined twice.'
+
+    def __init__(self, *args: Any, handler: Any):
+        super().__init__(
+            f'{self._base_err_msg} {_create_handler_info_msg(handler)}',
+            *args,
+        )
 
 
-class ParamAlreadyExistError(KeyError):
+class AttributeAlreadyExistError(KeyError):
     pass
 
 
 class AttributeDefinitionError(Exception):
-    pass
+    _base_err_msg = 'Attribute is already defined.'
+
+    def __init__(self, *args: Any, handler: Any, param_name: str):
+        super().__init__(
+            f'{self._base_err_msg}\n{_create_handler_attr_info_msg(handler, param_name)}',
+            *args,
+        )
+
+
+class RequestParamError(Exception):
+    _base_err_msg = (
+        'Error during attribute definition in the handler:\n'
+        '1. It is not possible to use multiple types of attribute extraction in one handler.\n'
+        '2. For a handler attribute, you cannot define two Schemas or two Raw data extractors.'
+    )
+
+    def __init__(self, *args: Any, handler: Any):
+        super().__init__(
+            f'{self._base_err_msg}\n{_create_handler_info_msg(handler)}',
+            *args,
+        )
 
 
 class ParamAnnotationContainer(ABC):
@@ -64,6 +90,7 @@ class ParamAnnotationContainer(ABC):
             annotated_type: Type[Any],
             field_info: ParamFieldInfo,
             param_default: Any,
+            param_default_factory: Optional[NoArgAnyCallable],
     ) -> None:  # pragma: no cover
         pass
 
@@ -74,6 +101,7 @@ class ParamAnnotationContainerOnlyExtract(ParamAnnotationContainer):
         self.param_name = param_name
         self.already_define = False
         self.param_default = None
+        self.param_default_factory = None
 
     def add_field(
             self,
@@ -81,12 +109,12 @@ class ParamAnnotationContainerOnlyExtract(ParamAnnotationContainer):
             annotated_type: Type[Any],
             field_info: ParamFieldInfo,
             param_default: Any,
+            param_default_factory: Optional[NoArgAnyCallable],
     ) -> None:
         if self.already_define:
             raise AnnotationContainerAddFieldError
 
         self.already_define = True
-        self.param_default = param_default if param_default is not inspect.Signature.empty else None
 
     async def get_request_data(
             self,
@@ -100,9 +128,6 @@ class ParamAnnotationContainerOnlyExtract(ParamAnnotationContainer):
             raw_data = await self.extractor(request)
         except ExtractError as exc:
             return {}, [exc.get_error_info(loc=(self.param_type,))]
-
-        if not raw_data and self.param_default:
-            raw_data = self.param_default
 
         request._cache[self.param_type] = raw_data  # FIXME: cache management should be centralized
 
@@ -141,17 +166,19 @@ class ValidateParamAnnotationContainer(ParamAnnotationContainer, ABC):
             annotated_type: Type[Any],
             field_info: ParamFieldInfo,
             param_default: Any,
+            param_default_factory: Optional[NoArgAnyCallable],
     ) -> None:
         model_field = create_param_model_field_by_request_param(
             annotated_type=annotated_type,
             field_info=field_info,
             param_name=param_name,
             param_default=param_default,
+            param_default_factory=param_default_factory,
         )
         extraction_name = model_field.alias or model_field.name
 
         if self.map_model_fields_by_alias.get(extraction_name):
-            raise ParamAlreadyExistError
+            raise AttributeAlreadyExistError
 
         self.map_model_fields_by_alias[extraction_name] = model_field
 
@@ -169,11 +196,12 @@ class ParamAnnotationContainerValidateSchema(ValidateParamAnnotationContainer):
             annotated_type: Type[Any],
             field_info: ParamFieldInfo,
             param_default: Any,
+            param_default_factory: Optional[NoArgAnyCallable],
     ) -> None:
         if self._already_define:
             raise AnnotationContainerAddFieldError
 
-        self._add_field(param_name, annotated_type, field_info, param_default)
+        self._add_field(param_name, annotated_type, field_info, param_default, param_default_factory)
         self._already_define = True
 
 
@@ -190,13 +218,14 @@ class ParamAnnotationContainerValidateParams(ValidateParamAnnotationContainer):
             annotated_type: Type[Any],
             field_info: ParamFieldInfo,
             param_default: Any,
+            param_default_factory: Optional[NoArgAnyCallable],
     ) -> None:
         # NOTE: Make sure that the user does not want to extract two parameters using different data extractors.
         self.added_field_info_types.add(field_info.__class__)
         if len(self.added_field_info_types) > 1:
             raise AnnotationContainerAddFieldError
 
-        self._add_field(param_name, annotated_type, field_info, param_default)
+        self._add_field(param_name, annotated_type, field_info, param_default, param_default_factory)
 
 
 def param_factory(
@@ -233,10 +262,7 @@ class AnnotationContainer:
 
     def set_request_field(self, request_param_name: str) -> None:
         if self.request_exist:
-            err_msg = f'{_create_handler_info_msg(self._handler)}'
-            raise RequestFieldAlreadyExistError(
-                f'Error during attribute definition in the handler - request param defined twice. {err_msg}',
-            )
+            raise RequestFieldAlreadyExistError(handler=self._handler)
 
         self._request_exist = True
         self._request_param_name = request_param_name
@@ -263,6 +289,7 @@ class AnnotationContainer:
             field_info: ParamFieldInfo,
             param_type: ParamType,
             param_default: Any,
+            param_default_factory: Optional[NoArgAnyCallable],
     ) -> None:
         param_container = self._get_or_create_param_container(
             param_type=param_type,
@@ -275,10 +302,10 @@ class AnnotationContainer:
                 annotated_type=annotated_type,
                 field_info=field_info,
                 param_default=param_default,
+                param_default_factory=param_default_factory,
             )
-        except ParamAlreadyExistError:
-            err_msg = f'Attribute is already defined. {_create_handler_attr_info_msg(self._handler, param_name)}'
-            raise AttributeDefinitionError(err_msg)
+        except AttributeAlreadyExistError:
+            raise AttributeDefinitionError(handler=self._handler, param_name=param_name)
 
     def _get_or_create_param_container(
             self,
@@ -337,14 +364,10 @@ def create_annotation_container(
                     param_name=param_name,
                     param_type=field_info.param_type,
                     param_default=default,
+                    param_default_factory=field_info.default_factory,
                 )
-            except AnnotationContainerAddFieldError:
-                raise Exception(
-                    'Error during attribute definition in the handler:\n'
-                    '1. It is not possible to use multiple types of attribute extraction in one handler.\n'
-                    '2. For a handler attribute, you cannot define two Schemas or two Raw data extractors.\n'
-                    f'{_create_handler_info_msg(handler)}',
-                )
+            except AnnotationContainerAddFieldError as annotation_container_add_field_error:
+                raise RequestParamError(handler=handler) from annotation_container_add_field_error
         else:  # pragma: no cover
             raise
 

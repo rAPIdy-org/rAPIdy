@@ -32,9 +32,9 @@ class Schema(BaseModel):
     attr: str
 
 
-def _create_method_annotated_attr_def(annotated_type: Any, param_type: Any, expected_data: Any) -> Any:
+def _create_method_annotated_attr_def(type_: Any, param: Any, expected_data: Any) -> Any:
     async def post(
-            attr: Annotated[annotated_type, param_type],
+            attr: Annotated[type_, param],
     ) -> web.Response:
         assert attr == expected_data
         return web.Response()
@@ -42,9 +42,9 @@ def _create_method_annotated_attr_def(annotated_type: Any, param_type: Any, expe
     return post
 
 
-def _create_method_default_attr_def(annotated_type: Any, param_type: Any, expected_data: Any) -> Any:
+def _create_method_default_attr_def(type_: Any, param: Any, expected_data: Any) -> Any:
     async def post(
-            attr: annotated_type = param_type,
+            attr: type_ = param,
     ) -> web.Response:
         assert attr == expected_data
         return web.Response()
@@ -52,10 +52,10 @@ def _create_method_default_attr_def(annotated_type: Any, param_type: Any, expect
     return post
 
 
-def _create_route_method_annotated_attr_def(annotated_type: Any, param_type: Any, expected_data: Any, routes: Any) -> Any:
+def _create_route_method_annotated_attr_def(type_: Any, param: Any, expected_data: Any, routes: Any) -> Any:
     @routes.post('/')
     async def post(
-            attr: Annotated[annotated_type, param_type],
+            attr: Annotated[type_, param],
     ) -> web.Response:
         assert attr == expected_data
         return web.Response()
@@ -63,10 +63,10 @@ def _create_route_method_annotated_attr_def(annotated_type: Any, param_type: Any
     return post
 
 
-def _create_route_method_default_attr_def(annotated_type: Any, param_type: Any, expected_data: Any, routes: Any) -> Any:
+def _create_route_method_default_attr_def(type_: Any, param: Any, expected_data: Any, routes: Any) -> Any:
     @routes.post('/')
     async def post(
-            attr: annotated_type = param_type,
+            attr: type_ = param,
     ) -> web.Response:
         assert attr == expected_data
         return web.Response()
@@ -74,11 +74,11 @@ def _create_route_method_default_attr_def(annotated_type: Any, param_type: Any, 
     return post
 
 
-def _create_class_handler_as_annotated_def(annotated_type: Any, param_type: Any, expected_data: Any) -> Any:
+def _create_class_handler_as_annotated_def(type_: Any, param: Any, expected_data: Any) -> Any:
     class Foo(web.View):
         async def post(
                 self,
-                attr: Annotated[annotated_type, param_type],
+                attr: Annotated[type_, param],
         ) -> web.Response:
             assert attr == expected_data
             return web.Response()
@@ -86,11 +86,11 @@ def _create_class_handler_as_annotated_def(annotated_type: Any, param_type: Any,
     return Foo
 
 
-def _create_class_handler_as_default_def(annotated_type: Any, param_type: Any, expected_data: Any) -> Any:
+def _create_class_handler_as_default_def(type_: Any, param: Any, expected_data: Any) -> Any:
     class Foo(web.View):
         async def post(
                 self,
-                attr: annotated_type = param_type,
+                attr: type_ = param,
         ) -> web.Response:
             assert attr == expected_data
             return web.Response()
@@ -128,23 +128,17 @@ create_view_parameters = [
 ]
 
 
-@pytest.mark.parametrize(
-    "annotated_type, param_type, request_kw, expected_data",
-    success_definition_test_parameters,
-)
-@pytest.mark.parametrize(
-    "handler_creation_func",
-    create_method_parameters,
-)
+@pytest.mark.parametrize('type_, param, request_kw, expected_data', success_definition_test_parameters)
+@pytest.mark.parametrize('handler_creation_func', create_method_parameters)
 async def test_success_func_def(
         aiohttp_client: AiohttpClient,
-        annotated_type: Any,
-        param_type: Any,
+        type_: Any,
+        param: Any,
         request_kw: Dict[str, Any],
         expected_data: Any,
         handler_creation_func: Any,
 ) -> None:
-    handler = handler_creation_func(annotated_type=annotated_type, param_type=param_type, expected_data=expected_data)
+    handler = handler_creation_func(type_=type_, param=param, expected_data=expected_data)
 
     app = Application()
     app.add_routes([web.post('/', handler)])
@@ -152,18 +146,12 @@ async def test_success_func_def(
     await _test(aiohttp_client, app, request_kw)
 
 
-@pytest.mark.parametrize(
-    "annotated_type, param_type, request_kw, expected_data",
-    success_definition_test_parameters,
-)
-@pytest.mark.parametrize(
-    "handler_creation_func",
-    create_method_as_decorated_route_func_parameters,
-)
+@pytest.mark.parametrize('type_, param, request_kw, expected_data', success_definition_test_parameters)
+@pytest.mark.parametrize('handler_creation_func', create_method_as_decorated_route_func_parameters)
 async def test_success_func_def_with_routes_deco(
         aiohttp_client: AiohttpClient,
-        annotated_type: Any,
-        param_type: Any,
+        type_: Any,
+        param: Any,
         request_kw: Dict[str, Any],
         expected_data: Any,
         handler_creation_func: Any,
@@ -171,7 +159,7 @@ async def test_success_func_def_with_routes_deco(
     routes = RouteTableDef()
 
     handler_creation_func(
-        annotated_type=annotated_type, param_type=param_type, expected_data=expected_data, routes=routes,
+        type_=type_, param=param, expected_data=expected_data, routes=routes,
     )
 
     app = Application()
@@ -180,23 +168,17 @@ async def test_success_func_def_with_routes_deco(
     await _test(aiohttp_client, app, request_kw)
 
 
-@pytest.mark.parametrize(
-    "annotated_type, param_type, request_kw, expected_data",
-    success_definition_test_parameters,
-)
-@pytest.mark.parametrize(
-    "handler_creation_func",
-    create_view_parameters,
-)
+@pytest.mark.parametrize('type_, param, request_kw, expected_data', success_definition_test_parameters)
+@pytest.mark.parametrize('handler_creation_func', create_view_parameters)
 async def test_success_class_def_as_view(
         aiohttp_client: AiohttpClient,
-        annotated_type: Any,
-        param_type: Any,
+        type_: Any,
+        param: Any,
         request_kw: Dict[str, Any],
         expected_data: Any,
         handler_creation_func: Any,
 ) -> None:
-    handler = handler_creation_func(annotated_type, param_type, expected_data)
+    handler = handler_creation_func(type_, param, expected_data)
 
     app = Application()
     app.add_routes([web.view('/', handler)])
@@ -204,23 +186,17 @@ async def test_success_class_def_as_view(
     await _test(aiohttp_client, app, request_kw)
 
 
-@pytest.mark.parametrize(
-    "annotated_type, param_type, request_kw, expected_data",
-    success_definition_test_parameters,
-)
-@pytest.mark.parametrize(
-    "handler_creation_func",
-    create_view_parameters,
-)
+@pytest.mark.parametrize('type_, param, request_kw, expected_data', success_definition_test_parameters)
+@pytest.mark.parametrize('handler_creation_func', create_view_parameters)
 async def test_success_class_def_as_subapp(
         aiohttp_client: AiohttpClient,
-        annotated_type: Any,
-        param_type: Any,
+        type_: Any,
+        param: Any,
         request_kw: Dict[str, Any],
         expected_data: Any,
         handler_creation_func: Any,
 ) -> None:
-    handler = handler_creation_func(annotated_type, param_type, expected_data)
+    handler = handler_creation_func(type_, param, expected_data)
 
     app = Application()
     app.add_routes([web.post('/', handler), web.put('/', handler)])
@@ -249,6 +225,7 @@ async def test_not_allowed(aiohttp_client: AiohttpClient) -> None:
     app.add_routes([web.get('/', handler)])
     client = await aiohttp_client(app)
     resp = await client.post('/')
+
     assert resp.status == HTTPStatus.METHOD_NOT_ALLOWED
 
 
@@ -260,4 +237,5 @@ async def _test(
 ) -> None:
     client = await aiohttp_client(app)
     resp = await client.post(path, **request_kw)
+
     assert resp.status == HTTPStatus.OK

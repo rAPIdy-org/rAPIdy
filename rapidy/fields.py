@@ -9,7 +9,7 @@ from rapidy._client_errors import RequestErrorModel
 from rapidy._request_params_base import ValidateType
 from rapidy.constants import PYDANTIC_V1, PYDANTIC_V2
 from rapidy.request_params import ParamType
-from rapidy.typedefs import Required, Undefined, ValidateReturn
+from rapidy.typedefs import NoArgAnyCallable, Required, Undefined, ValidateReturn
 
 
 class Param:
@@ -35,13 +35,18 @@ class ParamFieldInfo(FieldInfo, Param, ABC):
     def __init__(
             self,
             default: Any = Undefined,
+            *,
+            default_factory: Optional[NoArgAnyCallable] = None,
             **field_info_kwargs: Any,
     ) -> None:
         FieldInfo.__init__(
             self,
             default=default,
+            default_factory=default_factory,
             **field_info_kwargs,
         )
+        if PYDANTIC_V1:
+            self._validate()  # check specify both default and default_factory
 
         extractor = getattr(self, 'extractor') or getattr(self.__class__, 'extractor', None)  # noqa: B009
         if not extractor:
@@ -62,7 +67,6 @@ if PYDANTIC_V1:
     from pydantic.error_wrappers import ErrorWrapper
     from pydantic.fields import ModelField as PydanticModelField
     from pydantic.schema import get_annotation_from_field_info
-    from pydantic.typing import NoArgAnyCallable as NoArgAnyCallable  # noqa: WPS113
 
     if TYPE_CHECKING:  # pragma: no cover
         from pydantic.fields import BoolUndefined
@@ -103,14 +107,17 @@ if PYDANTIC_V1:
             type_: Type[Any],
             field_info: ParamFieldInfo,
     ) -> ModelField:
+        required = field_info.default in (Required, Undefined) and field_info.default_factory is None
+
         kwargs: Dict[str, Any] = {
             'name': name,
             'field_info': field_info,
             'type_': type_,
             'rapid_param_type': field_info.param_type,
-            'required': field_info.default in (Required, Undefined),
+            'required': required,
             'alias': field_info.alias or name,
             'default': field_info.default,
+            'default_factory': field_info.default_factory,
             'class_validators': {},
             'model_config': BaseConfig,
         }
@@ -190,6 +197,9 @@ elif PYDANTIC_V2:
         def default(self) -> Any:
             if self.field_info.is_required():
                 return Undefined
+            return self.field_info.get_default(call_default_factory=True)
+
+        def get_default(self) -> Any:
             return self.field_info.get_default(call_default_factory=True)
 
         @property

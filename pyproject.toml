@@ -139,7 +139,7 @@ allow_untyped_defs = true
 allow_untyped_calls = true
 allow_subclassing_any = true
 allow_untyped_decorators = true
-disable_error_code = "var-annotated, has-type"
+disable_error_code = "var-annotated, has-type, no-redef"
 
 [tool.isort]
 multi_line_output = 3

@@ -55,6 +55,7 @@ ValidateReturn: TypeAlias = Tuple[Optional[ResultValidate], Optional[ErrorList]]
 
 RouterDeco = Callable[[HandlerType], HandlerType]
 
+NoArgAnyCallable = Callable[[], Any]
 
 if PYDANTIC_V1:
     from pydantic.error_wrappers import ErrorWrapper as ErrorWrapper

@@ -22,7 +22,7 @@ from rapidy._request_params_base import ParamType, ValidateType
 from rapidy.constants import MAX_BODY_SIZE
 from rapidy.fields import create_field, get_annotation_from_field_info, ModelField, ParamFieldInfo
 from rapidy.media_types import ApplicationBytes, ApplicationJSON, ApplicationXWWWForm, MultipartForm, TextPlain
-from rapidy.typedefs import Required, Undefined
+from rapidy.typedefs import NoArgAnyCallable, Required, Undefined
 
 __all__ = (
     'BytesBody',
@@ -137,6 +137,7 @@ class BodyBase(ParamFieldInfo, ABC):
             self,
             default: Any = Undefined,
             *,
+            default_factory: Optional[NoArgAnyCallable] = None,
             body_max_size: Optional[int] = None,
             **field_info_kwargs: Any,
     ) -> None:
@@ -144,7 +145,7 @@ class BodyBase(ParamFieldInfo, ABC):
 
         self.extractor = partial(self.extractor, max_size=self.body_max_size)
 
-        super().__init__(default, **field_info_kwargs)
+        super().__init__(default=default, default_factory=default_factory, **field_info_kwargs)
 
 
 class StreamBody(BodyBase):
@@ -174,6 +175,7 @@ class JsonBodyBase(BodyBase):
             self,
             default: Any = Undefined,
             *,
+            default_factory: Optional[NoArgAnyCallable] = None,
             body_max_size: Optional[int] = None,
             json_decoder: Optional[JSONDecoder] = None,
             **field_info_kwargs: Any,
@@ -185,6 +187,7 @@ class JsonBodyBase(BodyBase):
 
         super().__init__(
             default=default,
+            default_factory=default_factory,
             body_max_size=body_max_size,
             **field_info_kwargs,
         )
@@ -197,6 +200,7 @@ class JsonBody(JsonBodyBase):
             self,
             default: Any = Undefined,
             *,
+            default_factory: Optional[NoArgAnyCallable] = None,
             body_max_size: Optional[int] = None,
             json_decoder: Optional[JSONDecoder] = None,
             **field_info_kwargs: Any,
@@ -209,6 +213,7 @@ class JsonBody(JsonBodyBase):
 
         super().__init__(
             default=default,
+            default_factory=default_factory,
             body_max_size=body_max_size,
             json_decoder=json_decoder,
             **field_info_kwargs,
@@ -230,6 +235,7 @@ class FormDataBodyBase(BodyBase):
             self,
             default: Any = Undefined,
             *,
+            default_factory: Optional[NoArgAnyCallable] = None,
             body_max_size: Optional[int] = None,
             attrs_case_sensitive: bool = False,
             duplicated_attrs_parse_as_array: bool = False,
@@ -243,6 +249,7 @@ class FormDataBodyBase(BodyBase):
 
         super().__init__(
             default=default,
+            default_factory=default_factory,
             body_max_size=body_max_size,
             **field_info_kwargs,
         )
@@ -255,6 +262,7 @@ class FormDataBody(FormDataBodyBase):
             self,
             default: Any = Undefined,
             *,
+            default_factory: Optional[NoArgAnyCallable] = None,
             body_max_size: Optional[int] = None,
             attrs_case_sensitive: bool = False,
             duplicated_attrs_parse_as_array: bool = False,
@@ -273,6 +281,7 @@ class FormDataBody(FormDataBodyBase):
 
         super().__init__(
             default=default,
+            default_factory=default_factory,
             body_max_size=body_max_size,
             attrs_case_sensitive=attrs_case_sensitive,
             duplicated_attrs_parse_as_array=duplicated_attrs_parse_as_array,
@@ -295,6 +304,7 @@ class MultipartBodyBase(BodyBase):
             self,
             default: Any = Undefined,
             *,
+            default_factory: Optional[NoArgAnyCallable] = None,
             body_max_size: Optional[int] = None,
             attrs_case_sensitive: bool = False,
             duplicated_attrs_parse_as_array: bool = False,
@@ -308,6 +318,7 @@ class MultipartBodyBase(BodyBase):
 
         super().__init__(
             default=default,
+            default_factory=default_factory,
             body_max_size=body_max_size,
             **field_info_kwargs,
         )
@@ -320,6 +331,7 @@ class MultipartBody(MultipartBodyBase):
             self,
             default: Any = Undefined,
             *,
+            default_factory: Optional[NoArgAnyCallable] = None,
             body_max_size: Optional[int] = None,
             attrs_case_sensitive: bool = False,
             duplicated_attrs_parse_as_array: bool = False,
@@ -338,6 +350,7 @@ class MultipartBody(MultipartBodyBase):
 
         super().__init__(
             default=default,
+            default_factory=default_factory,
             body_max_size=body_max_size,
             attrs_case_sensitive=attrs_case_sensitive,
             duplicated_attrs_parse_as_array=duplicated_attrs_parse_as_array,
@@ -359,6 +372,7 @@ def create_param_model_field_by_request_param(
         field_info: ParamFieldInfo,
         param_name: str,
         param_default: Any,
+        param_default_factory: Optional[NoArgAnyCallable],
 ) -> ModelField:
     copied_field_info = copy(field_info)
 
@@ -366,6 +380,9 @@ def create_param_model_field_by_request_param(
         copied_field_info.default = param_default
     else:
         copied_field_info.default = Required
+
+    if param_default_factory is not None:
+        copied_field_info.default_factory = param_default_factory
 
     inner_attribute_type = get_annotation_from_field_info(
         annotation=annotated_type,
