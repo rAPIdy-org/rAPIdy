@@ -22,6 +22,7 @@ from rapidy._request_params_base import ParamType, ValidateType
 from rapidy.constants import MAX_BODY_SIZE
 from rapidy.fields import create_field, get_annotation_from_field_info, ModelField, ParamFieldInfo
 from rapidy.media_types import ApplicationBytes, ApplicationJSON, ApplicationXWWWForm, MultipartForm, TextPlain
+from rapidy.typedefs import NoArgAnyCallable, Required, Undefined
 
 __all__ = (
     'BytesBody',
@@ -50,8 +51,6 @@ __all__ = (
     'TextBody',
 )
 
-from rapidy.typedefs import Required
-
 
 class BodyParamAttrDefinitionError(Exception):
     pass
@@ -62,165 +61,149 @@ class DefaultDefinitionError(Exception):
 
 
 class PathBase(ParamFieldInfo):
-    def __init__(self, **kwargs: Any):
-        super().__init__(**kwargs, param_type=ParamType.path, extractor=extract_path, can_default=False)
+    param_type = ParamType.path
+    extractor = staticmethod(extract_path)
+    can_default = False
 
 
 class Path(PathBase):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs, validate_type=ValidateType.param)
+    validate_type = ValidateType.param
 
 
 class PathSchema(PathBase):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs, validate_type=ValidateType.schema)
+    validate_type = ValidateType.schema
 
 
 class PathRaw(PathBase):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs, validate_type=ValidateType.no_validate)
+    validate_type = ValidateType.no_validate
 
 
 class HeaderBase(ParamFieldInfo):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs, param_type=ParamType.header, extractor=extract_headers)
+    param_type = ParamType.header
+    extractor = staticmethod(extract_headers)
 
 
 class Header(HeaderBase):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs, validate_type=ValidateType.param)
+    validate_type = ValidateType.param
 
 
 class HeaderSchema(HeaderBase):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs, validate_type=ValidateType.schema)
+    validate_type = ValidateType.schema
 
 
 class HeaderRaw(HeaderBase):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs, validate_type=ValidateType.no_validate)
+    validate_type = ValidateType.no_validate
 
 
 class CookieBase(ParamFieldInfo):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs, param_type=ParamType.cookie, extractor=extract_cookies)
+    param_type = ParamType.cookie
+    extractor = staticmethod(extract_cookies)
 
 
 class Cookie(CookieBase):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs, validate_type=ValidateType.param)
+    validate_type = ValidateType.param
 
 
 class CookieSchema(CookieBase):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs, validate_type=ValidateType.schema)
+    validate_type = ValidateType.schema
 
 
 class CookieRaw(CookieBase):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs, validate_type=ValidateType.no_validate)
+    validate_type = ValidateType.no_validate
 
 
 class QueryBase(ParamFieldInfo):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs, param_type=ParamType.query, extractor=extract_query)
+    param_type = ParamType.query
+    extractor = staticmethod(extract_query)
 
 
 class Query(QueryBase):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs, validate_type=ValidateType.param)
+    validate_type = ValidateType.param
 
 
 class QuerySchema(QueryBase):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs, validate_type=ValidateType.schema)
+    validate_type = ValidateType.schema
 
 
 class QueryRaw(QueryBase):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs, validate_type=ValidateType.no_validate)
+    validate_type = ValidateType.no_validate
 
 
 class BodyBase(ParamFieldInfo, ABC):
+    param_type = ParamType.body
+    media_type: str
+
     def __init__(
             self,
-            media_type: str,
+            default: Any = Undefined,
             *,
-            extractor: Any,
+            default_factory: Optional[NoArgAnyCallable] = None,
             body_max_size: Optional[int] = None,
-            **kwargs: Any,
+            **field_info_kwargs: Any,
     ) -> None:
         self.body_max_size = body_max_size or MAX_BODY_SIZE
-        self.media_type = media_type
 
-        extractor = partial(extractor, max_size=self.body_max_size)
+        self.extractor = partial(self.extractor, max_size=self.body_max_size)
 
-        super().__init__(
-            **kwargs,
-            extractor=extractor,
-            param_type=ParamType.body,
-        )
+        super().__init__(default=default, default_factory=default_factory, **field_info_kwargs)
 
 
 class StreamBody(BodyBase):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(
-            **kwargs,
-            validate_type=ValidateType.no_validate,
-            extractor=extract_body_stream,
-            media_type=ApplicationBytes,
-            can_default=False,
-        )
+    media_type = ApplicationBytes
+    extractor = staticmethod(extract_body_stream)
+    validate_type = ValidateType.no_validate
+    can_default = False
 
 
 class BytesBody(BodyBase):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(
-            **kwargs,
-            validate_type=ValidateType.no_validate,
-            extractor=extract_body_bytes,
-            media_type=ApplicationBytes,
-        )
+    media_type = ApplicationBytes
+    extractor = staticmethod(extract_body_bytes)
+    validate_type = ValidateType.no_validate
 
 
 class TextBody(BodyBase):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(
-            **kwargs,
-            validate_type=ValidateType.no_validate,
-            extractor=extract_body_text,
-            media_type=TextPlain,
-        )
+    media_type = TextPlain
+    extractor = staticmethod(extract_body_text)
+    validate_type = ValidateType.no_validate
 
 
 class JsonBodyBase(BodyBase):
+    media_type = ApplicationJSON
+    extractor = staticmethod(extract_body_json)
+
     def __init__(
             self,
+            default: Any = Undefined,
             *,
-            json_decoder: Optional[JSONDecoder] = None,
+            default_factory: Optional[NoArgAnyCallable] = None,
             body_max_size: Optional[int] = None,
-            **kwargs: Any,
+            json_decoder: Optional[JSONDecoder] = None,
+            **field_info_kwargs: Any,
     ) -> None:
-        extractor = partial(
-            extract_body_json,
+        self.extractor = partial(  # noqa: WPS601
+            self.extractor,
             json_decoder=json_decoder or DEFAULT_JSON_DECODER,
         )
 
         super().__init__(
-            **kwargs,
+            default=default,
+            default_factory=default_factory,
             body_max_size=body_max_size,
-            extractor=extractor,
-            media_type=ApplicationJSON,
+            **field_info_kwargs,
         )
 
 
 class JsonBody(JsonBodyBase):
+    validate_type = ValidateType.param
+
     def __init__(
             self,
+            default: Any = Undefined,
             *,
+            default_factory: Optional[NoArgAnyCallable] = None,
             body_max_size: Optional[int] = None,
             json_decoder: Optional[JSONDecoder] = None,
-            **kwargs: Any,
+            **field_info_kwargs: Any,
     ) -> None:
         if body_max_size is not None or json_decoder is not None:
             raise BodyParamAttrDefinitionError(
@@ -229,57 +212,66 @@ class JsonBody(JsonBodyBase):
             )
 
         super().__init__(
-            **kwargs,
-            validate_type=ValidateType.param,
+            default=default,
+            default_factory=default_factory,
             body_max_size=body_max_size,
             json_decoder=json_decoder,
+            **field_info_kwargs,
         )
 
 
 class JsonBodySchema(JsonBodyBase):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs, validate_type=ValidateType.schema)
+    validate_type = ValidateType.schema
 
 
 class JsonBodyRaw(JsonBodyBase):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs, validate_type=ValidateType.no_validate)
+    validate_type = ValidateType.no_validate
 
 
 class FormDataBodyBase(BodyBase):
+    media_type = ApplicationXWWWForm
+
     def __init__(
             self,
+            default: Any = Undefined,
             *,
-            attrs_case_sensitive: Optional[bool] = None,
-            duplicated_attrs_parse_as_array: Optional[bool] = None,
-            **kwargs: Any,
+            default_factory: Optional[NoArgAnyCallable] = None,
+            body_max_size: Optional[int] = None,
+            attrs_case_sensitive: bool = False,
+            duplicated_attrs_parse_as_array: bool = False,
+            **field_info_kwargs: Any,
     ) -> None:
-        extractor = partial(
+        self.extractor = partial(
             extract_body_x_www_form,
-            attrs_case_sensitive=attrs_case_sensitive or False,
-            duplicated_attrs_parse_as_array=duplicated_attrs_parse_as_array or False,
+            attrs_case_sensitive=attrs_case_sensitive,
+            duplicated_attrs_parse_as_array=duplicated_attrs_parse_as_array,
         )
 
         super().__init__(
-            **kwargs,
-            extractor=extractor,
-            media_type=ApplicationXWWWForm,
+            default=default,
+            default_factory=default_factory,
+            body_max_size=body_max_size,
+            **field_info_kwargs,
         )
 
 
 class FormDataBody(FormDataBodyBase):
+    validate_type = ValidateType.param
+
     def __init__(
             self,
+            default: Any = Undefined,
             *,
+            default_factory: Optional[NoArgAnyCallable] = None,
             body_max_size: Optional[int] = None,
-            attrs_case_sensitive: Optional[bool] = None,
-            duplicated_attrs_parse_as_array: Optional[bool] = None,
-            **kwargs: Any,
+            attrs_case_sensitive: bool = False,
+            duplicated_attrs_parse_as_array: bool = False,
+            **field_info_kwargs: Any,
     ) -> None:
         if (
             body_max_size is not None
-            or attrs_case_sensitive is not None
-            or duplicated_attrs_parse_as_array is not None
+            or attrs_case_sensitive
+            or duplicated_attrs_parse_as_array
         ):
             raise BodyParamAttrDefinitionError(
                 'A single FormDataBody parameter does not allow to determine '
@@ -287,52 +279,68 @@ class FormDataBody(FormDataBodyBase):
                 'Please use FormDataSchema or FormDataRaw.',
             )
 
-        super().__init__(**kwargs, validate_type=ValidateType.param)
+        super().__init__(
+            default=default,
+            default_factory=default_factory,
+            body_max_size=body_max_size,
+            attrs_case_sensitive=attrs_case_sensitive,
+            duplicated_attrs_parse_as_array=duplicated_attrs_parse_as_array,
+            **field_info_kwargs,
+        )
 
 
 class FormDataBodySchema(FormDataBodyBase):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs, validate_type=ValidateType.schema)
+    validate_type = ValidateType.schema
 
 
 class FormDataBodyRaw(FormDataBodyBase):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs, validate_type=ValidateType.no_validate)
+    validate_type = ValidateType.no_validate
 
 
 class MultipartBodyBase(BodyBase):
+    media_type = MultipartForm
+
     def __init__(
             self,
+            default: Any = Undefined,
+            *,
+            default_factory: Optional[NoArgAnyCallable] = None,
+            body_max_size: Optional[int] = None,
             attrs_case_sensitive: bool = False,
             duplicated_attrs_parse_as_array: bool = False,
-            **kwargs: Any,
+            **field_info_kwargs: Any,
     ) -> None:
-        extractor = partial(
+        self.extractor = partial(
             extract_body_multi_part,
             attrs_case_sensitive=attrs_case_sensitive,
             duplicated_attrs_parse_as_array=duplicated_attrs_parse_as_array,
         )
 
         super().__init__(
-            **kwargs,
-            extractor=extractor,
-            media_type=MultipartForm,
+            default=default,
+            default_factory=default_factory,
+            body_max_size=body_max_size,
+            **field_info_kwargs,
         )
 
 
 class MultipartBody(MultipartBodyBase):
+    validate_type = ValidateType.param
+
     def __init__(
             self,
+            default: Any = Undefined,
             *,
+            default_factory: Optional[NoArgAnyCallable] = None,
             body_max_size: Optional[int] = None,
-            attrs_case_sensitive: Optional[bool] = None,
-            duplicated_attrs_parse_as_array: Optional[bool] = None,
-            **kwargs: Any,
+            attrs_case_sensitive: bool = False,
+            duplicated_attrs_parse_as_array: bool = False,
+            **field_info_kwargs: Any,
     ) -> None:
         if (
             body_max_size is not None
-            or attrs_case_sensitive is not None
-            or duplicated_attrs_parse_as_array is not None
+            or attrs_case_sensitive
+            or duplicated_attrs_parse_as_array
         ):
             raise BodyParamAttrDefinitionError(
                 'A single MultipartBody parameter does not allow to determine '
@@ -340,17 +348,22 @@ class MultipartBody(MultipartBodyBase):
                 'Please use MultipartBodySchema or MultipartBodyRaw.',
             )
 
-        super().__init__(**kwargs, validate_type=ValidateType.param)
+        super().__init__(
+            default=default,
+            default_factory=default_factory,
+            body_max_size=body_max_size,
+            attrs_case_sensitive=attrs_case_sensitive,
+            duplicated_attrs_parse_as_array=duplicated_attrs_parse_as_array,
+            **field_info_kwargs,
+        )
 
 
 class MultipartBodySchema(MultipartBodyBase):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs, validate_type=ValidateType.schema)
+    validate_type = ValidateType.schema
 
 
 class MultipartBodyRaw(MultipartBodyBase):
-    def __init__(self, **kwargs: Any) -> None:
-        super().__init__(**kwargs, validate_type=ValidateType.no_validate)
+    validate_type = ValidateType.no_validate
 
 
 def create_param_model_field_by_request_param(
@@ -359,6 +372,7 @@ def create_param_model_field_by_request_param(
         field_info: ParamFieldInfo,
         param_name: str,
         param_default: Any,
+        param_default_factory: Optional[NoArgAnyCallable],
 ) -> ModelField:
     copied_field_info = copy(field_info)
 
@@ -366,6 +380,9 @@ def create_param_model_field_by_request_param(
         copied_field_info.default = param_default
     else:
         copied_field_info.default = Required
+
+    if param_default_factory is not None:
+        copied_field_info.default_factory = param_default_factory
 
     inner_attribute_type = get_annotation_from_field_info(
         annotation=annotated_type,

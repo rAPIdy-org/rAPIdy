@@ -39,8 +39,12 @@ async def post_with_request_different_name(
 
 
 @pytest.mark.parametrize(
-    'post_handler',
-    [post_without_request, post_with_request_fst, post_with_request_snd, post_with_request_different_name],
+    'post_handler', [
+        post_without_request,
+        post_with_request_fst,
+        post_with_request_snd,
+        post_with_request_different_name,
+    ],
 )
 async def test_success(aiohttp_client: AiohttpClient, *, post_handler: Any) -> None:
     app = Application()

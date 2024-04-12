@@ -20,13 +20,12 @@ from rapidy.media_types import ApplicationJSON
 from rapidy.typedefs import Handler, Middleware
 from rapidy.web_request import Request
 from rapidy.web_response import StreamResponse
+from rapidy.web_urldispatcher import UrlDispatcher
 
 __all__ = (
     'Application',
     'CleanupError',
 )
-
-from rapidy.web_urldispatcher import UrlDispatcher
 
 
 class Application(AiohttpApplication):
