@@ -11,21 +11,7 @@ from rapidy.constants import PYDANTIC_V1, PYDANTIC_V2
 from rapidy.typedefs import NoArgAnyCallable, Required, Undefined, ValidateReturn
 
 
-class Param:
-    def __init__(
-            self,
-            param_type: ParamType,
-            extractor: Any,
-            validate_type: ValidateType,
-            can_default: bool,
-    ) -> None:
-        self.param_type = param_type
-        self.extractor = extractor
-        self.validate_type = validate_type
-        self.can_default = can_default
-
-
-class ParamFieldInfo(FieldInfo, Param, ABC):
+class ParamFieldInfo(FieldInfo, ABC):
     param_type: ParamType
     extractor: Any
     validate_type: ValidateType
@@ -50,14 +36,6 @@ class ParamFieldInfo(FieldInfo, Param, ABC):
         extractor = getattr(self, 'extractor') or getattr(self.__class__, 'extractor', None)  # noqa: B009
         if not extractor:
             raise
-
-        Param.__init__(
-            self,
-            param_type=self.param_type,
-            extractor=extractor,
-            validate_type=self.validate_type,
-            can_default=self.can_default,
-        )
 
 
 if PYDANTIC_V1:  # noqa: C901

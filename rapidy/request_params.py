@@ -93,6 +93,7 @@ class HeaderSchema(HeaderBase):
 
 class HeaderRaw(HeaderBase):
     validate_type = ValidateType.no_validate
+    can_default = False
 
 
 class CookieBase(ParamFieldInfo):
@@ -110,6 +111,7 @@ class CookieSchema(CookieBase):
 
 class CookieRaw(CookieBase):
     validate_type = ValidateType.no_validate
+    can_default = False
 
 
 class QueryBase(ParamFieldInfo):
@@ -127,6 +129,7 @@ class QuerySchema(QueryBase):
 
 class QueryRaw(QueryBase):
     validate_type = ValidateType.no_validate
+    can_default = False
 
 
 class BodyBase(ParamFieldInfo, ABC):
@@ -159,12 +162,14 @@ class BytesBody(BodyBase):
     media_type = ApplicationBytes
     extractor = staticmethod(extract_body_bytes)
     validate_type = ValidateType.no_validate
+    can_default = False
 
 
 class TextBody(BodyBase):
     media_type = TextPlain
     extractor = staticmethod(extract_body_text)
     validate_type = ValidateType.no_validate
+    can_default = False
 
 
 class JsonBodyBase(BodyBase):
@@ -226,6 +231,7 @@ class JsonBodySchema(JsonBodyBase):
 
 class JsonBodyRaw(JsonBodyBase):
     validate_type = ValidateType.no_validate
+    can_default = False
 
 
 class FormDataBodyBase(BodyBase):
@@ -295,6 +301,7 @@ class FormDataBodySchema(FormDataBodyBase):
 
 class FormDataBodyRaw(FormDataBodyBase):
     validate_type = ValidateType.no_validate
+    can_default = False
 
 
 class MultipartBodyBase(BodyBase):
@@ -364,6 +371,7 @@ class MultipartBodySchema(MultipartBodyBase):
 
 class MultipartBodyRaw(MultipartBodyBase):
     validate_type = ValidateType.no_validate
+    can_default = False
 
 
 def create_param_model_field_by_request_param(

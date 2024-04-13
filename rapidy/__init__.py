@@ -77,13 +77,6 @@ from aiohttp.resolver import (
     DefaultResolver as DefaultResolver,
     ThreadedResolver as ThreadedResolver,
 )
-from aiohttp.streams import (
-    DataQueue as DataQueue,
-    EMPTY_PAYLOAD as EMPTY_PAYLOAD,
-    EofStream as EofStream,
-    FlowControlDataQueue as FlowControlDataQueue,
-    StreamReader as StreamReader,
-)
 from aiohttp.tracing import (
     TraceConfig as TraceConfig,
     TraceConnectionCreateEndParams as TraceConnectionCreateEndParams,
@@ -104,6 +97,13 @@ from aiohttp.tracing import (
 )
 
 from rapidy import hdrs as hdrs
+from rapidy.streams import (
+    DataQueue as DataQueue,
+    EMPTY_PAYLOAD as EMPTY_PAYLOAD,
+    EofStream as EofStream,
+    FlowControlDataQueue as FlowControlDataQueue,
+    StreamReader as StreamReader,
+)
 
 __all__: Tuple[str, ...] = (
     'hdrs',

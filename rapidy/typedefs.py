@@ -36,12 +36,19 @@ __all__ = (
     'Handler',
     'PathLike',
     'DictStrAny',
+    'DictStrStr',
+    'DictStrListAny',
+    'DictStrListStr',
     'MethodHandler',
     'HandlerType',
     'HandlerOrMethod',
 )
 
 DictStrAny = Dict[str, Any]
+DictStrStr = Dict[str, str]
+DictStrListAny = Dict[str, List[Any]]
+DictStrListStr = Dict[str, List[str]]
+
 Handler = Callable[..., Awaitable[StreamResponse]]
 MethodHandler = Callable[..., Awaitable[StreamResponse]]
 HandlerType = Union[Handler, Type[AbstractView]]

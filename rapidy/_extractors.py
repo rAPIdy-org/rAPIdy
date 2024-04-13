@@ -16,26 +16,26 @@ from rapidy._client_errors import (
 )
 from rapidy._parsers import parse_multi_params
 from rapidy.media_types import ApplicationJSON
-from rapidy.typedefs import DictStrAny
+from rapidy.typedefs import DictStrAny, DictStrListAny, DictStrListStr, DictStrStr
 
 
-async def extract_path(request: Request) -> DictStrAny:
+async def extract_path(request: Request) -> DictStrStr:
     return dict(request.match_info)
 
 
-async def extract_headers(request: Request) -> DictStrAny:
+async def extract_headers(request: Request) -> DictStrStr:
     pairs = request.headers
-    return parse_multi_params(pairs)
+    return parse_multi_params(pairs)  # type: ignore[return-value]
 
 
-async def extract_cookies(request: Request) -> DictStrAny:
+async def extract_cookies(request: Request) -> DictStrStr:
     cookies = request.cookies
     return dict(cookies)
 
 
-async def extract_query(request: Request) -> DictStrAny:
+async def extract_query(request: Request) -> DictStrStr:
     pairs = request.rel_url.query
-    return parse_multi_params(pairs)
+    return parse_multi_params(pairs)  # type: ignore[return-value]
 
 
 async def extract_body_stream(request: Request, max_size: int) -> StreamReader:
@@ -77,7 +77,7 @@ async def extract_body_x_www_form(
         max_size: int,
         attrs_case_sensitive: bool,
         duplicated_attrs_parse_as_array: bool,
-) -> DictStrAny:
+) -> Union[DictStrStr, DictStrListStr]:
     if not request.body_exists:
         return {}
 
@@ -111,7 +111,7 @@ async def extract_body_multi_part(
         max_size: int,
         attrs_case_sensitive: bool,
         duplicated_attrs_parse_as_array: bool,
-) -> DictStrAny:
+) -> Union[DictStrAny, DictStrListAny]:
     if not request.body_exists:
         return {}
 

@@ -147,10 +147,11 @@ class View(AioHTTPView):
         if self.request.method not in hdrs.METH_ALL:  # aiohttp code  # pragma: no cover
             self._raise_allowed_methods()
 
-        method: MethodHandler = getattr(self, self.request.method.lower(), None)  # type: ignore[assignment]
-
+        method: Optional[MethodHandler] = getattr(self, self.request.method.lower(), None)
         if method is None:  # aiohttp code  # pragma: no cover
             self._raise_allowed_methods()
+
+        method = cast(MethodHandler, method)
 
         ret = await method(**self._request_validated_data)
 

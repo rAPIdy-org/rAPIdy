@@ -1,6 +1,6 @@
 import inspect
 from dataclasses import is_dataclass
-from typing import Any, cast, Sequence, Tuple, Type, Union
+from typing import Any, cast, NamedTuple, Sequence, Type, Union
 
 from pydantic import BaseModel
 from typing_extensions import Annotated, get_args, get_origin
@@ -10,11 +10,17 @@ from rapidy.request_params import ParamFieldInfo
 from rapidy.typedefs import Handler, Required, Undefined
 
 
+class AnnotationData(NamedTuple):
+    type_: Any
+    param_field_info: ParamFieldInfo
+    default_value: Any
+
+
 class NotParameterError(Exception):
     pass
 
 
-class ParameterCannotHaveDefaultError(Exception):
+class ParameterCannotUseDefaultError(Exception):
     _base_err_msg = 'Handler attribute with Type `{class_name}` cannot have a default value.'
 
     def __init__(self, *args: Any, class_name: str, handler: Any, param_name: str) -> None:
@@ -24,7 +30,7 @@ class ParameterCannotHaveDefaultError(Exception):
         )
 
 
-class ParameterCannotHaveDefaultFactoryError(Exception):
+class ParameterCannotUseDefaultFactoryError(Exception):
     _base_err_msg = 'Handler attribute with Type `{class_name}` cannot have a default_factory.'
 
     def __init__(self, *args: Any, class_name: str, handler: Any, param_name: str) -> None:
@@ -70,24 +76,32 @@ def _get_annotation_data_by_annotated_flow(
         param_field_info: ParamFieldInfo,
         handler: Handler,
         param: inspect.Parameter,
-) -> Tuple[Any, ParamFieldInfo, Any]:
+) -> AnnotationData:
     default = _get_annotated_definition_attr_default(handler=handler, field_info=param_field_info, param=param)
-    return attr_type, param_field_info, default
+    return AnnotationData(
+        type_=attr_type,
+        param_field_info=param_field_info,
+        default_value=default,
+    )
 
 
 def _get_annotation_data_by_default_value_flow(
         handler: Handler,
         param: inspect.Parameter,
-) -> Tuple[Any, ParamFieldInfo, Any]:
-    field_info = _prepare_field_info(param.default)
-    default = _get_default_definition_attr_default(handler=handler, field_info=field_info, param_name=param.name)
-    return param.annotation, field_info, default
+) -> AnnotationData:
+    param_field_info = _prepare_field_info(param.default)
+    default = _get_default_definition_attr_default(handler=handler, field_info=param_field_info, param_name=param.name)
+    return AnnotationData(
+        type_=param.annotation,
+        param_field_info=param_field_info,
+        default_value=default,
+    )
 
 
 def _get_annotation_data(
         handler: Handler,
         param: Any,
-) -> Tuple[Any, ParamFieldInfo, Any]:
+) -> AnnotationData:
     annotation_origin = get_origin(param.annotation)
 
     if annotation_origin is Annotated:
@@ -126,28 +140,28 @@ def _get_annotated_definition_attr_default(
         param: Any,
         field_info: ParamFieldInfo,
 ) -> Any:
-    param_default_exist = param.default is not inspect.Signature.empty
-    field_default_exist = not (field_info.default is Undefined or field_info.default is Required)
-    field_default_factory_exist = field_info.default_factory is not None
+    default_value_for_param_exists = param.default is not inspect.Signature.empty
+    default_value_for_field_exists = not (field_info.default is Undefined or field_info.default is Required)
+    default_factory_for_field_exists = field_info.default_factory is not None
 
-    default_exist = param_default_exist or field_default_exist
+    default_exists = default_value_for_param_exists or default_value_for_field_exists
     can_default = field_info.can_default and not field_info.validate_type.is_no_validate()
 
-    if default_exist and not can_default:
-        raise ParameterCannotHaveDefaultError(
+    if default_exists and not can_default:
+        raise ParameterCannotUseDefaultError(
             class_name=field_info.__class__.__name__,
             handler=handler,
             param_name=param.name,
         )
 
-    if field_default_factory_exist and not can_default:
-        raise ParameterCannotHaveDefaultFactoryError(
+    if default_factory_for_field_exists and not can_default:
+        raise ParameterCannotUseDefaultFactoryError(
             class_name=field_info.__class__.__name__,
             handler=handler,
             param_name=param.name,
         )
 
-    if default_exist and field_default_factory_exist:
+    if default_exists and default_factory_for_field_exists:
         if field_info.default_factory is not None:
             raise SpecifyBothDefaultAndDefaultFactoryError(
                 class_name=field_info.__class__.__name__,
@@ -155,7 +169,7 @@ def _get_annotated_definition_attr_default(
                 param_name=param.name,
             )
 
-    if param_default_exist and field_default_exist:
+    if default_value_for_param_exists and default_value_for_field_exists:
         raise IncorrectDefineDefaultValueError(
             class_name=field_info.__class__.__name__,
             handler=handler,
@@ -164,10 +178,10 @@ def _get_annotated_definition_attr_default(
 
     default = inspect.Signature.empty
 
-    if param_default_exist:
+    if default_value_for_param_exists:
         default = param.default
 
-    elif field_default_exist:
+    elif default_value_for_field_exists:
         default = field_info.default
 
     return default
@@ -178,17 +192,17 @@ def _get_default_definition_attr_default(
         param_name: str,
         field_info: ParamFieldInfo,
 ) -> Any:
-    can_default = field_info.can_default and not field_info.validate_type.is_no_validate()
+    can_default = field_info.can_default
 
     if field_info.default is not Undefined and not can_default:
-        raise ParameterCannotHaveDefaultError(
+        raise ParameterCannotUseDefaultError(
             class_name=field_info.__class__.__name__,
             handler=handler,
             param_name=param_name,
         )
 
     if field_info.default_factory is not None and not can_default:
-        raise ParameterCannotHaveDefaultFactoryError(
+        raise ParameterCannotUseDefaultFactoryError(
             class_name=field_info.__class__.__name__,
             handler=handler,
             param_name=param_name,
@@ -211,14 +225,14 @@ def _raise_if_unsupported_union_schema_data_type(
         )
 
 
-def _raise_if_unsupported_attr_type(
-        attr_type: Any,
+def _raise_if_unsupported_annotation_type(
+        annotation: Any,
         *,
         handler: Handler,
         param_name: str,
 ) -> None:
     try:
-        is_subclass_of_base_model = issubclass(attr_type, BaseModel)
+        is_subclass_of_base_model = issubclass(annotation, BaseModel)
     except TypeError as type_error_exc:
         raise UnsupportedSchemaDataTypeError(
             err_msg='Unsupported data type for schema.',
@@ -226,7 +240,7 @@ def _raise_if_unsupported_attr_type(
             param_name=param_name,
         ) from type_error_exc
 
-    if not (is_subclass_of_base_model or is_dataclass(attr_type)):
+    if not (is_subclass_of_base_model or is_dataclass(annotation)):
         raise UnsupportedSchemaDataTypeError(
             err_msg='Schema annotated type must be a pydantic.BaseModel or dataclasses.dataclass.',
             handler=handler,
@@ -238,19 +252,19 @@ def extract_handler_attr_annotations(
         *,
         handler: Handler,
         param: inspect.Parameter,
-) -> Tuple[Any, ParamFieldInfo, Any]:
-    attribute_type, field_info, default = _get_annotation_data(handler, param)
+) -> AnnotationData:
+    annotation_data = _get_annotation_data(handler, param)
 
-    if field_info.validate_type.is_schema():
-        checked_attr_type = attribute_type
+    if annotation_data.param_field_info.validate_type.is_schema():
+        checked_annotation_type = annotation_data.type_
 
-        if get_origin(attribute_type) is Union:
-            union_attributes = get_args(attribute_type)
+        if get_origin(annotation_data.type_) is Union:
+            union_attributes = get_args(annotation_data.type_)
 
             _raise_if_unsupported_union_schema_data_type(union_attributes, handler=handler, param_name=param.name)
 
-            checked_attr_type = union_attributes[1] if union_attributes[0] is None else union_attributes[0]
+            checked_annotation_type = union_attributes[1] if union_attributes[0] is None else union_attributes[0]
 
-        _raise_if_unsupported_attr_type(checked_attr_type, handler=handler, param_name=param.name)
+        _raise_if_unsupported_annotation_type(checked_annotation_type, handler=handler, param_name=param.name)
 
-    return attribute_type, field_info, default
+    return annotation_data

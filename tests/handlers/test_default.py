@@ -9,8 +9,8 @@ from typing_extensions import Annotated
 from rapidy import web
 from rapidy._annotation_extractor import (
     IncorrectDefineDefaultValueError,
-    ParameterCannotHaveDefaultError,
-    ParameterCannotHaveDefaultFactoryError,
+    ParameterCannotUseDefaultError,
+    ParameterCannotUseDefaultFactoryError,
     SpecifyBothDefaultAndDefaultFactoryError,
 )
 from rapidy.request_params import (
@@ -133,11 +133,11 @@ async def test_cant_default(
     async def handler_5(path: type_ = param(default_factory=lambda: 'default')) -> web.Response: pass
 
     handlers_and_exc = [
-        (handler_1, ParameterCannotHaveDefaultError),
-        (handler_2, ParameterCannotHaveDefaultError),
-        (handler_3, ParameterCannotHaveDefaultFactoryError),
-        (handler_4, ParameterCannotHaveDefaultError),
-        (handler_5, ParameterCannotHaveDefaultFactoryError),
+        (handler_1, ParameterCannotUseDefaultError),
+        (handler_2, ParameterCannotUseDefaultError),
+        (handler_3, ParameterCannotUseDefaultFactoryError),
+        (handler_4, ParameterCannotUseDefaultError),
+        (handler_5, ParameterCannotUseDefaultFactoryError),
     ]
     for handler, exc in handlers_and_exc:
         with pytest.raises(exc):
