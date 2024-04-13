@@ -1,7 +1,7 @@
 from typing import Any, cast, Dict, List, Optional, Tuple
 
 from rapidy._client_errors import _regenerate_error_with_loc, RequiredFieldIsMissing
-from rapidy.fields import ModelField
+from rapidy._fields import ModelField
 from rapidy.typedefs import DictStrAny, ErrorWrapper
 
 

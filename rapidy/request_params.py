@@ -18,9 +18,9 @@ from rapidy._extractors import (
     extract_path,
     extract_query,
 )
+from rapidy._fields import create_field, get_annotation_from_field_info, ModelField, ParamFieldInfo
 from rapidy._request_params_base import ParamType, ValidateType
 from rapidy.constants import MAX_BODY_SIZE
-from rapidy.fields import create_field, get_annotation_from_field_info, ModelField, ParamFieldInfo
 from rapidy.media_types import ApplicationBytes, ApplicationJSON, ApplicationXWWWForm, MultipartForm, TextPlain
 from rapidy.typedefs import NoArgAnyCallable, Required, Undefined
 

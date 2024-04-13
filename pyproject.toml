@@ -75,6 +75,7 @@ ignore = [
     "S101",    #  Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
     "WPS110",  #  Found wrong variable name: X
     "WPS111",  #  Found too short name: d < X
+    "WPS113",  #  Found same alias import: X
     "WPS114",  #  Found underscored number name pattern: X_1
     "WPS115",  #  Found upper-case constant in a class: X
     "WPS201",  #  Found module with too many imports: X > 12
@@ -97,6 +98,7 @@ ignore = [
     "WPS318",  #  Found extra indentation
     "WPS326",  #  Found implicit string concatenation
     "WPS337",  #  Found multiline conditions
+    "WPS402",  #  Found `noqa` comments overuse: X
     "WPS410",  #  Found wrong metadata variable: __all__
     "WPS420",  #  Found wrong keyword
     "WPS421",  #  Found wrong function call: vars

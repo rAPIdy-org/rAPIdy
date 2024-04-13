@@ -6,9 +6,8 @@ from pydantic.fields import FieldInfo as FieldInfo
 from typing_extensions import Annotated
 
 from rapidy._client_errors import RequestErrorModel
-from rapidy._request_params_base import ValidateType
+from rapidy._request_params_base import ParamType, ValidateType
 from rapidy.constants import PYDANTIC_V1, PYDANTIC_V2
-from rapidy.request_params import ParamType
 from rapidy.typedefs import NoArgAnyCallable, Required, Undefined, ValidateReturn
 
 
@@ -61,12 +60,12 @@ class ParamFieldInfo(FieldInfo, Param, ABC):
         )
 
 
-if PYDANTIC_V1:
-    from pydantic import BaseConfig
-    from pydantic.class_validators import Validator as Validator
-    from pydantic.error_wrappers import ErrorWrapper
-    from pydantic.fields import ModelField as PydanticModelField
-    from pydantic.schema import get_annotation_from_field_info
+if PYDANTIC_V1:  # noqa: C901
+    from pydantic import BaseConfig  # noqa: WPS433
+    from pydantic.class_validators import Validator as Validator  # noqa: WPS433
+    from pydantic.error_wrappers import ErrorWrapper  # noqa: WPS433
+    from pydantic.fields import ModelField as PydanticModelField  # noqa: WPS433
+    from pydantic.schema import get_annotation_from_field_info  # noqa: WPS433
 
     if TYPE_CHECKING:  # pragma: no cover
         from pydantic.fields import BoolUndefined
@@ -158,9 +157,9 @@ if PYDANTIC_V1:
         return use_errors
 
 elif PYDANTIC_V2:
-    from dataclasses import dataclass
+    from dataclasses import dataclass  # noqa: WPS433
 
-    from pydantic import TypeAdapter
+    from pydantic import TypeAdapter  # noqa: WPS433
 
     def get_annotation_from_field_info(annotation: Any, field_info: FieldInfo, field_name: str) -> Any:  # noqa: WPS440
         return annotation
