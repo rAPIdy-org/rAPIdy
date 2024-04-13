@@ -9,8 +9,8 @@ from typing_extensions import get_args
 
 from rapidy._annotation_extractor import extract_handler_attr_annotations, NotParameterError
 from rapidy._client_errors import _create_handler_attr_info_msg, _create_handler_info_msg, ExtractError
+from rapidy._fields import ModelField
 from rapidy._validators import validate_request_param_data
-from rapidy.fields import ModelField
 from rapidy.request_params import create_param_model_field_by_request_param, ParamFieldInfo, ParamType, ValidateType
 from rapidy.typedefs import Handler, MethodHandler, Middleware, NoArgAnyCallable, ValidateReturn
 
