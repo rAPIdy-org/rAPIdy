@@ -204,6 +204,9 @@ jobs:
         if: matrix.pydantic-version == 'pydantic-v2'
         run: poetry add "pydantic>=2.0.2,<3.0.0"
 
+      - name: Install Mypy
+        run: poetry add "mypy==${{ matrix.mypy-version }}"
+
       - name: Create coverage dir
         run: mkdir coverage
 
