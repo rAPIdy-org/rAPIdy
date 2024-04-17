@@ -34,7 +34,9 @@ jobs:
           cache: "poetry"
 
       - name: Install poetry
-        run: pip install poetry==1.7.0
+        uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: "1.7.0"
 
       - name: Install Pydantic v1
         if: matrix.pydantic-version == 'pydantic-v1'
@@ -48,7 +50,7 @@ jobs:
         uses: pre-commit/action@v3.0.0
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: ["self-hosted", "ubuntu-latest"]
     strategy:
       fail-fast: false
       matrix:
@@ -61,8 +63,6 @@ jobs:
         pydantic-version:
           - "pydantic-v1"
           - "pydantic-v2"
-        mypy-version:
-          - ""
     steps:
       - name: Dump github context
         env:
@@ -79,7 +79,9 @@ jobs:
           cache: "poetry"
 
       - name: Install poetry
-        run: pip install poetry==1.7.0
+        uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: "1.7.0"
 
       - name: Install dependencies
         run: poetry install
@@ -109,7 +111,7 @@ jobs:
 
   coverage-combine:
     needs: [ test ]
-    runs-on: ubuntu-latest
+    runs-on: ["self-hosted", "ubuntu-latest"]
     steps:
       - name: Dump github context
         env:
@@ -143,7 +145,7 @@ jobs:
         run: coverage report --fail-under=95
 
   test-mypy:
-    runs-on: ubuntu-latest
+    runs-on: ["self-hosted", "ubuntu-latest"]
     strategy:
       fail-fast: false
       matrix:
@@ -190,7 +192,9 @@ jobs:
           cache: "poetry"
 
       - name: Install poetry
-        run: pip install poetry==1.7.0
+        uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: "1.7.0"
 
       - name: Install dependencies
         run: poetry install
