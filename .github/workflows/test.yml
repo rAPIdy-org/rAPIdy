@@ -211,7 +211,7 @@ jobs:
         env:
           CONTEXT: ${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.pydantic-version }}
           COVERAGE_FILE: coverage/.coverage.${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.pydantic-version }}
-        run: poetry run coverage run -m pytest ./tests/mypy
+        run: poetry run coverage run -m pytest --ignore=./tests/mypy ./tests
 
       - name: Store coverage file
         uses: actions/upload-artifact@v3
