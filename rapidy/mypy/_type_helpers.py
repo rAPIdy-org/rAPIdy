@@ -6,11 +6,13 @@ from mypy.plugin import CheckerPluginInterface
 from mypy.types import AnyType, Instance, Type, TypeOfAny, UnionType
 from typing_extensions import TypeAlias
 
+from rapidy import request_params
 from rapidy.mypy._version import MYPY_VERSION_TUPLE
 
 RAPIDY_PARAM_BASE = 'rapidy.request_params.'
 BUILTINS_NAME = 'builtins' if MYPY_VERSION_TUPLE >= (0, 930) else '__builtins__'
 
+ALL_RAPIDY_PARAMS: Set[str] = {f'{RAPIDY_PARAM_BASE}{param}' for param in request_params.__all__}  # noqa: WPS407
 
 PARAMETERS_WITHOUT_DEFAULT_VALUES: Set[str] = {  # noqa: WPS407
     # PATH
@@ -141,7 +143,7 @@ return_dynamic_type_map: Dict[str, CreatedDynamicTypeFunc] = {
 
 
 def _name_is_rapidy_param_name(name: str) -> bool:
-    return name.startswith(RAPIDY_PARAM_BASE)
+    return name in ALL_RAPIDY_PARAMS
 
 
 def _param_can_default(param_name: str) -> bool:

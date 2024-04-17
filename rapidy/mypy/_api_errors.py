@@ -1,5 +1,3 @@
-from enum import Enum
-
 from mypy.errorcodes import ErrorCode
 from mypy.nodes import Context
 from mypy.plugin import CheckerPluginInterface
@@ -8,11 +6,7 @@ from typing_extensions import Final
 RAPIDY_NAME: Final[str] = 'rAPIdy'
 
 
-class RapidyErrorCode(str, Enum):
-    param = 'rapidy-param'
-
-
-ERROR_FIELD_DEFAULTS = ErrorCode(RapidyErrorCode.param, 'Invalid Param defaults', RAPIDY_NAME)
+ERROR_FIELD_DEFAULTS = ErrorCode('rapidy-param', 'Invalid Param defaults', RAPIDY_NAME)
 
 
 def error_default_and_default_factory_specified(api: CheckerPluginInterface, context: Context) -> None:
