@@ -14,9 +14,9 @@ from rapidy.mypy._type_helpers import (
     _param_can_default,
     CreatedDynamicTypeFunc,
     CreatedTypeFunc,
-    DefaultAnyType,
     return_dynamic_type_map,
     return_static_type_map,
+    TypeCreator,
 )
 
 # Attribute, to dynamically determine the type of `FormDataBodyRaw` and `MultipartBodyRaw`.
@@ -41,11 +41,11 @@ class RapidyPlugin(Plugin):
         if default_args or default_factory_args:
             if not _param_can_default(param_name):
                 error_default_or_default_factory_specified(ctx.api, ctx.context, param_name)
-                return DefaultAnyType
+                return TypeCreator.any_explicit()
 
         if default_args and default_factory_args:
             error_default_and_default_factory_specified(ctx.api, ctx.context)
-            return DefaultAnyType
+            return TypeCreator.any_explicit()
 
         if default_args:
             return self._get_default_arg_type(ctx=ctx, default_args=default_args)
@@ -71,7 +71,7 @@ class RapidyPlugin(Plugin):
         if not isinstance(default_arg, EllipsisExpr):
             return default_type
 
-        return DefaultAnyType
+        return TypeCreator.any_explicit()
 
     def _get_default_factory_arg_return_type(self, ctx: FunctionContext) -> Type:
         # ty pydantic for this code <3 https://github.com/pydantic/pydantic/blob/main/pydantic/mypy.py
@@ -94,10 +94,10 @@ class RapidyPlugin(Plugin):
             if args:
                 if all(isinstance(arg, TypeVarType) for arg in args):
                     # Looks like the default factory is a type like `list` or `dict`, replace all args with `Any`
-                    ret_type.args = tuple(DefaultAnyType for _ in args)  # type: ignore[attr-defined]
+                    ret_type.args = tuple(TypeCreator.any_explicit() for _ in args)  # type: ignore[attr-defined]
             return ret_type
 
-        return DefaultAnyType
+        return TypeCreator.any_explicit()
 
     def _get_param_type_by_function_ctx(self, ctx: FunctionContext) -> Type:
         type_created_func: CreatedTypeFunc = return_static_type_map.get(ctx[4].type.name)  # type: ignore
@@ -106,11 +106,16 @@ class RapidyPlugin(Plugin):
 
         dynamic_type_created_func: CreatedDynamicTypeFunc = return_dynamic_type_map.get(ctx[4].type.name)
         if dynamic_type_created_func is not None:
+
+            arg_value_is_true = False
             dynamic_attr = ctx.arg_names[4]
+
             if dynamic_attr:
                 arg_name_is_duplicated_attrs_parse_as_array = dynamic_attr[0] == DYNAMIC_TYPE_ATTR_NAME
+
                 if arg_name_is_duplicated_attrs_parse_as_array:
                     arg_value_is_true = ctx.arg_types[4][0].last_known_value.value is True  # noqa: WPS219
-                    return dynamic_type_created_func(ctx.api, arg_value_is_true)
 
-        return DefaultAnyType
+            return dynamic_type_created_func(ctx.api, arg_value_is_true)
+
+        return TypeCreator.any_explicit()

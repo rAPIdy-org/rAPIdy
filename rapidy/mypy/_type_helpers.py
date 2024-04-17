@@ -3,19 +3,14 @@ from typing import Callable, Dict, List, Set
 
 from mypy.checker import TypeChecker
 from mypy.plugin import CheckerPluginInterface
-from mypy.types import AnyType, Instance, Type, TypeOfAny
+from mypy.types import AnyType, Instance, Type, TypeOfAny, UnionType
 from typing_extensions import TypeAlias
 
 from rapidy.mypy._version import MYPY_VERSION_TUPLE
 
-DefaultAnyType: Type = AnyType(TypeOfAny.explicit)
-
 RAPIDY_PARAM_BASE = 'rapidy.request_params.'
 BUILTINS_NAME = 'builtins' if MYPY_VERSION_TUPLE >= (0, 930) else '__builtins__'
-DICT_NAME = f'{BUILTINS_NAME}.dict'
-STR_NAME = f'{BUILTINS_NAME}.str'
-BYTES_NAME = f'{BUILTINS_NAME}.bytes'
-LIST_NAME = f'{BUILTINS_NAME}.list'
+
 
 PARAMETERS_WITHOUT_DEFAULT_VALUES: Set[str] = {  # noqa: WPS407
     # PATH
@@ -38,66 +33,71 @@ PARAMETERS_WITHOUT_DEFAULT_VALUES: Set[str] = {  # noqa: WPS407
 }
 
 
-@cache
-def create_str_mypy_type(api: TypeChecker) -> Type:
-    return api.named_type(STR_NAME)
+class TypeCreator:
 
+    @staticmethod
+    @cache
+    def string(api: TypeChecker) -> Type:
+        return api.str_type()
 
-@cache
-def create_bytes_mypy_type(api: TypeChecker) -> Type:
-    return api.named_type(BYTES_NAME)
+    @staticmethod
+    @cache
+    def bytes(api: TypeChecker) -> Type:
+        return api.named_type(f'{BUILTINS_NAME}.bytes')
 
+    @staticmethod
+    def list(api: TypeChecker, generic_types: List[Type]) -> Type:
+        return api.named_generic_type(f'{BUILTINS_NAME}.list', generic_types)
 
-def create_list_mypy_type(api: TypeChecker, generic_types: List[Type]) -> Type:
-    return api.named_generic_type(LIST_NAME, generic_types)
+    @staticmethod
+    @cache
+    def list_str(api: TypeChecker) -> Type:
+        return TypeCreator.list(api, [TypeCreator.string(api)])
 
+    @staticmethod
+    @cache
+    def list_any(api: TypeChecker) -> Type:
+        return TypeCreator.list(api, [TypeCreator.any_explicit()])
 
-def create_dict_mypy_type(api: TypeChecker, generic_types: List[Type]) -> Type:
-    return api.named_generic_type(DICT_NAME, generic_types)
+    @staticmethod
+    def dict(api: TypeChecker, generic_types: List[Type]) -> Type:
+        return api.named_generic_type(f'{BUILTINS_NAME}.dict', generic_types)
 
+    @staticmethod
+    @cache
+    def dict_str_str(api: TypeChecker) -> Type:
+        return TypeCreator.dict(api, [TypeCreator.string(api), TypeCreator.string(api)])
 
-@cache
-def create_list_any_mypy_type(api: TypeChecker) -> Type:
-    return create_list_mypy_type(api, [DefaultAnyType])
+    @staticmethod
+    @cache
+    def dict_str_union_str_list_str(api: TypeChecker) -> Type:
+        return TypeCreator.dict(
+            api, [TypeCreator.string(api), UnionType([TypeCreator.string(api), TypeCreator.list_str(api)])],
+        )
 
+    @staticmethod
+    @cache
+    def dict_str_any(api: TypeChecker) -> Type:
+        return TypeCreator.dict(api, [TypeCreator.string(api), AnyType(TypeOfAny.explicit)])
 
-@cache
-def create_list_str_mypy_type(api: TypeChecker) -> Type:
-    str_type = create_str_mypy_type(api)
-    return create_list_mypy_type(api, [str_type])
+    @staticmethod
+    @cache
+    def dict_str_union_any_list_any(api: TypeChecker) -> Type:
+        return TypeCreator.dict(
+            api, [TypeCreator.string(api), UnionType([TypeCreator.any_explicit(), TypeCreator.list_any(api)])],
+        )
 
+    @staticmethod
+    @cache
+    def any_explicit() -> Type:  # noqa: WPS605
+        return AnyType(TypeOfAny.explicit)
 
-@cache
-def create_dict_str_str_mypy_type(api: TypeChecker) -> Type:
-    str_type = create_str_mypy_type(api)
-    return create_dict_mypy_type(api, [str_type, str_type])
-
-
-@cache
-def create_dict_str_any_mypy_type(api: TypeChecker) -> Type:
-    str_type = create_str_mypy_type(api)
-    return create_dict_mypy_type(api, [str_type, DefaultAnyType])
-
-
-@cache
-def create_dict_str_list_any_mypy_type(api: TypeChecker) -> Type:
-    str_type = create_str_mypy_type(api)
-    list_any = create_list_any_mypy_type(api)
-    return create_dict_mypy_type(api, [str_type, list_any])
-
-
-@cache
-def create_dict_str_list_str_mypy_type(api: TypeChecker) -> Type:
-    str_type = create_str_mypy_type(api)
-    list_str = create_list_str_mypy_type(api)
-    return create_dict_mypy_type(api, [str_type, list_str])
-
-
-@cache
-def create_stream_reader_mypy_type(api: TypeChecker) -> Type:
-    stream_reader_symbol_table_node = api.modules['rapidy.streams'].names['StreamReader']
-    type_info = stream_reader_symbol_table_node.node
-    return Instance(type_info, [])  # type: ignore[arg-type]
+    @staticmethod
+    @cache
+    def stream_reader(api: TypeChecker) -> Type:
+        stream_reader_symbol_table_node = api.modules['rapidy.streams'].names['StreamReader']
+        type_info = stream_reader_symbol_table_node.node
+        return Instance(type_info, [])  # type: ignore[arg-type]
 
 
 def create_form_data_raw_type(
@@ -105,9 +105,9 @@ def create_form_data_raw_type(
         duplicated_attrs_parse_as_array: bool,
 ) -> Type:
     if duplicated_attrs_parse_as_array:
-        return create_dict_str_list_str_mypy_type(api)
+        return TypeCreator.dict_str_union_str_list_str(api)
 
-    return create_dict_str_str_mypy_type(api)
+    return TypeCreator.dict_str_str(api)
 
 
 def create_multipart_raw_type(
@@ -115,9 +115,9 @@ def create_multipart_raw_type(
         duplicated_attrs_parse_as_array: bool,
 ) -> Type:
     if duplicated_attrs_parse_as_array:
-        return create_dict_str_list_any_mypy_type(api)
+        return TypeCreator.dict_str_union_any_list_any(api)
 
-    return create_dict_str_any_mypy_type(api)
+    return TypeCreator.dict_str_any(api)
 
 
 CreatedTypeFunc: TypeAlias = Callable[[CheckerPluginInterface], Type]
@@ -125,14 +125,14 @@ CreatedTypeFunc: TypeAlias = Callable[[CheckerPluginInterface], Type]
 CreatedDynamicTypeFunc: TypeAlias = Callable[[CheckerPluginInterface, bool], Type]
 
 return_static_type_map: Dict[str, CreatedTypeFunc] = {
-    'PathRaw': create_dict_str_str_mypy_type,
-    'HeaderRaw': create_dict_str_str_mypy_type,
-    'CookieRaw': create_dict_str_str_mypy_type,
-    'QueryRaw': create_dict_str_str_mypy_type,
-    'TextBody': create_str_mypy_type,
-    'BytesBody': create_bytes_mypy_type,
-    'StreamBody': create_stream_reader_mypy_type,
-    'JsonBodyRaw': create_dict_str_any_mypy_type,
+    'PathRaw': TypeCreator.dict_str_str,
+    'HeaderRaw': TypeCreator.dict_str_str,
+    'CookieRaw': TypeCreator.dict_str_str,
+    'QueryRaw': TypeCreator.dict_str_str,
+    'TextBody': TypeCreator.string,
+    'BytesBody': TypeCreator.bytes,
+    'StreamBody': TypeCreator.stream_reader,
+    'JsonBodyRaw': TypeCreator.dict_str_any,
 }
 return_dynamic_type_map: Dict[str, CreatedDynamicTypeFunc] = {
     'FormDataBodyRaw': create_form_data_raw_type,

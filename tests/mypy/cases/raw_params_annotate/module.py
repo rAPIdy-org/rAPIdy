@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any, Dict, List, Union
 
 from rapidy.request_params import (
     CookieRaw,
@@ -18,8 +18,12 @@ def handler(
         cookies: int = CookieRaw(),
         query: int = QueryRaw(),
         json: Dict[str, Any] = JsonBodyRaw(),
-        form_data: Dict[str, Any] = FormDataBodyRaw(),
-        multipart: Dict[str, Any] = MultipartBodyRaw(),
+        form_data_1: Dict[str, int] = FormDataBodyRaw(),
+        form_data_2: Dict[str, str] = FormDataBodyRaw(duplicated_attrs_parse_as_array=True),
+        form_data_3: Dict[str, Union[str, List[str]]] = FormDataBodyRaw(duplicated_attrs_parse_as_array=True),
+        multipart_1: Dict[str, Any] = MultipartBodyRaw(),
+        multipart_3: Dict[int, Any] = MultipartBodyRaw(duplicated_attrs_parse_as_array=True),
+        multipart_4: Dict[str, Union[Any, List[Any]]] = MultipartBodyRaw(duplicated_attrs_parse_as_array=True),
 ) -> None: pass
 
 
@@ -31,6 +35,10 @@ class Handler(View):
             cookies: int = CookieRaw(),
             query: int = QueryRaw(),
             json: Dict[str, Any] = JsonBodyRaw(),
-            form_data: Dict[str, Any] = FormDataBodyRaw(),
-            multipart: Dict[str, Any] = MultipartBodyRaw(),
+            form_data_1: Dict[str, int] = FormDataBodyRaw(),
+            form_data_2: Dict[str, str] = FormDataBodyRaw(duplicated_attrs_parse_as_array=True),
+            form_data_3: Dict[str, Union[str, List[str]]] = FormDataBodyRaw(duplicated_attrs_parse_as_array=True),
+            multipart_1: Dict[str, Any] = MultipartBodyRaw(),
+            multipart_3: Dict[int, Any] = MultipartBodyRaw(duplicated_attrs_parse_as_array=True),
+            multipart_4: Dict[str, Union[Any, List[Any]]] = MultipartBodyRaw(duplicated_attrs_parse_as_array=True),
     ): pass
