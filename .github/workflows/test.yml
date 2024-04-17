@@ -226,7 +226,7 @@ jobs:
     if: always()
     needs:
       - coverage-combine
-    runs-on: ubuntu-latest
+    runs-on: ["self-hosted", "ubuntu-latest"]
     steps:
       - name: Dump github context
         env:
