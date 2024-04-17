@@ -57,6 +57,7 @@ from aiohttp.web_exceptions import (
     HTTPUseProxy,
     HTTPVariantAlsoNegotiates,
     HTTPVersionNotSupported,
+    NotAppKeyWarning,
 )
 
 __all__ = (
@@ -118,4 +119,5 @@ __all__ = (
     'HTTPInsufficientStorage',
     'HTTPNotExtended',
     'HTTPNetworkAuthenticationRequired',
+    'NotAppKeyWarning',
 )

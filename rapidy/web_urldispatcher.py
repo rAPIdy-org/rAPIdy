@@ -1,6 +1,6 @@
 from abc import ABC
 from types import FunctionType
-from typing import Any, Awaitable, Callable, cast, Optional
+from typing import Any, cast, Optional
 
 from aiohttp.abc import AbstractView
 from aiohttp.typedefs import Handler
@@ -147,13 +147,13 @@ class View(AioHTTPView):
         if self.request.method not in hdrs.METH_ALL:  # aiohttp code  # pragma: no cover
             self._raise_allowed_methods()
 
-        method: Optional[Callable[[], Awaitable[StreamResponse]]]
-        method = getattr(self, self.request.method.lower(), None)
-
+        method: Optional[MethodHandler] = getattr(self, self.request.method.lower(), None)
         if method is None:  # aiohttp code  # pragma: no cover
             self._raise_allowed_methods()
 
-        ret = await method(**self._request_validated_data)  # type: ignore[misc]
+        method = cast(MethodHandler, method)
+
+        ret = await method(**self._request_validated_data)
 
         assert isinstance(ret, StreamResponse)
         return ret

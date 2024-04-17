@@ -149,7 +149,7 @@ async def test_form_data_attributes(
 async def test_multipart_param(
         aiohttp_client: AiohttpClient,
         form_data_disptype_name: str,
-        content_type_text_header: MultiDict,
+        content_type_text_header: MultiDict[str],
         multipart_writer: MultipartWriter,
 ) -> None:
     async def handler(
@@ -166,7 +166,7 @@ async def test_multipart_param(
 async def test_multipart_schema(
         aiohttp_client: AiohttpClient,
         form_data_disptype_name: str,
-        content_type_text_header: MultiDict,
+        content_type_text_header: MultiDict[str],
         multipart_writer: MultipartWriter,
 ) -> None:
     class Schema(BaseModel):
@@ -186,7 +186,7 @@ async def test_multipart_schema(
 async def test_multipart_raw(
         aiohttp_client: AiohttpClient,
         form_data_disptype_name: str,
-        content_type_text_header: MultiDict,
+        content_type_text_header: MultiDict[str],
         multipart_writer: MultipartWriter,
 ) -> None:
     async def handler(
@@ -204,7 +204,7 @@ async def _success_multipart(
         aiohttp_client: AiohttpClient,
         handler: HandlerType,
         form_data_disptype_name: str,
-        content_type_text_header: MultiDict,
+        content_type_text_header: MultiDict[str],
         multipart_writer: MultipartWriter,
 ) -> None:
     app = web.Application()
@@ -231,7 +231,7 @@ async def _success_multipart(
 async def test_multipart_attributes(
         aiohttp_client: AiohttpClient,
         form_data_disptype_name: str,
-        content_type_text_header: MultiDict,
+        content_type_text_header: MultiDict[str],
         multipart_writer: MultipartWriter,
         *,
         param_name_1: str,

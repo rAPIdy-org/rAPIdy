@@ -20,13 +20,12 @@ from rapidy.media_types import ApplicationJSON
 from rapidy.typedefs import Handler, Middleware
 from rapidy.web_request import Request
 from rapidy.web_response import StreamResponse
+from rapidy.web_urldispatcher import UrlDispatcher
 
 __all__ = (
     'Application',
     'CleanupError',
 )
-
-from rapidy.web_urldispatcher import UrlDispatcher
 
 
 class Application(AiohttpApplication):
@@ -156,7 +155,7 @@ class Application(AiohttpApplication):
         if annotation_container.is_method_container:
             return await handler(request, **validate_request_data_for_handler)
 
-        if annotation_container.request_exist:
+        if annotation_container.request_exists:
             validate_request_data_for_handler[annotation_container.request_param_name] = request
 
         return await handler(**validate_request_data_for_handler)

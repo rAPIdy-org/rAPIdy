@@ -17,6 +17,7 @@ repos:
         exclude: (.ci/helm|.gitlab-ci.yml)
       - id: name-tests-test
         args: [ --pytest-test-first ]
+        exclude: ^tests/mypy/cases/
 
   - repo: https://github.com/PyCQA/isort
     rev: 5.13.1
@@ -31,6 +32,7 @@ repos:
           - python
           - pyi
         require_serial: true
+        exclude: ^tests/mypy/cases/
 
   - repo: https://github.com/PyCQA/flake8
     rev: 6.1.0

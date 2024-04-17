@@ -36,12 +36,19 @@ __all__ = (
     'Handler',
     'PathLike',
     'DictStrAny',
+    'DictStrStr',
+    'DictStrListAny',
+    'DictStrListStr',
     'MethodHandler',
     'HandlerType',
     'HandlerOrMethod',
 )
 
 DictStrAny = Dict[str, Any]
+DictStrStr = Dict[str, str]
+DictStrListAny = Dict[str, List[Any]]
+DictStrListStr = Dict[str, List[str]]
+
 Handler = Callable[..., Awaitable[StreamResponse]]
 MethodHandler = Callable[..., Awaitable[StreamResponse]]
 HandlerType = Union[Handler, Type[AbstractView]]
@@ -55,6 +62,7 @@ ValidateReturn: TypeAlias = Tuple[Optional[ResultValidate], Optional[ErrorList]]
 
 RouterDeco = Callable[[HandlerType], HandlerType]
 
+NoArgAnyCallable = Callable[[], Any]
 
 if PYDANTIC_V1:
     from pydantic.error_wrappers import ErrorWrapper as ErrorWrapper

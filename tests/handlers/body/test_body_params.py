@@ -74,7 +74,7 @@ async def test_body_size_exceeded_multipart(
         aiohttp_client: AiohttpClient,
         body_type: Any,
         form_data_disptype_name: str,
-        content_type_text_header: MultiDict,
+        content_type_text_header: MultiDict[str],
         multipart_writer: MultipartWriter,
 ) -> None:
     async def handler(

@@ -131,10 +131,13 @@ class ExtractMultipartPartError(ExtractMultipartError):
 
 def _create_handler_info_msg(handler: Any) -> str:
     return (
-        f'\nHandler path: `{handler.__code__.co_filename}`.'
-        f'\nHandler name: `{handler.__name__}`.\n'
+        f'\nHandler path: `{handler.__code__.co_filename}`'
+        f'\nHandler name: `{handler.__name__}`\n'
     )
 
 
 def _create_handler_attr_info_msg(handler: Any, attr_name: str) -> str:
-    return f'{_create_handler_info_msg(handler)} Attribute name: `{attr_name}`.\n'
+    return (
+        f'{_create_handler_info_msg(handler)}'
+        f'Attribute name: `{attr_name}`\n'
+    )

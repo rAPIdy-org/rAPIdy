@@ -6,56 +6,44 @@ from pydantic.fields import FieldInfo as FieldInfo
 from typing_extensions import Annotated
 
 from rapidy._client_errors import RequestErrorModel
-from rapidy._request_params_base import ValidateType
+from rapidy._request_params_base import ParamType, ValidateType
 from rapidy.constants import PYDANTIC_V1, PYDANTIC_V2
-from rapidy.request_params import ParamType
-from rapidy.typedefs import Required, Undefined, ValidateReturn
+from rapidy.typedefs import NoArgAnyCallable, Required, Undefined, ValidateReturn
 
 
-class Param:
+class ParamFieldInfo(FieldInfo, ABC):
+    param_type: ParamType
+    extractor: Any
+    validate_type: ValidateType
+    can_default: bool = True
+
     def __init__(
             self,
-            param_type: ParamType,
-            extractor: Any,
-            validate_type: ValidateType,
-            can_default: bool,
-    ) -> None:
-        self.param_type = param_type
-        self.extractor = extractor
-        self.validate_type = validate_type
-        self.can_default = can_default
-
-
-class ParamFieldInfo(FieldInfo, Param, ABC):
-    def __init__(
-            self,
-            param_type: ParamType,
-            extractor: Any,
-            validate_type: ValidateType,
-            can_default: bool = True,
+            default: Any = Undefined,
+            *,
+            default_factory: Optional[NoArgAnyCallable] = None,
             **field_info_kwargs: Any,
     ) -> None:
         FieldInfo.__init__(
             self,
+            default=default,
+            default_factory=default_factory,
             **field_info_kwargs,
         )
+        if PYDANTIC_V1:
+            self._validate()  # check specify both default and default_factory
 
-        Param.__init__(
-            self,
-            param_type=param_type,
-            extractor=extractor,
-            validate_type=validate_type,
-            can_default=can_default,
-        )
+        extractor = getattr(self, 'extractor') or getattr(self.__class__, 'extractor', None)  # noqa: B009
+        if not extractor:
+            raise
 
 
-if PYDANTIC_V1:
-    from pydantic import BaseConfig
-    from pydantic.class_validators import Validator as Validator
-    from pydantic.error_wrappers import ErrorWrapper
-    from pydantic.fields import ModelField as PydanticModelField
-    from pydantic.schema import get_annotation_from_field_info
-    from pydantic.typing import NoArgAnyCallable as NoArgAnyCallable  # noqa: WPS113
+if PYDANTIC_V1:  # noqa: C901
+    from pydantic import BaseConfig  # noqa: WPS433
+    from pydantic.class_validators import Validator as Validator  # noqa: WPS433
+    from pydantic.error_wrappers import ErrorWrapper  # noqa: WPS433
+    from pydantic.fields import ModelField as PydanticModelField  # noqa: WPS433
+    from pydantic.schema import get_annotation_from_field_info  # noqa: WPS433
 
     if TYPE_CHECKING:  # pragma: no cover
         from pydantic.fields import BoolUndefined
@@ -96,14 +84,17 @@ if PYDANTIC_V1:
             type_: Type[Any],
             field_info: ParamFieldInfo,
     ) -> ModelField:
+        required = field_info.default in (Required, Undefined) and field_info.default_factory is None
+
         kwargs: Dict[str, Any] = {
             'name': name,
             'field_info': field_info,
             'type_': type_,
             'rapid_param_type': field_info.param_type,
-            'required': field_info.default in (Required, Undefined),
+            'required': required,
             'alias': field_info.alias or name,
             'default': field_info.default,
+            'default_factory': field_info.default_factory,
             'class_validators': {},
             'model_config': BaseConfig,
         }
@@ -144,9 +135,9 @@ if PYDANTIC_V1:
         return use_errors
 
 elif PYDANTIC_V2:
-    from dataclasses import dataclass
+    from dataclasses import dataclass  # noqa: WPS433
 
-    from pydantic import TypeAdapter
+    from pydantic import TypeAdapter  # noqa: WPS433
 
     def get_annotation_from_field_info(annotation: Any, field_info: FieldInfo, field_name: str) -> Any:  # noqa: WPS440
         return annotation
@@ -183,6 +174,9 @@ elif PYDANTIC_V2:
         def default(self) -> Any:
             if self.field_info.is_required():
                 return Undefined
+            return self.field_info.get_default(call_default_factory=True)
+
+        def get_default(self) -> Any:
             return self.field_info.get_default(call_default_factory=True)
 
         @property
