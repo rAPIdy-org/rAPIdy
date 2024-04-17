@@ -38,6 +38,10 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.8",
 ]
+packages = [
+  {include = "rapidy"},
+  {include = "rapidy/py.typed"},
+]
 
 [tool.poetry.dependencies]
 python = "^3.8"

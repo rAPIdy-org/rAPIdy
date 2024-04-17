@@ -11,7 +11,7 @@ on:
 
 jobs:
   pre-commit:
-    runs-on: ["self-hosted", "ubuntu-latest"]
+    runs-on: ["self-hosted", "Ubuntu"]
     strategy:
       fail-fast: false
       matrix:
@@ -49,7 +49,7 @@ jobs:
         uses: pre-commit/action@v3.0.0
 
   test:
-    runs-on: ["self-hosted", "ubuntu-latest"]
+    runs-on: ["self-hosted", "Ubuntu"]
     strategy:
       fail-fast: false
       matrix:
@@ -109,7 +109,7 @@ jobs:
 
   coverage-combine:
     needs: [ test ]
-    runs-on: ["self-hosted", "ubuntu-latest"]
+    runs-on: ["self-hosted", "Ubuntu"]
     steps:
       - name: Dump github context
         env:
@@ -143,7 +143,7 @@ jobs:
         run: coverage report --fail-under=95
 
   test-mypy:
-    runs-on: ["self-hosted", "ubuntu-latest"]
+    runs-on: ["self-hosted", "Ubuntu"]
     strategy:
       fail-fast: false
       matrix:
@@ -226,7 +226,7 @@ jobs:
     if: always()
     needs:
       - coverage-combine
-    runs-on: ["self-hosted", "ubuntu-latest"]
+    runs-on: ["self-hosted", "Ubuntu"]
     steps:
       - name: Dump github context
         env:
