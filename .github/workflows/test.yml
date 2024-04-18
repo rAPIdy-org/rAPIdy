@@ -40,7 +40,7 @@ jobs:
       - name: Install poetry
         uses: abatilo/actions-poetry@v2
         with:
-          poetry-version: "1.7.0"
+          poetry-version: "1.7.1"
 
       - name: Install Pydantic v1
         if: matrix.pydantic-version == 'pydantic-v1'
@@ -90,7 +90,7 @@ jobs:
       - name: Install poetry
         uses: abatilo/actions-poetry@v2
         with:
-          poetry-version: "1.7.0"
+          poetry-version: "1.7.1"
 
       - name: Install dependencies
         run: poetry install
@@ -193,7 +193,7 @@ jobs:
       - name: Install poetry
         uses: abatilo/actions-poetry@v2
         with:
-          poetry-version: "1.7.0"
+          poetry-version: "1.7.1"
 
       - name: Install dependencies
         run: poetry install
