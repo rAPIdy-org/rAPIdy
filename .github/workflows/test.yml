@@ -54,6 +54,7 @@ jobs:
         uses: pre-commit/action@v3.0.0
 
   test:
+    if: always() # TODO: remove
     runs-on: ["self-hosted", "Ubuntu-latest"]
     needs: ["pre-commit"]
     strategy:
@@ -157,6 +158,7 @@ jobs:
         run: coverage report --fail-under=95
 
   test-mypy:
+    if: always() # TODO: remove
     runs-on: ["self-hosted", "Ubuntu-latest"]
     needs: ["pre-commit"]
     strategy:
