@@ -1,4 +1,11 @@
-from aiohttp.web import AppKey as AppKey, run_app as run_app
+from rapidy._version import AIOHTTP_VERSION_TUPLE
+
+if AIOHTTP_VERSION_TUPLE >= (3, 9, 0):
+    from aiohttp.web import AppKey as AppKey
+    from rapidy.web_exceptions import HTTPMove as HTTPMove
+    from rapidy.web_exceptions import NotAppKeyWarning as NotAppKeyWarning
+
+from aiohttp.web import run_app as run_app
 from aiohttp.web_fileresponse import FileResponse as FileResponse
 from aiohttp.web_server import Server as Server
 from aiohttp.web_ws import (
@@ -54,7 +61,6 @@ from rapidy.web_exceptions import (
     HTTPLengthRequired as HTTPLengthRequired,
     HTTPMethodNotAllowed as HTTPMethodNotAllowed,
     HTTPMisdirectedRequest as HTTPMisdirectedRequest,
-    HTTPMove as HTTPMove,
     HTTPMovedPermanently as HTTPMovedPermanently,
     HTTPMultipleChoices as HTTPMultipleChoices,
     HTTPNetworkAuthenticationRequired as HTTPNetworkAuthenticationRequired,
@@ -93,7 +99,6 @@ from rapidy.web_exceptions import (
     HTTPUseProxy as HTTPUseProxy,
     HTTPVariantAlsoNegotiates as HTTPVariantAlsoNegotiates,
     HTTPVersionNotSupported as HTTPVersionNotSupported,
-    NotAppKeyWarning as NotAppKeyWarning,
 )
 from rapidy.web_middlewares import middleware as middleware, normalize_path_middleware as normalize_path_middleware
 from rapidy.web_request import BaseRequest as BaseRequest, FileField as FileField, Request as Request
@@ -144,13 +149,11 @@ from rapidy.web_urldispatcher import (
     View as View,
 )
 
-__all__ = (
+__all = [
     # web_app
-    'AppKey',
     'Application',
     'CleanupError',
     # web_exceptions
-    'NotAppKeyWarning',
     'HTTPAccepted',
     'HTTPBadGateway',
     'HTTPBadRequest',
@@ -170,7 +173,6 @@ __all__ = (
     'HTTPLengthRequired',
     'HTTPMethodNotAllowed',
     'HTTPMisdirectedRequest',
-    'HTTPMove',
     'HTTPMovedPermanently',
     'HTTPMultipleChoices',
     'HTTPNetworkAuthenticationRequired',
@@ -293,4 +295,14 @@ __all__ = (
     'QueryRaw',
     'StreamBody',
     'TextBody',
-)
+]
+if AIOHTTP_VERSION_TUPLE >= (3, 9, 0):
+    __all.extend([
+        # web_app
+        'AppKey',
+        # web_exceptions
+        'HTTPMove',
+        'NotAppKeyWarning',
+    ])
+
+__all__ = tuple(__all)

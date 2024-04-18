@@ -120,7 +120,8 @@ ignore = [
     "W503",    #  line break before binary operator
 ]
 per-file-ignores = [
-    'rapidy/web.py: WPS232',
+    'rapidy/web.py: F401 WPS112 WPS232 WPS433',
+    'rapidy/web_exceptions.py: F401 WPS112 WPS433',
     'rapidy/__init__.py: WPS412',
     'rapidy/fields.py: C901 WPS113 WPS433',
     'rapidy/typedefs.py: WPS433 WPS113 WPS440',

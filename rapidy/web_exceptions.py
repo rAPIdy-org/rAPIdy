@@ -1,3 +1,9 @@
+from rapidy._version import AIOHTTP_VERSION_TUPLE
+
+if AIOHTTP_VERSION_TUPLE >= (3, 9, 0):
+    from aiohttp.web_exceptions import HTTPMove, NotAppKeyWarning
+
+from aiohttp.typedefs import LooseHeaders
 from aiohttp.web_exceptions import (
     HTTPAccepted,
     HTTPBadGateway,
@@ -18,7 +24,6 @@ from aiohttp.web_exceptions import (
     HTTPLengthRequired,
     HTTPMethodNotAllowed,
     HTTPMisdirectedRequest,
-    HTTPMove,
     HTTPMovedPermanently,
     HTTPMultipleChoices,
     HTTPNetworkAuthenticationRequired,
@@ -57,10 +62,9 @@ from aiohttp.web_exceptions import (
     HTTPUseProxy,
     HTTPVariantAlsoNegotiates,
     HTTPVersionNotSupported,
-    NotAppKeyWarning,
 )
 
-__all__ = (
+__all = [
     'HTTPException',
     'HTTPError',
     'HTTPRedirection',
@@ -120,4 +124,12 @@ __all__ = (
     'HTTPNotExtended',
     'HTTPNetworkAuthenticationRequired',
     'NotAppKeyWarning',
-)
+]
+
+if AIOHTTP_VERSION_TUPLE >= (3, 9, 0):
+    __all.extend([
+        'HTTPMove',
+        'NotAppKeyWarning',
+    ])
+
+__all__ = tuple(__all)
