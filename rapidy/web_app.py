@@ -1,5 +1,4 @@
 import asyncio
-import json
 import logging
 import warnings
 from functools import partial, update_wrapper
@@ -8,7 +7,6 @@ from typing import Any, cast, Dict, Iterable, Iterator, List, Mapping, Optional,
 from aiohttp.abc import AbstractMatchInfo
 from aiohttp.log import web_logger
 from aiohttp.web_app import Application as AiohttpApplication, CleanupError
-from aiohttp.web_exceptions import HTTPUnprocessableEntity
 from aiohttp.web_middlewares import _fix_request_current_app
 from aiohttp.web_urldispatcher import MatchInfoError
 
@@ -16,8 +14,8 @@ from rapidy import hdrs
 from rapidy._annotation_container import AnnotationContainer, create_annotation_container, HandlerEnumType
 from rapidy._client_errors import _normalize_errors
 from rapidy.constants import CLIENT_MAX_SIZE
-from rapidy.media_types import ApplicationJSON
 from rapidy.typedefs import Handler, Middleware
+from rapidy.web_exceptions import HTTPValidationFailure
 from rapidy.web_request import Request
 from rapidy.web_response import StreamResponse
 from rapidy.web_urldispatcher import UrlDispatcher
@@ -195,9 +193,9 @@ class Application(AiohttpApplication):
                 values.update(cast(Dict[str, Any], param_values))
 
         if errors:
-            response_errors = {self._client_errors_response_field_name: _normalize_errors(errors)}
-            response_errors_body = json.dumps(response_errors)
-
-            raise HTTPUnprocessableEntity(content_type=ApplicationJSON, text=response_errors_body)
+            raise HTTPValidationFailure(
+                validation_failure_field_name=self._client_errors_response_field_name,
+                errors=_normalize_errors(errors),
+            )
 
         return values
