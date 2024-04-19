@@ -54,7 +54,6 @@ jobs:
         uses: pre-commit/action@v3.0.0
 
   test:
-    if: always() # TODO: remove
     runs-on: ["self-hosted", "Ubuntu-latest"]
     needs: ["pre-commit"]
     strategy:
@@ -144,7 +143,6 @@ jobs:
           name: coverage
 
   test-mypy:
-    if: always() # TODO: remove
     runs-on: [ "self-hosted", "Ubuntu-latest" ]
     needs: [ "pre-commit" ]
     strategy:
@@ -263,6 +261,11 @@ jobs:
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
         run: echo "$GITHUB_CONTEXT"
+
+      - name: Prepare python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
 
       # https://github.com/marketplace/actions/alls-green#why
       - name: Decide whether the needed jobs succeeded or failed
