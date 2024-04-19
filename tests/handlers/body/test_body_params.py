@@ -22,8 +22,7 @@ from rapidy.request_params import (
     MultipartBodySchema,
     TextBody,
 )
-
-from .helpers import create_multipart_headers
+from tests.helpers import create_multipart_headers
 
 
 class Schema(BaseModel):

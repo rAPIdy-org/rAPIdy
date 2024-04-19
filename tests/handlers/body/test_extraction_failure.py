@@ -10,8 +10,7 @@ from typing_extensions import Annotated
 
 from rapidy import hdrs, web
 from rapidy.request_params import JsonBodySchema, MultipartBodySchema
-
-from .helpers import create_content_type_header, create_multipart_headers
+from tests.helpers import create_content_type_header, create_multipart_headers
 
 
 class Schema(BaseModel):
