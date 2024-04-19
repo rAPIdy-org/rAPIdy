@@ -102,7 +102,7 @@ class RapidyPlugin(Plugin):
     def _get_param_type_by_function_ctx(self, ctx: FunctionContext) -> Type:
         type_created_func: CreatedTypeFunc = return_static_type_map.get(ctx[4].type.name)  # type: ignore
         if type_created_func is not None:
-            return type_created_func(ctx.api)
+            return type_created_func(ctx.api)  # type: ignore[arg-type]
 
         dynamic_type_created_func: CreatedDynamicTypeFunc = return_dynamic_type_map.get(ctx[4].type.name)
         if dynamic_type_created_func is not None:

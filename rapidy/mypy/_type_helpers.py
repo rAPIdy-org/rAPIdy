@@ -1,13 +1,14 @@
-from functools import cache
+from functools import lru_cache
 from typing import Callable, Dict, List, Set
 
 from mypy.checker import TypeChecker
-from mypy.plugin import CheckerPluginInterface
 from mypy.types import AnyType, Instance, Type, TypeOfAny, UnionType
 from typing_extensions import TypeAlias
 
 from rapidy import request_params
 from rapidy.mypy._version import MYPY_VERSION_TUPLE
+
+AnyTypeExplicit = AnyType(TypeOfAny.explicit)
 
 RAPIDY_PARAM_BASE = 'rapidy.request_params.'
 BUILTINS_NAME = 'builtins' if MYPY_VERSION_TUPLE >= (0, 930) else '__builtins__'
@@ -38,12 +39,11 @@ PARAMETERS_WITHOUT_DEFAULT_VALUES: Set[str] = {  # noqa: WPS407
 class TypeCreator:
 
     @staticmethod
-    @cache
+    @lru_cache(maxsize=None)
     def string(api: TypeChecker) -> Type:
         return api.str_type()
 
     @staticmethod
-    @cache
     def bytes(api: TypeChecker) -> Type:
         return api.named_type(f'{BUILTINS_NAME}.bytes')
 
@@ -52,12 +52,10 @@ class TypeCreator:
         return api.named_generic_type(f'{BUILTINS_NAME}.list', generic_types)
 
     @staticmethod
-    @cache
     def list_str(api: TypeChecker) -> Type:
         return TypeCreator.list(api, [TypeCreator.string(api)])
 
     @staticmethod
-    @cache
     def list_any(api: TypeChecker) -> Type:
         return TypeCreator.list(api, [TypeCreator.any_explicit()])
 
@@ -66,36 +64,30 @@ class TypeCreator:
         return api.named_generic_type(f'{BUILTINS_NAME}.dict', generic_types)
 
     @staticmethod
-    @cache
     def dict_str_str(api: TypeChecker) -> Type:
         return TypeCreator.dict(api, [TypeCreator.string(api), TypeCreator.string(api)])
 
     @staticmethod
-    @cache
     def dict_str_union_str_list_str(api: TypeChecker) -> Type:
         return TypeCreator.dict(
             api, [TypeCreator.string(api), UnionType([TypeCreator.string(api), TypeCreator.list_str(api)])],
         )
 
     @staticmethod
-    @cache
     def dict_str_any(api: TypeChecker) -> Type:
         return TypeCreator.dict(api, [TypeCreator.string(api), AnyType(TypeOfAny.explicit)])
 
     @staticmethod
-    @cache
     def dict_str_union_any_list_any(api: TypeChecker) -> Type:
         return TypeCreator.dict(
             api, [TypeCreator.string(api), UnionType([TypeCreator.any_explicit(), TypeCreator.list_any(api)])],
         )
 
     @staticmethod
-    @cache
     def any_explicit() -> Type:  # noqa: WPS605
-        return AnyType(TypeOfAny.explicit)
+        return AnyTypeExplicit
 
     @staticmethod
-    @cache
     def stream_reader(api: TypeChecker) -> Type:
         stream_reader_symbol_table_node = api.modules['rapidy.streams'].names['StreamReader']
         type_info = stream_reader_symbol_table_node.node
@@ -103,7 +95,7 @@ class TypeCreator:
 
 
 def create_form_data_raw_type(
-        api: CheckerPluginInterface,
+        api: TypeChecker,
         duplicated_attrs_parse_as_array: bool,
 ) -> Type:
     if duplicated_attrs_parse_as_array:
@@ -113,7 +105,7 @@ def create_form_data_raw_type(
 
 
 def create_multipart_raw_type(
-        api: CheckerPluginInterface,
+        api: TypeChecker,
         duplicated_attrs_parse_as_array: bool,
 ) -> Type:
     if duplicated_attrs_parse_as_array:
@@ -122,9 +114,9 @@ def create_multipart_raw_type(
     return TypeCreator.dict_str_any(api)
 
 
-CreatedTypeFunc: TypeAlias = Callable[[CheckerPluginInterface], Type]
+CreatedTypeFunc: TypeAlias = Callable[[TypeChecker], Type]
 # only for form-data and multipart raw
-CreatedDynamicTypeFunc: TypeAlias = Callable[[CheckerPluginInterface, bool], Type]
+CreatedDynamicTypeFunc: TypeAlias = Callable[[TypeChecker, bool], Type]
 
 return_static_type_map: Dict[str, CreatedTypeFunc] = {
     'PathRaw': TypeCreator.dict_str_str,
