@@ -1,4 +1,4 @@
-from typing import Callable, cast, Sequence
+from typing import Callable, cast, Optional, Sequence
 
 from mypy.nodes import EllipsisExpr, Expression
 from mypy.plugin import FunctionContext, Plugin
@@ -24,7 +24,7 @@ DYNAMIC_TYPE_ATTR_NAME = 'duplicated_attrs_parse_as_array'
 
 
 class RapidyPlugin(Plugin):
-    def get_function_hook(self, fullname: str) -> Callable[[FunctionContext], Type] | None:
+    def get_function_hook(self, fullname: str) -> Optional[Callable[[FunctionContext], Type]]:
         sym = self.lookup_fully_qualified(fullname)
         if sym and _name_is_rapidy_param_name(cast(str, sym.fullname)):
             return self._rapidy_param_callback
@@ -55,7 +55,7 @@ class RapidyPlugin(Plugin):
 
         return self._get_param_type_by_function_ctx(ctx)
 
-    def _raise_assert_error_if_arg_order_is_incorrect(self, callee_arg_names: Sequence[str | None]) -> None:
+    def _raise_assert_error_if_arg_order_is_incorrect(self, callee_arg_names: Sequence[Optional[str]]) -> None:
         # ty pydantic for this code <3 https://github.com/pydantic/pydantic/blob/main/pydantic/mypy.py
         assert callee_arg_names[0] == 'default', '`default` is no longer first argument in ParamFieldInfo()'
         assert callee_arg_names[1] == 'default_factory', (
