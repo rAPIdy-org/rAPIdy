@@ -4,13 +4,13 @@ from unittest import mock
 
 from aiohttp import MultipartWriter, Payload
 from aiohttp.helpers import content_disposition_header
-from multidict import MultiDict
 from pydantic import BaseModel
 from pytest_aiohttp.plugin import AiohttpClient
 from typing_extensions import Annotated
 
 from rapidy import hdrs, web
 from rapidy.request_params import JsonBodySchema, MultipartBodySchema
+from tests.handlers.helpers import create_content_type_header, create_multipart_headers
 
 
 class Schema(BaseModel):
@@ -25,8 +25,10 @@ async def test_failure_json_with_default_decoder(aiohttp_client: AiohttpClient) 
 
     app = web.Application()
     app.add_routes([web.post('/', handler)])
+
     client = await aiohttp_client(app)
     resp = await client.post('/', data='}[{{}')
+
     assert resp.status == HTTPStatus.UNPROCESSABLE_ENTITY
     resp_json = await resp.json()
 
@@ -52,7 +54,6 @@ def patch_set_content_disposition(
 
 async def test_multipart_part_1_doesnt_has_name(
         aiohttp_client: AiohttpClient,
-        content_type_text_header: MultiDict[str],
         multipart_writer: MultipartWriter,
 ) -> None:
     async def handler(
@@ -66,7 +67,7 @@ async def test_multipart_part_1_doesnt_has_name(
     client = await aiohttp_client(app)
 
     with mock.patch('aiohttp.multipart.Payload.set_content_disposition', new=patch_set_content_disposition):
-        multipart_writer.append('1', content_type_text_header)
+        multipart_writer.append('1', create_content_type_header())
 
     # is done to ignore MultipartWriter assertions.
     # because we check when the part.name is not present
@@ -97,8 +98,6 @@ async def test_multipart_part_1_doesnt_has_name(
 
 async def test_multipart_part_2_doesnt_has_name(
     aiohttp_client: AiohttpClient,
-    form_data_disptype_name: str,
-    content_type_text_header: MultiDict[str],
     multipart_writer: MultipartWriter,
 ) -> None:
     async def handler(
@@ -111,11 +110,10 @@ async def test_multipart_part_2_doesnt_has_name(
 
     client = await aiohttp_client(app)
 
-    part = multipart_writer.append('1', content_type_text_header)
-    part.set_content_disposition(form_data_disptype_name, name='key')
+    multipart_writer.append('1', create_multipart_headers(part_name='key'))
 
     with mock.patch('aiohttp.multipart.Payload.set_content_disposition', new=patch_set_content_disposition):
-        multipart_writer.append('2', content_type_text_header)
+        multipart_writer.append('2', create_content_type_header())
 
     # is done to ignore MultipartWriter assertions.
     # because we check when the part.name is not present
@@ -146,7 +144,6 @@ async def test_multipart_part_2_doesnt_has_name(
 
 async def test_multipart_content_type_expected(
         aiohttp_client: AiohttpClient,
-        content_type_text_header: MultiDict[str],
         multipart_writer: MultipartWriter,
 ) -> None:
     async def handler(
