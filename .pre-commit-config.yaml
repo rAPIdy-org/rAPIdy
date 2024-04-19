@@ -14,10 +14,9 @@ repos:
       - id: check-json
       - id: check-toml
       - id: check-yaml
-        exclude: (.ci/helm|.gitlab-ci.yml)
       - id: name-tests-test
         args: [ --pytest-test-first ]
-        exclude: ^tests/mypy/cases/
+        exclude: ^tests/handlers/body/helpers.py|^tests/mypy/cases
 
   - repo: https://github.com/PyCQA/isort
     rev: 5.13.1

@@ -23,7 +23,8 @@ from rapidy.request_params import (
     TextBody,
 )
 from rapidy.typedefs import HandlerType
-from tests.handlers.helpers import create_multipart_headers
+
+from .helpers import create_multipart_headers
 
 
 async def test_json_param(aiohttp_client: AiohttpClient) -> None:
