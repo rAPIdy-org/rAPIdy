@@ -28,7 +28,7 @@ OLD_STYLE_STRICT_MYPY_OUT_FILENAME: Final[str] = 'old_style_strict_mypy_out.txt'
 raw_param_default_mypy_out_filename: str = DEFAULT_MYPY_OUT_FILENAME
 raw_param_strict_mypy_out_filename: str = STRICT_MYPY_OUT_FILENAME
 
-if MYPY_VERSION_TUPLE < (1, 4, 0):
+if MYPY_VERSION_TUPLE < (1, 4, 0) or PY_VERSION_TUPLE < (3, 9, 0):
     raw_param_default_mypy_out_filename = OLD_STYLE_DEFAULT_MYPY_OUT_FILENAME
     raw_param_strict_mypy_out_filename = OLD_STYLE_STRICT_MYPY_OUT_FILENAME
 
