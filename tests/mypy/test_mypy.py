@@ -6,8 +6,6 @@ from typing import Final
 import pytest
 from mypy import api as mypy_api
 
-from rapidy.mypy._version import MYPY_VERSION_TUPLE
-
 PY_VERSION_TUPLE = tuple(int(num) for num in platform.python_version_tuple())
 
 ROOT_TESTS_MYPY_DIR: Final[Path] = Path(__file__).parent
@@ -28,7 +26,7 @@ OLD_STYLE_STRICT_MYPY_OUT_FILENAME: Final[str] = 'old_style_strict_mypy_out.txt'
 raw_param_default_mypy_out_filename: str = DEFAULT_MYPY_OUT_FILENAME
 raw_param_strict_mypy_out_filename: str = OLD_STYLE_STRICT_MYPY_OUT_FILENAME
 
-if MYPY_VERSION_TUPLE < (1, 4, 0) or PY_VERSION_TUPLE < (3, 12, 0):
+if PY_VERSION_TUPLE < (3, 10, 0):
     raw_param_default_mypy_out_filename = OLD_STYLE_DEFAULT_MYPY_OUT_FILENAME
     raw_param_strict_mypy_out_filename = OLD_STYLE_STRICT_MYPY_OUT_FILENAME
 
