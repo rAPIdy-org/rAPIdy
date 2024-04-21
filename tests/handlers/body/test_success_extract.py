@@ -3,7 +3,6 @@ from typing import Any, Dict
 
 import pytest
 from aiohttp import MultipartWriter, StreamReader
-from multidict import MultiDict
 from pydantic import BaseModel
 from pytest_aiohttp.plugin import AiohttpClient
 from typing_extensions import Annotated
@@ -24,6 +23,7 @@ from rapidy.request_params import (
     TextBody,
 )
 from rapidy.typedefs import HandlerType
+from tests.helpers import create_multipart_headers
 
 
 async def test_json_param(aiohttp_client: AiohttpClient) -> None:
@@ -148,8 +148,6 @@ async def test_form_data_attributes(
 
 async def test_multipart_param(
         aiohttp_client: AiohttpClient,
-        form_data_disptype_name: str,
-        content_type_text_header: MultiDict[str],
         multipart_writer: MultipartWriter,
 ) -> None:
     async def handler(
@@ -158,15 +156,11 @@ async def test_multipart_param(
         assert attr1 == 1
         return web.Response()
 
-    await _success_multipart(
-        aiohttp_client, handler, form_data_disptype_name, content_type_text_header, multipart_writer,
-    )
+    await _success_multipart(aiohttp_client, handler, multipart_writer)
 
 
 async def test_multipart_schema(
         aiohttp_client: AiohttpClient,
-        form_data_disptype_name: str,
-        content_type_text_header: MultiDict[str],
         multipart_writer: MultipartWriter,
 ) -> None:
     class Schema(BaseModel):
@@ -178,15 +172,11 @@ async def test_multipart_schema(
         assert body_data.attr1 == 1
         return web.Response()
 
-    await _success_multipart(
-        aiohttp_client, handler, form_data_disptype_name, content_type_text_header, multipart_writer,
-    )
+    await _success_multipart(aiohttp_client, handler, multipart_writer)
 
 
 async def test_multipart_raw(
         aiohttp_client: AiohttpClient,
-        form_data_disptype_name: str,
-        content_type_text_header: MultiDict[str],
         multipart_writer: MultipartWriter,
 ) -> None:
     async def handler(
@@ -195,24 +185,19 @@ async def test_multipart_raw(
         assert body_data == {"attr1": "1"}
         return web.Response()
 
-    await _success_multipart(
-        aiohttp_client, handler, form_data_disptype_name, content_type_text_header, multipart_writer,
-    )
+    await _success_multipart(aiohttp_client, handler, multipart_writer)
 
 
 async def _success_multipart(
         aiohttp_client: AiohttpClient,
         handler: HandlerType,
-        form_data_disptype_name: str,
-        content_type_text_header: MultiDict[str],
         multipart_writer: MultipartWriter,
 ) -> None:
     app = web.Application()
     app.add_routes([web.post('/', handler)])
     client = await aiohttp_client(app)
 
-    part = multipart_writer.append("1", content_type_text_header)
-    part.set_content_disposition(form_data_disptype_name, name="attr1")
+    multipart_writer.append("1", create_multipart_headers(part_name='attr1'))
 
     resp = await client.post('/', data=multipart_writer)
     assert resp.status == HTTPStatus.OK
@@ -230,8 +215,6 @@ async def _success_multipart(
 )
 async def test_multipart_attributes(
         aiohttp_client: AiohttpClient,
-        form_data_disptype_name: str,
-        content_type_text_header: MultiDict[str],
         multipart_writer: MultipartWriter,
         *,
         param_name_1: str,
@@ -255,11 +238,8 @@ async def test_multipart_attributes(
     app.add_routes([web.post('/', handler)])
     client = await aiohttp_client(app)
 
-    part = multipart_writer.append("1", content_type_text_header)
-    part.set_content_disposition(form_data_disptype_name, name=param_name_1)
-
-    part = multipart_writer.append("1", content_type_text_header)
-    part.set_content_disposition(form_data_disptype_name, name=param_name_2)
+    multipart_writer.append('1', create_multipart_headers(part_name=param_name_1))
+    multipart_writer.append('1', create_multipart_headers(part_name=param_name_2))
 
     resp = await client.post('/', data=multipart_writer)
     assert resp.status == HTTPStatus.OK

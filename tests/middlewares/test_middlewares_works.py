@@ -2,14 +2,13 @@ from http import HTTPStatus
 from typing import Any
 
 import pytest
-from aiohttp.typedefs import Middleware
 from aiohttp.web_middlewares import normalize_path_middleware
 from pytest_aiohttp.plugin import AiohttpClient
 from typing_extensions import Annotated, Final
 
 from rapidy import web
 from rapidy.request_params import Header, TextBody
-from rapidy.typedefs import HandlerType
+from rapidy.typedefs import HandlerType, Middleware
 from rapidy.web import middleware
 
 BEARER_TOKEN: Final[str] = 'Bearer <SomeToken>'
