@@ -133,7 +133,7 @@ per-file-ignores = [
     'rapidy/_client_errors.py: C901 WPS433 WPS440',
     'rapidy/mypy/__init__.py: WPS412',
     'rapidy/mypy/*: WPS433',
-    'rapidy/mypy/_type_helpers.py: WPS221 WPS602 ',
+    'rapidy/mypy/_type_helpers.py: WPS221 WPS602',
 ]
 
 
@@ -154,7 +154,7 @@ allow_untyped_defs = true
 allow_untyped_calls = true
 allow_subclassing_any = true
 allow_untyped_decorators = true
-disable_error_code = "var-annotated, has-type, no-redef"
+disable_error_code = "var-annotated, has-type, no-redef, empty-body"
 
 [tool.isort]
 multi_line_output = 3
