@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Tuple, Type, Union
 from pydantic import BaseModel, create_model
 
 from rapidy.constants import PYDANTIC_V1, PYDANTIC_V2
-from rapidy.typedefs import ErrorList, ErrorWrapper
+from rapidy.typedefs import ErrorWrapper, ValidationErrorList
 
 RequestErrorModel: Type[BaseModel] = create_model('Request')
 
@@ -95,7 +95,7 @@ elif PYDANTIC_V2:
             for err in errors
         ]
 
-    def _normalize_errors(errors: List[Any]) -> ErrorList:
+    def _normalize_errors(errors: List[Any]) -> ValidationErrorList:
         for error in errors:  # TODO: FIXME
             error.pop('url', None)
             error.pop('input', None)

@@ -57,8 +57,8 @@ Middleware = Callable[[Request, Handler], Awaitable[StreamResponse]]
 HandlerOrMethod = Union[Handler, MethodHandler]
 
 ResultValidate: TypeAlias = Dict[str, Any]
-ErrorList: TypeAlias = List[Dict[str, Any]]
-ValidateReturn: TypeAlias = Tuple[Optional[ResultValidate], Optional[ErrorList]]
+ValidationErrorList: TypeAlias = List[Dict[str, Any]]
+ValidateReturn: TypeAlias = Tuple[Optional[ResultValidate], Optional[ValidationErrorList]]
 
 RouterDeco = Callable[[HandlerType], HandlerType]
 
