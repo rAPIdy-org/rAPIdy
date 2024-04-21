@@ -135,42 +135,6 @@ async def test_multipart_part_cannot_find_part_boundary(aiohttp_client: AiohttpC
     }
 
 
-async def test_multipart_part_missing_content_type_error(
-    aiohttp_client: AiohttpClient,
-) -> None:
-    async def handler(
-            body_data: Annotated[Schema, MultipartBodySchema()],
-    ) -> web.Response:
-        pass
-
-    app = web.Application()
-    app.add_routes([web.post('/', handler)])
-
-    client = await aiohttp_client(app)
-
-    resp = await client.post(
-        '/',
-        headers={'Content-Type': 'multipart/form-data; boundary=12345'},
-        data='--12345 \n'
-        'Content-Disposition: form-data; name="text" \n\n'
-        'asdasdsdd \n'
-        '--12345--',
-    )
-
-    assert resp.status == HTTPStatus.UNPROCESSABLE_ENTITY
-
-    assert await resp.json() == {
-        'errors': [
-            {
-                'loc': ['body'],
-                'msg': 'Failed to extract body data as Multipart. Failed to read part `1`: Part missing '
-                       'Content-Type header',
-                'type': 'body_extraction',
-            },
-        ],
-    }
-
-
 if AIOHTTP_VERSION_TUPLE != (3, 9, 4):
     # In Aiohttp 3.9.4, the MultipartWriter structure has been changed, so ... test compatibility is broken.
     def patch_set_content_disposition(

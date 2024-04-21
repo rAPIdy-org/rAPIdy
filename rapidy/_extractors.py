@@ -8,6 +8,7 @@ from aiohttp.streams import EmptyStreamReader, StreamReader
 from aiohttp.typedefs import JSONDecoder
 from multidict import MultiDict
 
+from rapidy import hdrs
 from rapidy._client_errors import (
     BodyDataSizeExceedError,
     ExtractJsonError,
@@ -146,7 +147,7 @@ async def extract_body_multi_part(
 
         available_bytes_to_read = updated_available_bytes_to_read
 
-        payload = _get_part_data_payload(part=part, part_data=part_data, current_part_num=part_num)
+        payload = _get_part_data_payload(part=part, part_data=part_data)
 
         if attrs_case_sensitive is False:
             part_name = part_name.lower()
@@ -205,6 +206,10 @@ async def _get_next_part(
 ) -> Optional[Union[MultipartReader, BodyPartReader]]:
     try:
         part = await multipart_reader.next()
+    except AssertionError as assertion_err:
+        if assertion_err.args[0] == 'Reading after EOF':  # NOTE: this is aiohttp bug
+            return None
+        raise assertion_err
     except Exception as value_error:
         raise ExtractMultipartPartError(
             multipart_error=value_error.args[0],  # TODO: specific error parsing
@@ -228,20 +233,6 @@ def _get_part_name(
     return part_name
 
 
-def _get_part_content_type(
-    part: BodyPartReader,
-    current_part_num: int,
-) -> str:
-    part_content_type = part.headers.get('content-type')
-    if part_content_type is None:
-        raise ExtractMultipartPartError(
-            multipart_error='Part missing Content-Type header',
-            part_num=current_part_num,
-        )
-
-    return part_content_type
-
-
 async def _read_part_chunk(part: BodyPartReader) -> Tuple[bytes, int]:
     if part._at_eof:  # noqa:  WPS437
         return b'', 0
@@ -255,11 +246,10 @@ async def _read_part_chunk(part: BodyPartReader) -> Tuple[bytes, int]:
 def _get_part_data_payload(
     part: BodyPartReader,
     part_data: bytearray,
-    current_part_num: int,
 ) -> Union[bytearray, str]:
-    part_content_type = _get_part_content_type(part=part, current_part_num=current_part_num)
+    part_content_type = part.headers.get(hdrs.CONTENT_TYPE)
 
-    if part_content_type.startswith('text/') or part_content_type == ApplicationJSON:
+    if part_content_type and (part_content_type.startswith('text/') or part_content_type == ApplicationJSON):
         part_charset = part.get_charset(default='utf-8')
         part_decoded_data = part.decode(part_data)
         return part_decoded_data.decode(part_charset)
