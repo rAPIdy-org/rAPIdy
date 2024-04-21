@@ -1,14 +1,12 @@
 import os
-import platform
 from pathlib import Path
 from typing import Final
 
 import pytest
 from mypy import api as mypy_api
 
+from rapidy._version import PY_VERSION_TUPLE
 from rapidy.mypy._version import MYPY_VERSION_TUPLE
-
-PY_VERSION_TUPLE = tuple(int(num) for num in platform.python_version_tuple())
 
 ROOT_TESTS_MYPY_DIR: Final[Path] = Path(__file__).parent
 
