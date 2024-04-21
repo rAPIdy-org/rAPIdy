@@ -58,6 +58,10 @@ class Application(AiohttpApplication):
 
         self._middleware_annotation_containers: Dict[int, AnnotationContainer] = {}
 
+    @property
+    def router(self) -> UrlDispatcher:
+        return self._router
+
     def _add_middleware_annotation_container(self, middleware: Middleware) -> None:
         self._middleware_annotation_containers[id(middleware)] = create_annotation_container(
             middleware,

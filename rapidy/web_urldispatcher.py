@@ -1,13 +1,11 @@
 from abc import ABC
 from types import FunctionType
-from typing import Any, cast, Optional
+from typing import Any, Awaitable, Callable, cast, Optional, Type, Union
 
 from aiohttp.abc import AbstractView
-from aiohttp.typedefs import Handler
 from aiohttp.web_request import Request
 from aiohttp.web_response import StreamResponse
 from aiohttp.web_urldispatcher import (
-    _ExpectHandler,
     _requote_path,
     AbstractResource,
     AbstractRoute,
@@ -25,7 +23,7 @@ from aiohttp.web_urldispatcher import (
 
 from rapidy import hdrs
 from rapidy._annotation_container import AnnotationContainer, create_annotation_container, HandlerEnumType
-from rapidy.typedefs import HandlerType, MethodHandler
+from rapidy.typedefs import Handler, HandlerType, MethodHandler
 
 __all__ = [
     'UrlDispatcher',
@@ -40,6 +38,9 @@ __all__ = [
     'StaticResource',
     'View',
 ]
+
+
+_ExpectHandler = Callable[..., Awaitable[Optional[StreamResponse]]]
 
 
 class ResourceRoute(AioHTTPResourceRoute, ABC):
@@ -136,6 +137,18 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         self.register_resource(resource)
 
         return resource
+
+    def add_route(
+        self,
+        method: str,
+        path: str,
+        handler: Union[Handler, Type[AbstractView]],
+        *,
+        name: Optional[str] = None,
+        expect_handler: Optional[_ExpectHandler] = None,
+    ) -> AbstractRoute:
+        resource = self.add_resource(path, name=name)
+        return resource.add_route(method, handler, expect_handler=expect_handler)
 
 
 class View(AioHTTPView):
