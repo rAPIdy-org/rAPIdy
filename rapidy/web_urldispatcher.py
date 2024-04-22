@@ -3,11 +3,9 @@ from types import FunctionType
 from typing import Any, Awaitable, Callable, cast, Optional, Type, Union
 
 from aiohttp.abc import AbstractView
-from aiohttp.typedefs import Handler
 from aiohttp.web_request import Request
 from aiohttp.web_response import StreamResponse
 from aiohttp.web_urldispatcher import (
-    _ExpectHandler,
     _requote_path,
     AbstractResource,
     AbstractRoute,
@@ -24,7 +22,8 @@ from aiohttp.web_urldispatcher import (
 )
 
 from rapidy import hdrs
-from rapidy._annotation_container import AnnotationContainer, create_annotation_container
+from rapidy._annotation_container import AnnotationContainer, create_annotation_container, HandlerEnumType
+from rapidy.typedefs import Handler, HandlerType, MethodHandler
 
 __all__ = [
     'UrlDispatcher',
@@ -41,11 +40,14 @@ __all__ = [
 ]
 
 
+_ExpectHandler = Callable[..., Awaitable[Optional[StreamResponse]]]
+
+
 class ResourceRoute(AioHTTPResourceRoute, ABC):
     def __init__(
             self,
             method: str,
-            handler: Union[Handler, Type[AbstractView]],
+            handler: HandlerType,
             resource: AbstractResource,
             *,
             expect_handler: Optional[_ExpectHandler] = None,
@@ -57,32 +59,38 @@ class ResourceRoute(AioHTTPResourceRoute, ABC):
             resource=resource,
         )
 
-        self.annotation_container = {}
+        self.annotation_containers = {}
 
         if isinstance(handler, FunctionType):
-            self.annotation_container[method.lower()] = create_annotation_container(handler)
+            self.annotation_containers[method.lower()] = create_annotation_container(
+                handler,
+                handler_type=HandlerEnumType.func,
+            )
 
-        elif issubclass(handler, AbstractView):
+        elif issubclass(handler, AbstractView):  # type: ignore[arg-type]
             for method in (  # noqa: WPS335 WPS352 WPS440
                 handler_attr
                 for handler_attr in dir(handler)
                 if handler_attr.upper() in hdrs.METH_ALL
             ):
-                method_handler: Optional[Callable[[], Awaitable[StreamResponse]]] = getattr(handler, method, None)
+                method_handler: Optional[MethodHandler] = getattr(handler, method, None)
                 if method_handler is None:  # NOTE: Scenario is impossible.  # pragma: no cover
                     raise
 
-                self.annotation_container[method.lower()] = create_annotation_container(method_handler)
+                self.annotation_containers[method.lower()] = create_annotation_container(
+                    method_handler,
+                    handler_type=HandlerEnumType.method,
+                )
 
     def get_method_container(self, method: str) -> AnnotationContainer:
-        return self.annotation_container[method.lower()]
+        return self.annotation_containers[method.lower()]
 
 
 class Resource(AioHTTPResource, ABC):
     def add_route(
         self,
         method: str,
-        handler: Union[Type[AbstractView], Handler],
+        handler: Handler,
         *,
         expect_handler: Optional[_ExpectHandler] = None,
     ) -> 'ResourceRoute':
@@ -130,6 +138,18 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
 
         return resource
 
+    def add_route(
+        self,
+        method: str,
+        path: str,
+        handler: Union[Handler, Type[AbstractView]],
+        *,
+        name: Optional[str] = None,
+        expect_handler: Optional[_ExpectHandler] = None,
+    ) -> AbstractRoute:
+        resource = self.add_resource(path, name=name)
+        return resource.add_route(method, handler, expect_handler=expect_handler)
+
 
 class View(AioHTTPView):
     def __init__(self, request: Request, **request_validated_data: Any) -> None:
@@ -140,13 +160,13 @@ class View(AioHTTPView):
         if self.request.method not in hdrs.METH_ALL:  # aiohttp code  # pragma: no cover
             self._raise_allowed_methods()
 
-        method: Optional[Callable[[], Awaitable[StreamResponse]]]
-        method = getattr(self, self.request.method.lower(), None)
-
+        method: Optional[MethodHandler] = getattr(self, self.request.method.lower(), None)
         if method is None:  # aiohttp code  # pragma: no cover
             self._raise_allowed_methods()
 
-        ret = await method(**self._request_validated_data)  # type: ignore[misc]
+        method = cast(MethodHandler, method)
+
+        ret = await method(**self._request_validated_data)
 
         assert isinstance(ret, StreamResponse)
         return ret

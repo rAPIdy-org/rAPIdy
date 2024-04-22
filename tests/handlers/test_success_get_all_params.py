@@ -38,7 +38,6 @@ class Schema(BaseModel):
 
 async def test_raw_data(aiohttp_client: AiohttpClient) -> None:
     async def handler(
-            request: web.Request,
             path_data: Annotated[Dict[str, Any], PathRaw()],
             header_data: Annotated[Dict[str, Any], HeaderRaw()],
             cookie_data: Annotated[Dict[str, Any], CookieRaw()],
@@ -52,7 +51,6 @@ async def test_raw_data(aiohttp_client: AiohttpClient) -> None:
 
 async def test_individual_params(aiohttp_client: AiohttpClient) -> None:
     async def handler(
-            request: web.Request,
             path_attr1: Annotated[str, Path(alias='attr1')],
             path_attr2: Annotated[str, Path(alias='attr2')],
             header_attr1: Annotated[str, Header(alias='attr1')],
@@ -71,7 +69,6 @@ async def test_individual_params(aiohttp_client: AiohttpClient) -> None:
 
 async def test_single_schema(aiohttp_client: AiohttpClient) -> None:
     async def handler(
-            request: web.Request,
             path_data: Annotated[Schema, PathSchema()],
             header_data: Annotated[Schema, HeaderSchema()],
             cookie_data: Annotated[Schema, CookieSchema()],

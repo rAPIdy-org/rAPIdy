@@ -54,7 +54,6 @@ class Schema(BaseModel):
 
 async def test_individual_params(aiohttp_client: AiohttpClient) -> None:
     async def handler(
-            request: web.Request,
             path_attr1: Annotated[str, Path(**attr1_model_field_args)],
             path_attr2: Annotated[int, Path(**attr2_model_field_args)],
             path_attr3: Annotated[List[int], Path(**attr3_model_field_args)],
@@ -83,7 +82,6 @@ async def test_individual_params(aiohttp_client: AiohttpClient) -> None:
 
 async def test_single_schema(aiohttp_client: AiohttpClient) -> None:
     async def handler(
-            request: web.Request,
             path_data: Annotated[Schema, PathSchema()],
             header_data: Annotated[Schema, HeaderSchema()],
             cookie_data: Annotated[Schema, CookieSchema()],

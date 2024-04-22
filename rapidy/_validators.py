@@ -1,8 +1,7 @@
-from copy import deepcopy
 from typing import Any, cast, Dict, List, Optional, Tuple
 
 from rapidy._client_errors import _regenerate_error_with_loc, RequiredFieldIsMissing
-from rapidy.fields import ModelField
+from rapidy._fields import ModelField
 from rapidy.typedefs import DictStrAny, ErrorWrapper
 
 
@@ -17,7 +16,7 @@ def _validate_data_by_field(
         if model_field.required:
             return values, [RequiredFieldIsMissing().get_error_info(loc=loc)]
 
-        return deepcopy(model_field.default), []
+        return model_field.get_default(), []
 
     validated_data, validated_errors = model_field.validate(raw_data, values, loc=loc)
     if isinstance(validated_errors, ErrorWrapper):
