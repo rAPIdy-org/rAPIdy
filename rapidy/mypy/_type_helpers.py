@@ -2,7 +2,7 @@ from functools import lru_cache
 from typing import Callable, Dict, List, Set
 
 from mypy.checker import TypeChecker
-from mypy.types import AnyType, Instance, Type, TypeOfAny, UnionType
+from mypy.types import AnyType, Instance, Type, TypeOfAny
 from typing_extensions import TypeAlias
 
 from rapidy import request_params
@@ -68,20 +68,16 @@ class TypeCreator:
         return TypeCreator.dict(api, [TypeCreator.string(api), TypeCreator.string(api)])
 
     @staticmethod
-    def dict_str_union_str_list_str(api: TypeChecker) -> Type:
-        return TypeCreator.dict(
-            api, [TypeCreator.string(api), UnionType([TypeCreator.string(api), TypeCreator.list_str(api)])],
-        )
+    def dict_str_list_str(api: TypeChecker) -> Type:
+        return TypeCreator.dict(api, [TypeCreator.string(api), TypeCreator.list_str(api)])
 
     @staticmethod
     def dict_str_any(api: TypeChecker) -> Type:
         return TypeCreator.dict(api, [TypeCreator.string(api), AnyType(TypeOfAny.explicit)])
 
     @staticmethod
-    def dict_str_union_any_list_any(api: TypeChecker) -> Type:
-        return TypeCreator.dict(
-            api, [TypeCreator.string(api), UnionType([TypeCreator.any_explicit(), TypeCreator.list_any(api)])],
-        )
+    def dict_str_list_any(api: TypeChecker) -> Type:
+        return TypeCreator.dict(api, [TypeCreator.string(api), TypeCreator.list_any(api)])
 
     @staticmethod
     def any_explicit() -> Type:  # noqa: WPS605
@@ -99,7 +95,7 @@ def create_form_data_raw_type(
         duplicated_attrs_parse_as_array: bool,
 ) -> Type:
     if duplicated_attrs_parse_as_array:
-        return TypeCreator.dict_str_union_str_list_str(api)
+        return TypeCreator.dict_str_list_str(api)
 
     return TypeCreator.dict_str_str(api)
 
@@ -109,7 +105,7 @@ def create_multipart_raw_type(
         duplicated_attrs_parse_as_array: bool,
 ) -> Type:
     if duplicated_attrs_parse_as_array:
-        return TypeCreator.dict_str_union_any_list_any(api)
+        return TypeCreator.dict_str_list_any(api)
 
     return TypeCreator.dict_str_any(api)
 

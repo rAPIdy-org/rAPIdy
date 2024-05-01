@@ -356,8 +356,8 @@ app.add_routes([web.post('/api/{path_param}', handler)])
 > * CookieRaw - `dict[str, str]`
 > * QueryRaw - `dict[str, str]`
 > * BodyJsonRaw - `dict[str, Any]`
-> * FormDataBodyRaw - `dict[str, str]` or `dict[str, str | list[str]]`
-> * MultipartBodyRaw - `dict[str, Any]` or `dict[str, Any | list[Any]]`
+> * FormDataBodyRaw - `dict[str, str]` or `dict[str, list[str]]`
+> * MultipartBodyRaw - `dict[str, Any]` or `dict[str, list[Any]]`
 > * TextBody - `str`
 > * BytesBody - `bytes`
 > * StreamBody - `aiohttp.streams.StreamReader`
@@ -386,6 +386,60 @@ async def handler(
         param_2: str = web.JsonBody(),  # Default definition
 ) -> web.Response:
 ```
+
+### Special attributes
+
+Some `rAPIdy-parameters` have additional attributes not specific to `pydantic`.
+
+#### Body
+At the moment only `body` type has special parameters.
+
+> [!WARNING]
+> Additional attributes can only be specified for `Schema-parameters` and `Raw-parameters`.
+
+Each `body` parameter has a `body_max_size` attribute that limits the maximum size of the request body for the current handler.
+
+`body_max_size` (_int_) - indicating the maximum number of bytes the handler expects.
+
+```python
+async def handler(
+        body: str = web.JsonBodySchema(body_max_size=10),
+) -> web.Response:
+```
+```python
+async def handler(
+        body: str = web.JsonBodyRaw(body_max_size=10),
+) -> web.Response:
+```
+
+##### Json
+`json_decoder` (_typing.Callable[[], Any]_) - attribute that accepts the function to be called when decoding the body of the incoming request.
+
+##### FormData
+`attrs_case_sensitive` (_bool_) -  attribute that tells the data extractor whether the incoming key register should be considered.
+
+`duplicated_attrs_parse_as_array` (_bool_) - attribute that tells the data extractor what to do with duplicated keys in a query.
+
+If duplicated_attrs_parse_as_array=True, a list will be created for each key and all values will be placed in it.
+
+> [!NOTE]
+> `duplicated_attrs_parse_as_array` flat changes the type of data that the data extractor returns.
+>
+> If duplicated_attrs_parse_as_array=`True`, then the data
+> will always be of type _dict[str, list[str]]_ (_by default, `formdata` has the extractable type dict[str, str]_)
+
+##### Multipart
+
+`attrs_case_sensitive` (_bool_) -  attribute that tells the data extractor whether the incoming key register should be considered.
+
+`duplicated_attrs_parse_as_array` (_bool_) - attribute that tells the data extractor what to do with duplicated keys in a query.
+
+> [!NOTE]
+> `duplicated_attrs_parse_as_array` flat changes the type of data that the data extractor returns.
+>
+> If duplicated_attrs_parse_as_array=`True`, then the data
+> will always be of type _dict[str, list[Any]]_ (_by default, `multipart` has the extractable type dict[str, Any]_)
+
 ---
 
 

@@ -112,7 +112,7 @@ async def _success_form_data(aiohttp_client: AiohttpClient, handler: HandlerType
     'param_name_1, param_name_2, attrs_case_sensitive, duplicated_attrs_parse_as_array, expected_body_data',
     [
         ['Attr1', 'Attr1', True, True, {"Attr1": ["1", "1"]}],
-        ['attr1', 'Attr1', True, True, {"attr1": "1", "Attr1": "1"}],
+        ['attr1', 'Attr1', True, True, {"attr1": ["1"], "Attr1": ["1"]}],
         ['attr1', 'Attr1', False, True, {"attr1": ["1", "1"]}],
         ['attr1', 'Attr1', True, False, {"Attr1": "1", "attr1": "1"}],
         ['Attr1', 'Attr1', False, False, {"attr1": "1"}],
@@ -207,7 +207,7 @@ async def _success_multipart(
     'param_name_1, param_name_2, attrs_case_sensitive, duplicated_attrs_parse_as_array, expected_body_data',
     [
         ['Attr1', 'Attr1', True, True, {"Attr1": ["1", "1"]}],
-        ['attr1', 'Attr1', True, True, {"attr1": "1", "Attr1": "1"}],
+        ['attr1', 'Attr1', True, True, {"attr1": ["1"], "Attr1": ["1"]}],
         ['attr1', 'Attr1', False, True, {"attr1": ["1", "1"]}],
         ['attr1', 'Attr1', True, False, {"Attr1": "1", "attr1": "1"}],
         ['Attr1', 'Attr1', False, False, {"attr1": "1"}],

@@ -25,8 +25,7 @@ async def extract_path(request: Request) -> DictStrStr:
 
 
 async def extract_headers(request: Request) -> DictStrStr:
-    pairs = request.headers
-    return parse_multi_params(pairs)  # type: ignore[return-value]
+    return parse_multi_params(request.headers)  # type: ignore[return-value]
 
 
 async def extract_cookies(request: Request) -> DictStrStr:
@@ -35,8 +34,7 @@ async def extract_cookies(request: Request) -> DictStrStr:
 
 
 async def extract_query(request: Request) -> DictStrStr:
-    pairs = request.rel_url.query
-    return parse_multi_params(pairs)  # type: ignore[return-value]
+    return parse_multi_params(request.rel_url.query)  # type: ignore[return-value]
 
 
 async def extract_body_stream(request: Request, max_size: int) -> StreamReader:
@@ -104,7 +102,7 @@ async def extract_body_x_www_form(
         else:
             data[key] = value
 
-    return parse_multi_params(data)
+    return parse_multi_params(data, parse_as_array=duplicated_attrs_parse_as_array)
 
 
 async def extract_body_multi_part(
@@ -161,7 +159,7 @@ async def extract_body_multi_part(
 
         part_num += 1
 
-    return parse_multi_params(data)
+    return parse_multi_params(data, parse_as_array=duplicated_attrs_parse_as_array)
 
 
 async def _get_multipart_reader(request: Request) -> MultipartReader:
