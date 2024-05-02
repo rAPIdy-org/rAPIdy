@@ -32,7 +32,7 @@
 </p>
 
 
-## Key features
+# Key features
 
 * ✏️ Minimalism - check and retrieve data in just one line of code
 * 🐍 Seamless support for Python native types
@@ -42,20 +42,20 @@
 
 
 ---
-## Documentation
+# Documentation
 > [!TIP]
-> Coming soon: 2024.05
+> Coming soon: 2024.06
 ---
 
 
-## Installation
+# Installation
 > [!NOTE]
 > ```bash
 > pip install rapidy
 > ```
 ---
 
-
+# Server
 ## Quickstart
 ### Handlers
 ```python
@@ -442,6 +442,48 @@ If duplicated_attrs_parse_as_array=True, a list will be created for each key and
 
 ---
 
+### Catch client errors
+The `HTTPValidationFailure` exception will be raised if the data in the query is incorrect.<br>
+This error can be caught with a try/except block. The error values can be accessed using the `validation_errors` attribute.
+
+This may be necessary, for example, if you need to log a customer error before giving them a response.
+
+```python
+import logging
+from rapidy import web
+from rapidy.typedefs import Handler
+from rapidy.web_exceptions import HTTPValidationFailure
+
+logger = logging.getLogger(__name__)
+
+routes = web.RouteTableDef()
+
+@routes.get('/')
+async def handler(
+        auth_token: str = web.Header(alias='Authorization'),
+) -> web.Response:
+    return web.json_response({'data': 'success'})
+
+@web.middleware
+async def error_catch_middleware(request: web.Request, handler: Handler) -> web.StreamResponse:
+    try:
+        return await handler(request)
+
+    except HTTPValidationFailure as validation_failure_error:
+        client_errors = validation_failure_error.validation_errors
+        logger.error('Client error catch, errors: %s', client_errors)
+        raise validation_failure_error
+
+    except Exception as unhandled_error:
+        logger.error('Unhandled error: %s', unhandled_error)
+        return web.json_response(status=500)
+
+app = web.Application(middlewares=[error_catch_middleware])
+app.add_routes(routes)
+
+if __name__ == '__main__':
+    web.run_app(app, host='127.0.0.1', port=8080)
+```
 
 ## Default values for parameters
 Some <span style="color:#7e56c2">rAPIdy</span> parameters may contain default values.
@@ -470,7 +512,21 @@ async def handler(
 ---
 
 
-## Mypy support
+# Client
+> [!TIP]
+> Coming soon: 2024.09
+---
+
+
+# OpenAPI
+> [!TIP]
+> Already in development
+>
+> Coming soon: 2024.09
+---
+
+
+# Mypy support
 `rAPIdy` has its own plugin for <a href="https://mypy.readthedocs.io/en/stable/getting_started.html" target="blank">mypy</a>.
 
 ```toml
@@ -486,6 +542,24 @@ plugins = [
 ---
 
 
-## For Developers
+# Migration from aiohttp to rAPIdy
+`rAPIdy` neatly extends `aiohttp` - meaning that anything already written in `aiohttp` will work as before.
+
+`rAPIdy` has exactly the same overridden module names as `aiohttp`.
+
+> [!WARNING]
+> `rAPIdy` does not override all `aiohttp` modules, only those that are necessary for it to work, or those that will be extended in the near future.
+
+If the `aiohttp` module you are trying to override is not found in `rAPIdy`, don't change it, everything will work as is.
+
+> [!WARNING]
+> `rAPIdy` supports defining handlers in the same way as <a href="https://docs.aiohttp.org/en/stable/web_quickstart.html" target="blank">aiohttp-quickstart</a> except that request is no longer a required parameter for functional handlers.
+>
+> If you need to get the current `request` in the handler,
+> create an attribute with an arbitrary name and be sure to specify the `web.Request` type, and rAPIdy will substitute the current `web.Request` instance in that place.
+---
+
+
+# For Developers
 > [!TIP]
-> Coming soon: 2024.05
+> Coming soon: 2024.06
