@@ -38,6 +38,7 @@ class Application(AiohttpApplication):
             client_errors_response_field_name: str = 'errors',
             loop: Optional[asyncio.AbstractEventLoop] = None,
             debug: Any = ...,
+            server_info_in_response: bool = False,
     ) -> None:
         # TODO: Add a check that in body extractors the size does not exceed the client size
 
@@ -57,6 +58,9 @@ class Application(AiohttpApplication):
         self._client_errors_response_field_name = client_errors_response_field_name
 
         self._middleware_annotation_containers: Dict[int, AnnotationContainer] = {}
+
+        # It is hidden by default, as I believe showing server information is a potential vulnerability.
+        self._server_info_in_response = server_info_in_response
 
     @property
     def router(self) -> UrlDispatcher:

@@ -1,7 +1,9 @@
 import json
 from typing import Any, Optional
 
+from aiohttp.abc import AbstractStreamWriter
 from aiohttp.helpers import sentinel
+from aiohttp.web_request import BaseRequest
 from aiohttp.web_response import ContentCoding, Response as _AioHTTPResponse, StreamResponse as _AioHTTPStreamResponse
 
 from rapidy import hdrs
@@ -24,9 +26,29 @@ class SpecifyBothTextAndBodyError(ValueError):
 
 
 class StreamResponse(_AioHTTPStreamResponse):
-    async def _prepare_headers(self) -> None:
-        await super()._prepare_headers()
-        self._headers[hdrs.SERVER] = SERVER_INFO
+    async def _start(self, request: BaseRequest) -> AbstractStreamWriter:
+        self._req = request
+        writer = self._payload_writer = request._payload_writer  # noqa: WPS429
+
+        try:
+            server_info_in_response = request.app._server_info_in_response
+        except AttributeError:  # note: just in case
+            # It is hidden by default, as I believe showing server information is a potential vulnerability.
+            server_info_in_response = False
+
+        await self._ext_prepare_headers(server_info_in_response=server_info_in_response)
+        await request._prepare_hook(self)
+        await self._write_headers()
+
+        return writer
+
+    async def _ext_prepare_headers(self, server_info_in_response: bool) -> None:
+        await super()._prepare_headers()  # noqa: WPS613
+
+        if not server_info_in_response:  # noqa: WPS504
+            self._headers.pop(hdrs.SERVER)
+        else:
+            self._headers[hdrs.SERVER] = SERVER_INFO
 
 
 class Response(_AioHTTPResponse, StreamResponse):
