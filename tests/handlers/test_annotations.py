@@ -9,6 +9,7 @@ from typing_extensions import Annotated, Final
 
 from rapidy import web
 from rapidy.request_params import (
+    BodyBase,
     BytesBody,
     FormDataBody,
     FormDataBodyRaw,
@@ -54,19 +55,45 @@ class SchemaDataclass:
     attr: str
 
 
-@pytest.mark.parametrize('type1', simple_param_checklist)
-@pytest.mark.parametrize('type2', simple_param_checklist)
-async def test_check_simple_param_incorrect_annotations(type1: Type[HeaderBase], type2: Type[HeaderBase]) -> None:
-    async def handler(
-            request: web.Request,
-            attr1: Annotated[SchemaPydantic, type1()],
-            attr2: Annotated[SchemaPydantic, type2()],
-    ) -> web.Response:
-        pass
+def _create_annotated_def_handler(type_: Any, param: Any) -> Any:
+    async def handler(attr: Annotated[type_, param]) -> Any: return web.Response()
+    return handler
 
-    if type1().validate_type.is_param() and type2().validate_type.is_param():
+
+def _create_default_def_handler(type_: Any, param: Any) -> Any:
+    async def handler(attr: type_ = param) -> Any: return web.Response()
+    return handler
+
+
+def _create_annotated_def_handler_two_params(param_1: Any, param_2: Any) -> Any:
+    async def handler(attr1: Annotated[SchemaPydantic, param_1], attr2: Annotated[SchemaPydantic, param_2]) -> Any:
+        return web.Response()
+    return handler
+
+
+def _create_default_def_handler_two_params(param_1: Any, param_2: Any) -> Any:
+    async def handler(attr1: SchemaPydantic = param_1, attr2: SchemaPydantic = param_2) -> Any: return web.Response()
+    return handler
+
+
+@pytest.mark.parametrize('param_1', simple_param_checklist)
+@pytest.mark.parametrize('param_2', simple_param_checklist)
+@pytest.mark.parametrize(
+    'create_handler_func', [
+        pytest.param(_create_annotated_def_handler_two_params, id='annotated-def'),
+        pytest.param(_create_default_def_handler_two_params, id='default-def'),
+    ],
+)
+async def test_check_simple_param_incorrect_annotations(
+        param_1: Type[HeaderBase],
+        param_2: Type[HeaderBase],
+        create_handler_func: Any,
+) -> None:
+    if param_1.validate_type.is_param() and param_2.validate_type.is_param():
         # skip success scenarios
         return
+
+    handler = create_handler_func(param_1=param_1, param_2=param_2)
 
     app = web.Application()
 
@@ -81,19 +108,27 @@ async def test_check_simple_param_incorrect_annotations(type1: Type[HeaderBase],
     assert exc_message.startswith(ATTRIBUTE_DEFINITION_ERR_MSG)
 
 
-@pytest.mark.parametrize('type1', body_checklist)
-@pytest.mark.parametrize('type2', body_checklist)
-async def test_check_body_param_incorrect_annotations(type1: Type[Any], type2: Type[Any]) -> None:
-    async def handler(
-            request: web.Request,
-            attr1: Annotated[SchemaPydantic, type1()],
-            attr2: Annotated[SchemaPydantic, type2()],
-    ) -> web.Response:
-        pass
+@pytest.mark.parametrize('param_1', body_checklist)
+@pytest.mark.parametrize('param_2', body_checklist)
+@pytest.mark.parametrize(
+    'create_handler_func', [
+        pytest.param(_create_annotated_def_handler_two_params, id='annotated-def'),
+        pytest.param(_create_default_def_handler_two_params, id='default-def'),
+    ],
+)
+async def test_check_body_param_incorrect_annotations(
+        param_1: Type[BodyBase],
+        param_2: Type[BodyBase],
+        create_handler_func: Any,
+) -> None:
+    params_is_single = param_1.validate_type.is_param() and param_2.validate_type.is_param()
+    params_has_one_media_type = param_1.media_type == param_2.media_type
 
-    if type1().validate_type.is_param() and type2().validate_type.is_param():
+    if params_is_single and params_has_one_media_type:
         # skip success scenarios
         return
+
+    handler = create_handler_func(param_1=param_1, param_2=param_2)
 
     app = web.Application()
 
@@ -109,67 +144,70 @@ async def test_check_body_param_incorrect_annotations(type1: Type[Any], type2: T
 
 
 @pytest.mark.parametrize(
-    'attr_type',
-    [
+    'param', [
         pytest.param(JsonBody(), id='define-as-instance'),
         pytest.param(JsonBody, id='define-as-class'),
     ],
 )
+@pytest.mark.parametrize(
+    'create_handler_func', [
+        pytest.param(_create_annotated_def_handler, id='annotated-def'),
+        pytest.param(_create_default_def_handler, id='default-def'),
+    ],
+)
 async def test_check_annotation(
         aiohttp_client: AiohttpClient,
-        attr_type: Any,
+        param: Any,
+        create_handler_func: Any,
 ) -> None:
-    async def handler(
-            request: web.Request,
-            attr: Annotated[str, attr_type],
-    ) -> web.Response:
-        return web.Response()
+    handler = create_handler_func(str, JsonBody)
 
     app = web.Application()
     app.add_routes([web.post('/', handler)])
     client = await aiohttp_client(app)
     resp = await client.post('/', json={'attr': ''})
+
     assert resp.status == HTTPStatus.OK
 
 
 @pytest.mark.parametrize(
-    'attr_type',
-    [
+    'type_', [
         SchemaPydantic,
         SchemaDataclass,
         Optional[SchemaPydantic],
         Optional[SchemaDataclass],
     ],
 )
-async def test_success_schema_annotation(attr_type: Any) -> None:
-    async def handler(
-            request: web.Request,
-            body: Annotated[attr_type, JsonBodySchema],
-    ) -> web.Response:
-        return web.Response()
-
+@pytest.mark.parametrize(
+    'create_handler_func', [
+        pytest.param(_create_annotated_def_handler, id='annotated-def'),
+        pytest.param(_create_default_def_handler, id='default-def'),
+    ],
+)
+async def test_success_schema_annotation(type_: Any, create_handler_func: Any) -> None:
+    handler = create_handler_func(str, JsonBody)
     app = web.Application()
     app.add_routes([web.post('/', handler)])
 
 
 @pytest.mark.parametrize(
-    'attr_type',
-    [
+    'param', [
         JsonBodySchema,
         FormDataBodySchema,
         MultipartBodySchema,
     ],
 )
-async def test_failed_schema_annotation(attr_type: Any) -> None:
-    async def handler(
-            request: web.Request,
-            body: Annotated[str, attr_type],
-    ) -> web.Response:
-        pass
-
+@pytest.mark.parametrize(
+    'create_handler_func', [
+        pytest.param(_create_annotated_def_handler, id='annotated-def'),
+        pytest.param(_create_default_def_handler, id='default-def'),
+    ],
+)
+async def test_failed_schema_annotation(param: Any, create_handler_func: Any) -> None:
+    handler = create_handler_func(str, param)
     app = web.Application()
-
     exc_message = ''
+
     with pytest.raises(Exception):
         try:
             app.add_routes([web.post('/', handler)])
@@ -181,19 +219,13 @@ async def test_failed_schema_annotation(attr_type: Any) -> None:
 
 
 @pytest.mark.parametrize(
-    'attr_type',
-    [
+    'attr_type', [
         Annotated[str, str],
         Annotated[str, str, str],
     ],
 )
 async def test_incorrect_rapid_param(aiohttp_client: AiohttpClient, attr_type: Any) -> None:
-    async def handler(
-            request: web.Request,
-            any_param: attr_type,
-            body: Annotated[str, str],
-    ) -> web.Response:
-        pass
+    async def handler(any_param: attr_type, body: Annotated[str, str]) -> web.Response: pass
 
     app = web.Application()
     app.add_routes([web.post('/', handler)])

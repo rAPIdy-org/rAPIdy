@@ -1,11 +1,10 @@
 from abc import ABC, abstractmethod
-from types import FunctionType
 from typing import Any, Dict, List, Tuple, Type, Union
 
 from pydantic import BaseModel, create_model
 
 from rapidy.constants import PYDANTIC_V1, PYDANTIC_V2
-from rapidy.typedefs import ErrorList, ErrorWrapper
+from rapidy.typedefs import ErrorWrapper, ValidationErrorList
 
 RequestErrorModel: Type[BaseModel] = create_model('Request')
 
@@ -96,7 +95,7 @@ elif PYDANTIC_V2:
             for err in errors
         ]
 
-    def _normalize_errors(errors: List[Any]) -> ErrorList:
+    def _normalize_errors(errors: List[Any]) -> ValidationErrorList:
         for error in errors:  # TODO: FIXME
             error.pop('url', None)
             error.pop('input', None)
@@ -130,12 +129,15 @@ class ExtractMultipartPartError(ExtractMultipartError):
     msg_template = 'Failed to extract body data as Multipart. Failed to read part `{part_num}`: {multipart_error}'
 
 
-def _create_handler_info_msg(handler: FunctionType) -> str:
+def _create_handler_info_msg(handler: Any) -> str:
     return (
-        f'Handler path: `{handler.__code__.co_filename}`.\n'
-        f'Handler name: `{handler.__name__}`.\n'
+        f'\nHandler path: `{handler.__code__.co_filename}`'
+        f'\nHandler name: `{handler.__name__}`\n'
     )
 
 
-def _create_handler_attr_info_msg(handler: FunctionType, attr_name: str) -> str:
-    return f'{_create_handler_info_msg(handler)} Attribute name: `{attr_name}`.\n'
+def _create_handler_attr_info_msg(handler: Any, attr_name: str) -> str:
+    return (
+        f'{_create_handler_info_msg(handler)}'
+        f'Attribute name: `{attr_name}`\n'
+    )

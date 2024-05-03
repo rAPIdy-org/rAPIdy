@@ -1,18 +1,16 @@
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Type, Union
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Type, TYPE_CHECKING, Union
 
-from aiohttp.abc import AbstractView
+from aiohttp.abc import AbstractView, Request
 from aiohttp.typedefs import (
     Byteish,
     DEFAULT_JSON_DECODER,
     DEFAULT_JSON_ENCODER,
-    Handler,
     JSONDecoder,
     JSONEncoder,
     LooseCookies,
     LooseCookiesIterables,
     LooseCookiesMappings,
     LooseHeaders,
-    Middleware,
     PathLike,
     RawHeaders,
     StrOrURL,
@@ -20,7 +18,9 @@ from aiohttp.typedefs import (
 from typing_extensions import TypeAlias
 
 from rapidy.constants import PYDANTIC_V1, PYDANTIC_V2
-from rapidy.web_response import StreamResponse
+
+if TYPE_CHECKING:
+    from rapidy.web_response import StreamResponse
 
 __all__ = (
     'Byteish',
@@ -38,21 +38,33 @@ __all__ = (
     'Handler',
     'PathLike',
     'DictStrAny',
+    'DictStrStr',
+    'DictStrListAny',
+    'DictStrListStr',
     'MethodHandler',
     'HandlerType',
     'HandlerOrMethod',
 )
 
 DictStrAny = Dict[str, Any]
-MethodHandler = Callable[[], Awaitable[StreamResponse]]
-HandlerType = Union[Type[AbstractView], Handler]
+DictStrStr = Dict[str, str]
+DictStrListAny = Dict[str, List[Any]]
+DictStrListStr = Dict[str, List[str]]
+
+Handler = Callable[..., Awaitable['StreamResponse']]
+MethodHandler = Callable[..., Awaitable['StreamResponse']]
+HandlerType = Union[Handler, Type[AbstractView]]
+Middleware = Callable[[Request, Handler], Awaitable['StreamResponse']]
 
 HandlerOrMethod = Union[Handler, MethodHandler]
 
 ResultValidate: TypeAlias = Dict[str, Any]
-ErrorList: TypeAlias = List[Dict[str, Any]]
-ValidateReturn: TypeAlias = Tuple[Optional[ResultValidate], Optional[ErrorList]]
+ValidationErrorList: TypeAlias = List[Dict[str, Any]]
+ValidateReturn: TypeAlias = Tuple[Optional[ResultValidate], Optional[ValidationErrorList]]
 
+RouterDeco = Callable[[HandlerType], HandlerType]
+
+NoArgAnyCallable = Callable[[], Any]
 
 if PYDANTIC_V1:
     from pydantic.error_wrappers import ErrorWrapper as ErrorWrapper

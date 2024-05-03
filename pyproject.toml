@@ -1,8 +1,11 @@
 [tool.poetry]
 name = "rAPIdy"
-version = "0.1.1"
+version = "0.2.0"
 description = "rAPIdy - write quickly - write beautifully"
-authors = ["Daniil Grois <daniil.grois@gmail.com>"]
+authors = [
+    "Daniil Grois <daniil.grois@gmail.com>",
+    "Lev Zaplatin <lev@zaplatin.dev>",
+]
 keywords = [
     "rAPIdy",
     "aiohttp",
@@ -11,6 +14,7 @@ keywords = [
     "fast",
     "http server",
     "Daniil Grois",
+    "Lev Zaplatin",
 ]
 license = "MIT License"
 readme = "README.md"
@@ -38,10 +42,14 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.8",
 ]
+packages = [
+  {include = "rapidy"},
+  {include = "rapidy/py.typed"},
+]
 
 [tool.poetry.dependencies]
 python = "^3.8"
-aiohttp = "^3.9.3"
+aiohttp = "^3.8.1"
 pydantic = ">=1.7.4,!=1.8,!=1.8.1,!=1.8.2,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0"
 
 [tool.poetry.group.test.dependencies]
@@ -75,6 +83,7 @@ ignore = [
     "S101",    #  Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
     "WPS110",  #  Found wrong variable name: X
     "WPS111",  #  Found too short name: d < X
+    "WPS113",  #  Found same alias import: X
     "WPS114",  #  Found underscored number name pattern: X_1
     "WPS115",  #  Found upper-case constant in a class: X
     "WPS201",  #  Found module with too many imports: X > 12
@@ -97,6 +106,7 @@ ignore = [
     "WPS318",  #  Found extra indentation
     "WPS326",  #  Found implicit string concatenation
     "WPS337",  #  Found multiline conditions
+    "WPS402",  #  Found `noqa` comments overuse: X
     "WPS410",  #  Found wrong metadata variable: __all__
     "WPS420",  #  Found wrong keyword
     "WPS421",  #  Found wrong function call: vars
@@ -114,11 +124,16 @@ ignore = [
     "W503",    #  line break before binary operator
 ]
 per-file-ignores = [
-    'rapidy/web.py: WPS232',
-    'rapidy/__init__.py: WPS412',
+    'rapidy/__init__.py: N813 WPS412 WPS413 WPS433 WPS442',
+    'rapidy/_version.py: WPS116',
+    'rapidy/web.py: F401 WPS112 WPS232 WPS433',
+    'rapidy/web_exceptions.py: D400 F401 WPS112 WPS433',
     'rapidy/fields.py: C901 WPS113 WPS433',
     'rapidy/typedefs.py: WPS433 WPS113 WPS440',
     'rapidy/_client_errors.py: C901 WPS433 WPS440',
+    'rapidy/mypy/__init__.py: WPS412',
+    'rapidy/mypy/*: WPS433',
+    'rapidy/mypy/_type_helpers.py: WPS221 WPS602',
 ]
 
 
@@ -139,7 +154,7 @@ allow_untyped_defs = true
 allow_untyped_calls = true
 allow_subclassing_any = true
 allow_untyped_decorators = true
-disable_error_code = "var-annotated, has-type"
+disable_error_code = "var-annotated, has-type, no-redef, empty-body"
 
 [tool.isort]
 multi_line_output = 3

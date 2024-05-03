@@ -8,6 +8,7 @@ from aiohttp.streams import EmptyStreamReader, StreamReader
 from aiohttp.typedefs import JSONDecoder
 from multidict import MultiDict
 
+from rapidy import hdrs
 from rapidy._client_errors import (
     BodyDataSizeExceedError,
     ExtractJsonError,
@@ -16,26 +17,24 @@ from rapidy._client_errors import (
 )
 from rapidy._parsers import parse_multi_params
 from rapidy.media_types import ApplicationJSON
-from rapidy.typedefs import DictStrAny
+from rapidy.typedefs import DictStrAny, DictStrListAny, DictStrListStr, DictStrStr
 
 
-async def extract_path(request: Request) -> DictStrAny:
+async def extract_path(request: Request) -> DictStrStr:
     return dict(request.match_info)
 
 
-async def extract_headers(request: Request) -> DictStrAny:
-    pairs = request.headers
-    return parse_multi_params(pairs)
+async def extract_headers(request: Request) -> DictStrStr:
+    return parse_multi_params(request.headers)  # type: ignore[return-value]
 
 
-async def extract_cookies(request: Request) -> DictStrAny:
+async def extract_cookies(request: Request) -> DictStrStr:
     cookies = request.cookies
     return dict(cookies)
 
 
-async def extract_query(request: Request) -> DictStrAny:
-    pairs = request.rel_url.query
-    return parse_multi_params(pairs)
+async def extract_query(request: Request) -> DictStrStr:
+    return parse_multi_params(request.rel_url.query)  # type: ignore[return-value]
 
 
 async def extract_body_stream(request: Request, max_size: int) -> StreamReader:
@@ -77,7 +76,7 @@ async def extract_body_x_www_form(
         max_size: int,
         attrs_case_sensitive: bool,
         duplicated_attrs_parse_as_array: bool,
-) -> DictStrAny:
+) -> Union[DictStrStr, DictStrListStr]:
     if not request.body_exists:
         return {}
 
@@ -103,7 +102,7 @@ async def extract_body_x_www_form(
         else:
             data[key] = value
 
-    return parse_multi_params(data)
+    return parse_multi_params(data, parse_as_array=duplicated_attrs_parse_as_array)
 
 
 async def extract_body_multi_part(
@@ -111,7 +110,7 @@ async def extract_body_multi_part(
         max_size: int,
         attrs_case_sensitive: bool,
         duplicated_attrs_parse_as_array: bool,
-) -> DictStrAny:
+) -> Union[DictStrAny, DictStrListAny]:
     if not request.body_exists:
         return {}
 
@@ -146,7 +145,7 @@ async def extract_body_multi_part(
 
         available_bytes_to_read = updated_available_bytes_to_read
 
-        payload = _get_part_data_payload(part=part, part_data=part_data, current_part_num=part_num)
+        payload = _get_part_data_payload(part=part, part_data=part_data)
 
         if attrs_case_sensitive is False:
             part_name = part_name.lower()
@@ -160,7 +159,7 @@ async def extract_body_multi_part(
 
         part_num += 1
 
-    return parse_multi_params(data)
+    return parse_multi_params(data, parse_as_array=duplicated_attrs_parse_as_array)
 
 
 async def _get_multipart_reader(request: Request) -> MultipartReader:
@@ -205,6 +204,10 @@ async def _get_next_part(
 ) -> Optional[Union[MultipartReader, BodyPartReader]]:
     try:
         part = await multipart_reader.next()
+    except AssertionError as assertion_err:
+        if assertion_err.args[0] == 'Reading after EOF':  # NOTE: this is aiohttp bug
+            return None
+        raise assertion_err
     except Exception as value_error:
         raise ExtractMultipartPartError(
             multipart_error=value_error.args[0],  # TODO: specific error parsing
@@ -228,20 +231,6 @@ def _get_part_name(
     return part_name
 
 
-def _get_part_content_type(
-    part: BodyPartReader,
-    current_part_num: int,
-) -> str:
-    part_content_type = part.headers.get('content-type')
-    if part_content_type is None:
-        raise ExtractMultipartPartError(
-            multipart_error='Part missing Content-Type header',
-            part_num=current_part_num,
-        )
-
-    return part_content_type
-
-
 async def _read_part_chunk(part: BodyPartReader) -> Tuple[bytes, int]:
     if part._at_eof:  # noqa:  WPS437
         return b'', 0
@@ -255,11 +244,10 @@ async def _read_part_chunk(part: BodyPartReader) -> Tuple[bytes, int]:
 def _get_part_data_payload(
     part: BodyPartReader,
     part_data: bytearray,
-    current_part_num: int,
 ) -> Union[bytearray, str]:
-    part_content_type = _get_part_content_type(part=part, current_part_num=current_part_num)
+    part_content_type = part.headers.get(hdrs.CONTENT_TYPE)
 
-    if part_content_type.startswith('text/') or part_content_type == ApplicationJSON:
+    if part_content_type and (part_content_type.startswith('text/') or part_content_type == ApplicationJSON):
         part_charset = part.get_charset(default='utf-8')
         part_decoded_data = part.decode(part_data)
         return part_decoded_data.decode(part_charset)

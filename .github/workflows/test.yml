@@ -9,11 +9,16 @@ on:
       - opened
       - synchronize
 
+concurrency:
+  group: ${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   pre-commit:
-    runs-on: ubuntu-latest
+    runs-on: ["self-hosted", "Ubuntu-latest"]
     strategy:
       fail-fast: false
+      max-parallel: 50
       matrix:
         pydantic-version:
           - "pydantic-v1"
@@ -27,14 +32,15 @@ jobs:
       - name: Checkout git repository
         uses: actions/checkout@v4
 
-      - name: Install poetry
-        run: pip install poetry==1.7.0
-
       - name: Prepare python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.9"
-          cache: "poetry"
+          python-version: "3.11"
+
+      - name: Install poetry
+        uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: "1.7.1"
 
       - name: Install Pydantic v1
         if: matrix.pydantic-version == 'pydantic-v1'
@@ -48,9 +54,11 @@ jobs:
         uses: pre-commit/action@v3.0.0
 
   test:
-    runs-on: ubuntu-latest
+    runs-on: ["self-hosted", "Ubuntu-latest"]
+    needs: ["pre-commit"]
     strategy:
       fail-fast: false
+      max-parallel: 50
       matrix:
         python-version:
           - "3.12"
@@ -61,6 +69,31 @@ jobs:
         pydantic-version:
           - "pydantic-v1"
           - "pydantic-v2"
+        aiohttp-version:
+          - "3.9.5"
+          - "3.9.4"
+          - "3.9.3"
+          - "3.9.2"
+          - "3.9.1"
+          - "3.9.0"
+          - "3.8.6"
+          - "3.8.5"
+          - "3.8.4"
+          - "3.8.3"
+          - "3.8.1"
+        exclude:
+          - python-version: "3.12"
+            aiohttp-version: "3.8.1"
+          - python-version: "3.12"
+            aiohttp-version: "3.8.3"
+          - python-version: "3.12"
+            aiohttp-version: "3.8.4"
+          - python-version: "3.12"
+            aiohttp-version: "3.8.5"
+          - python-version: "3.12"
+            aiohttp-version: "3.8.6"
+          - python-version: "3.11"
+            aiohttp-version: "3.8.1"
     steps:
       - name: Dump github context
         env:
@@ -70,14 +103,15 @@ jobs:
       - name: Checkout git repository
         uses: actions/checkout@v4
 
-      - name: Install poetry
-        run: pip install poetry==1.7.0
-
       - name: Prepare python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: "poetry"
+
+      - name: Install poetry
+        uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: "1.7.1"
 
       - name: Install dependencies
         run: poetry install
@@ -90,14 +124,91 @@ jobs:
         if: matrix.pydantic-version == 'pydantic-v2'
         run: poetry add "pydantic>=2.0.2,<3.0.0"
 
+      - name: Install aiohttp
+        run: poetry add "aiohttp==${{ matrix.aiohttp-version }}"
+
       - name: Create coverage dir
         run: mkdir coverage
 
       - name: Test with pytest
         env:
-          CONTEXT: ${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.pydantic-version }}
-          COVERAGE_FILE: coverage/.coverage.${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.pydantic-version }}
-        run: poetry run coverage run -m pytest
+          CONTEXT: ${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.pydantic-version }}-${{ matrix.aiohttp-version }}
+          COVERAGE_FILE: coverage/.coverage.${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.pydantic-version }}-${{ matrix.aiohttp-version }}
+        run: poetry run coverage run -m pytest --ignore=./tests/mypy ./tests
+
+      - name: Store coverage file
+        uses: actions/upload-artifact@v3
+        with:
+          path: coverage
+          name: coverage
+
+  test-mypy:
+    runs-on: [ "self-hosted", "Ubuntu-latest" ]
+    needs: [ "pre-commit" ]
+    strategy:
+      fail-fast: false
+      max-parallel: 50
+      matrix:
+        python-version:
+          - "3.12"
+          - "3.11"
+          - "3.10"
+          - "3.9"
+          - "3.8"
+        pydantic-version:
+          - "pydantic-v1"
+          - "pydantic-v2"
+        mypy-version:
+          - "1.9.0"
+          - "1.4.1"
+          - "1.3.0"
+        exclude:
+          # mypy behaves on python version 3.9, combining new and old approaches to error output.
+          - python-version: "3.9"
+            mypy-version: "1.9.0"
+          - python-version: "3.9"
+            mypy-version: "1.4.1"
+    steps:
+      - name: Dump github context
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: echo "$GITHUB_CONTEXT"
+
+      - name: Checkout git repository
+        uses: actions/checkout@v4
+
+      - name: Prepare python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install poetry
+        uses: abatilo/actions-poetry@v2
+        with:
+          poetry-version: "1.7.1"
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Install Pydantic v1
+        if: matrix.pydantic-version == 'pydantic-v1'
+        run: poetry add "pydantic>=1.10.0,<2.0.0"
+
+      - name: Install Pydantic v2
+        if: matrix.pydantic-version == 'pydantic-v2'
+        run: poetry add "pydantic>=2.0.2,<3.0.0"
+
+      - name: Install Mypy
+        run: poetry add "mypy==${{ matrix.mypy-version }}"
+
+      - name: Create coverage dir
+        run: mkdir coverage
+
+      - name: Test with pytest
+        env:
+          CONTEXT: ${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.pydantic-version }}-${{ matrix.mypy-version }}
+          COVERAGE_FILE: coverage/.coverage.${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.pydantic-version }}-${{ matrix.mypy-version }}
+        run: poetry run coverage run -m pytest ./tests/mypy
 
       - name: Store coverage file
         uses: actions/upload-artifact@v3
@@ -106,8 +217,8 @@ jobs:
           name: coverage
 
   coverage-combine:
-    needs: [ test ]
-    runs-on: ubuntu-latest
+    needs: [ "test", "test-mypy" ]
+    runs-on: ["self-hosted", "Ubuntu-latest"]
     steps:
       - name: Dump github context
         env:
@@ -144,12 +255,17 @@ jobs:
     if: always()
     needs:
       - coverage-combine
-    runs-on: ubuntu-latest
+    runs-on: ["self-hosted", "Ubuntu-latest"]
     steps:
       - name: Dump github context
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
         run: echo "$GITHUB_CONTEXT"
+
+      - name: Prepare python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.8"
 
       # https://github.com/marketplace/actions/alls-green#why
       - name: Decide whether the needed jobs succeeded or failed
