@@ -86,24 +86,37 @@ if __name__ == '__main__':
 >
 > If you need to access the current `request` within a handler,
 > simply declare an attribute with any name of your choosing and specify its type as `web.Request`. rAPIdy will automatically replace this attribute with the current instance of `web.Request`.
-> ```python
-> from rapidy import web
->
-> routes = web.RouteTableDef()
->
-> @routes.post('/')
-> async def handler(
->         request: str = web.Request,
-> ) -> web.Response:
->    print({'request': request})
->    return web.json_response({'data': 'success'})
->
-> app = web.Application()
-> app.add_routes(routes)
->
-> if __name__ == '__main__':
->    web.run_app(app, host='127.0.0.1', port=8080)
-> ```
+```python
+from typing import Annotated
+from rapidy import web
+
+routes = web.RouteTableDef()
+
+@routes.get('/default_handler_example')
+async def default_handler_example(
+        request: str = web.Request,
+) -> web.Response:
+    print({'request': request})
+    return web.json_response({'data': 'success'})
+
+@routes.get('/handler_without_request_example')
+async def handler_without_request_example() -> web.Response:
+    return web.json_response({'data': 'success'})
+
+@routes.get('/handler_request_as_snd_attr_example')
+async def handler_request_as_snd_attr_example(
+        host: Annotated[str, web.Header(alias='Host')],
+        request: web.Request,
+) -> web.Response:
+    print({'host': host, 'request': request})
+    return web.json_response({'data': 'success'})
+
+app = web.Application()
+app.add_routes(routes)
+
+if __name__ == '__main__':
+   web.run_app(app, host='127.0.0.1', port=8080)
+```
 
 ### Middlewares
 Processing an Authorization Token in Middleware
@@ -150,9 +163,22 @@ A parameter in `rAPIdy` offers all the functionalities of `pydantic.Field`, and 
 
 ```python
 from decimal import Decimal
+from pydantic import BaseModel, Field
 from rapidy import web
 
 routes = web.RouteTableDef()
+
+class Schema(BaseModel):
+    positive: int = Field(gt=0)
+    non_negative: int = Field(ge=0)
+    negative: int = Field(lt=0)
+    non_positive: int = Field(le=0)
+    even: int = Field(multiple_of=2)
+    love_for_pydantic: float = Field(allow_inf_nan=True)
+    short: str = Field(min_length=3)
+    long: str = Field(max_length=10)
+    regex: str = Field(pattern=r'^\d*$')
+    precise: Decimal = Field(max_digits=5, decimal_places=2)
 
 @routes.get('/')
 async def handler(
@@ -166,6 +192,12 @@ async def handler(
     long: str = web.JsonBody(max_length=10),
     regex: str = web.JsonBody(pattern=r'^\d*$'),
     precise: Decimal = web.JsonBody(max_digits=5, decimal_places=2),
+) -> web.Response:
+    return web.Response()
+
+@routes.get('/schema')
+async def handler_schema(
+    body: Schema = web.JsonBodySchema(),
 ) -> web.Response:
     return web.Response()
 
