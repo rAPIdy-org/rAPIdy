@@ -34,11 +34,11 @@
 
 # Key features
 
-* ✏️ Minimalism - check and retrieve data in just one line of code
-* 🐍 Seamless support for Python native types
-* 📔 Full integration with <a href="https://github.com/pydantic/pydantic">pydantic</a>
-* 🚀 Powered by <a href="https://github.com/aio-libs/aiohttp">aiohttp</a> with support for native functionality
-* 📤 Effortless extraction of basic types from incoming data in Python
+* ✏️ **Minimalism**: Retrieve and check data effortlessly using just a single line of code
+* 🐍 **Native Python Support**: Offers seamless compatibility with Python native types
+* 📔 **Pydantic Integration**: Fully integrated with <a href="https://github.com/pydantic/pydantic">pydantic</a> for robust data validation
+* 🚀 **Powered by aiohttp**: Utilizes <a href="https://github.com/aio-libs/aiohttp">aiohttp</a> to leverage its powerful asynchronous features
+* 📤 **Efficient Data Handling**: Simplifies the extraction of basic types from incoming data in Python
 
 
 ---
@@ -80,10 +80,12 @@ if __name__ == '__main__':
 ```
 
 > [!NOTE]
-> `rAPIdy` supports defining handlers in the same way as <a href="https://docs.aiohttp.org/en/stable/web_quickstart.html" target="blank">aiohttp-quickstart</a> except that request is no longer a required parameter for functional handlers.
+> `rAPIdy` allows you to define handlers just like in <a href="https://docs.aiohttp.org/en/stable/web_quickstart.html" target="blank">aiohttp-quickstart</a>,
+> but with a key improvement:
+> the `request` parameter is no longer required for functional handlers
 >
-> If you need to get the current `request` in the handler,
-> create an attribute with an arbitrary name and be sure to specify the `web.Request` type, and rAPIdy will substitute the current `web.Request` instance in that place.
+> If you need to access the current `request` within a handler,
+> simply declare an attribute with any name of your choosing and specify its type as `web.Request`. rAPIdy will automatically replace this attribute with the current instance of `web.Request`.
 > ```python
 > from rapidy import web
 >
@@ -104,7 +106,7 @@ if __name__ == '__main__':
 > ```
 
 ### Middlewares
-A simple example of processing an authorization token on the middleware layer.
+Processing an Authorization Token in Middleware
 
 ```python
 from rapidy import web
@@ -135,17 +137,16 @@ if __name__ == '__main__':
 ```
 
 > [!IMPORTANT]
-> The first two attributes in a middleware are mandatory and always represent `request` and `handler`.
+> The first two attributes in a middleware are mandatory and must always represent the `request` and the `handler` respectively. These attributes are essential for the correct functioning of the middleware
 ---
 
 ## Request validation
-`rAPIdy` uses its own parameters to validate incoming _http-request_ data.
+`rAPIdy` utilizes custom parameters to validate incoming HTTP request data, ensuring integrity and compliance with expected formats
 
 > [!TIP]
-> A parameter in `rAPIdy` is an object representing meta-information about the type of data it retrieves.
+> A parameter in `rAPIdy` represents an object that mcontains meta-information about the type of data it retrieves
 
-A parameter in `rAPIdy` can do everything that `pydantic.Field` can do _(and even a bit more)_,
-which means that all the kinds of validation that `pydantic` supports, `rAPIdy-parameter` supports too.
+A parameter in `rAPIdy` offers all the functionalities of `pydantic.Field`, and even more. This means `rAPIdy-parameter` support every type of validation that `pydantic` provides, ensuring comprehensive data integrity and conformity
 
 ```python
 from decimal import Decimal
@@ -375,7 +376,9 @@ async def handler(
 ### Ways to define metadata for a query parameter
 There are a total of two ways to define query parameters.
 
-Define using the `Annotated` auxiliary type or define using the `default` value for the attribute.
+1. **Using the Annotated Auxiliary Type**: Specify metadata directly within the Annotated type
+2. **Using the Default Attribute Value**: Define the query parameter's default value along with its metadata
+
 
 ```python
 from typing import Annotated  # use typing_extensions if py version == 3.8
@@ -389,15 +392,15 @@ async def handler(
 
 ### Special attributes
 
-Some `rAPIdy-parameters` have additional attributes not specific to `pydantic`.
+Some `rAPIdy-parameters` include additional attributes that are not found in `Pydantic`, offering extended functionality beyond standard data validation
 
 #### Body
-At the moment only `body` type has special parameters.
+ Currently, only parameters of the body type include special attributes in `rAPIdy`
 
 > [!WARNING]
 > Additional attributes can only be specified for `Schema-parameters` and `Raw-parameters`.
 
-Each `body` parameter has a `body_max_size` attribute that limits the maximum size of the request body for the current handler.
+In `rAPIdy`, the `body_max_size` attribute associated with each body parameter restricts the maximum allowable size of the request `body` for a specific handler
 
 `body_max_size` (_int_) - indicating the maximum number of bytes the handler expects.
 
@@ -543,7 +546,7 @@ plugins = [
 
 
 # Migration from aiohttp to rAPIdy
-`rAPIdy` neatly extends `aiohttp` - meaning that anything already written in `aiohttp` will work as before.
+`rAPIdy` neatly extends `aiohttp` - meaning that anything already written in `aiohttp` will work as before without any modifications
 
 `rAPIdy` has exactly the same overridden module names as `aiohttp`.
 
