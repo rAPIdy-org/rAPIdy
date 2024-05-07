@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "rAPIdy"
-version = "0.2.0"
+version = "0.2.1"
 description = "rAPIdy - write quickly - write beautifully"
 authors = [
     "Daniil Grois <daniil.grois@gmail.com>",
