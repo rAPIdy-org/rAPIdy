@@ -15,6 +15,9 @@ from rapidy.request_params import create_param_model_field_by_request_param, Par
 from rapidy.typedefs import Handler, MethodHandler, Middleware, NoArgAnyCallable, ValidateReturn
 
 
+# FIXME: I don't like this solution as it is being used now.
+#  We need to mark handlers somehow so that we don't have
+#  to check them every time for issubclass(handler, AbstractView) or isinstance(handler, FunctionType).
 class HandlerEnumType(str, Enum):
     func = 'func'
     method = 'method'
@@ -23,10 +26,6 @@ class HandlerEnumType(str, Enum):
     @property
     def is_func(self) -> bool:
         return self == self.func
-
-    @property
-    def is_method(self) -> bool:
-        return self == self.method
 
 
 class AnnotationContainerAddFieldError(TypeError):
@@ -281,10 +280,6 @@ class AnnotationContainer:
             raise
 
         return self._request_param_name
-
-    @property
-    def is_method_container(self) -> bool:
-        return self._handler_type.is_method
 
     def add_param(
             self,

@@ -1,11 +1,11 @@
 from abc import ABC
-from typing import Any, Dict, List, Optional, Sequence, Tuple, Type, TYPE_CHECKING, Union
+from typing import Any, Dict, Optional, Tuple, Type, TYPE_CHECKING, Union
 
 from pydantic import ValidationError
 from pydantic.fields import FieldInfo as FieldInfo
 from typing_extensions import Annotated
 
-from rapidy._client_errors import RequestErrorModel
+from rapidy._client_errors import _regenerate_error_with_loc
 from rapidy._request_params_base import ParamType, ValidateType
 from rapidy.constants import PYDANTIC_V1, PYDANTIC_V2
 from rapidy.typedefs import NoArgAnyCallable, Required, Undefined, ValidateReturn
@@ -41,7 +41,6 @@ class ParamFieldInfo(FieldInfo, ABC):
 if PYDANTIC_V1:  # noqa: C901
     from pydantic import BaseConfig  # noqa: WPS433
     from pydantic.class_validators import Validator as Validator  # noqa: WPS433
-    from pydantic.error_wrappers import ErrorWrapper  # noqa: WPS433
     from pydantic.fields import ModelField as PydanticModelField  # noqa: WPS433
     from pydantic.schema import get_annotation_from_field_info  # noqa: WPS433
 
@@ -106,34 +105,6 @@ if PYDANTIC_V1:  # noqa: C901
                 f'Hint: check that {type_} is a valid Pydantic field type. ',
             ) from None
 
-    def _regenerate_error_with_loc(
-            *,
-            errors: Sequence[Any],
-            loc_prefix: Tuple[Union[str, int], ...],
-    ) -> List[Dict[str, Any]]:
-        return [
-            {
-                **err,
-                'loc': loc_prefix + err.get('loc', ()),
-            }
-            for err in _normalize_errors(errors)
-        ]
-
-    def _normalize_errors(errors: Sequence[Any]) -> List[Dict[str, Any]]:
-        use_errors: List[Any] = []
-        for error in errors:
-            if isinstance(error, ErrorWrapper):
-                new_errors = ValidationError(
-                    errors=[error],
-                    model=RequestErrorModel,
-                ).errors()
-                use_errors.extend(new_errors)
-            elif isinstance(error, list):
-                use_errors.extend(_normalize_errors(error))
-            else:
-                use_errors.append(error)
-        return use_errors
-
 elif PYDANTIC_V2:
     from dataclasses import dataclass  # noqa: WPS433
 
@@ -141,19 +112,6 @@ elif PYDANTIC_V2:
 
     def get_annotation_from_field_info(annotation: Any, field_info: FieldInfo, field_name: str) -> Any:  # noqa: WPS440
         return annotation
-
-    def _regenerate_error_with_loc(  # noqa: WPS440
-            *,
-            errors: Sequence[Any],
-            loc_prefix: Tuple[Union[str, int], ...],
-    ) -> List[Dict[str, Any]]:
-        return [
-            {
-                **err,
-                'loc': loc_prefix + err.get('loc', ()),
-            }
-            for err in errors
-        ]
 
     @dataclass
     class ModelField:  # type: ignore[no-redef]  # noqa: WPS440

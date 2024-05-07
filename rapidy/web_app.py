@@ -2,20 +2,20 @@ import asyncio
 import logging
 import warnings
 from functools import partial, update_wrapper
-from typing import Any, cast, Dict, Iterable, Iterator, List, Mapping, Optional, Tuple
+from types import FunctionType
+from typing import Any, Dict, Iterable, Iterator, Mapping, Optional, Tuple
 
-from aiohttp.abc import AbstractMatchInfo
+from aiohttp.abc import AbstractMatchInfo, AbstractView
 from aiohttp.log import web_logger
 from aiohttp.web_app import Application as AiohttpApplication, CleanupError
 from aiohttp.web_middlewares import _fix_request_current_app
-from aiohttp.web_urldispatcher import MatchInfoError, UrlMappingMatchInfo
+from aiohttp.web_urldispatcher import MatchInfoError
 
 from rapidy import hdrs
 from rapidy._annotation_container import AnnotationContainer, create_annotation_container, HandlerEnumType
-from rapidy._client_errors import _normalize_errors
+from rapidy._web_request_validation import _validate_request
 from rapidy.constants import CLIENT_MAX_SIZE
 from rapidy.typedefs import Handler, Middleware
-from rapidy.web_exceptions import HTTPValidationFailure
 from rapidy.web_request import Request
 from rapidy.web_response import StreamResponse
 from rapidy.web_urldispatcher import StaticResource, UrlDispatcher
@@ -128,7 +128,7 @@ class Application(AiohttpApplication):
                         return await handler(request)
                 else:
                     async def w_handler(request: Request) -> StreamResponse:  # noqa: WPS440 WPS442
-                        return await self._get_handler_response(request, handler, match_info)
+                        return await self._get_handler_response(request, handler)
 
                 for app in match_info.apps[::-1]:
                     for middleware, new_style in app._middlewares_handlers:
@@ -150,7 +150,7 @@ class Application(AiohttpApplication):
                 if isinstance(match_info.route.resource, StaticResource):
                     return await handler(request)
                 else:
-                    return await self._get_handler_response(request, handler, match_info)
+                    return await self._get_handler_response(request, handler)
 
         return resp
 
@@ -158,29 +158,25 @@ class Application(AiohttpApplication):
             self,
             request: Request,
             handler: Handler,
-            match_info: UrlMappingMatchInfo,
     ) -> StreamResponse:
-        annotation_container = match_info.route.get_method_container(request.method)
+        if isinstance(handler, FunctionType):
+            annotation_container = request._match_info.route.get_method_container(request.method)
 
-        validate_request_data_for_handler = await self._validate_request_for_handler(
-            request=request,
-            annotation_container=annotation_container,
-        )
+            validate_request_data_for_handler = await _validate_request(
+                request=request,
+                annotation_container=annotation_container,
+                errors_response_field_name=self._client_errors_response_field_name,
+            )
 
-        if annotation_container.is_method_container:
-            return await handler(request, **validate_request_data_for_handler)
+            if annotation_container.request_exists:
+                validate_request_data_for_handler[annotation_container.request_param_name] = request
 
-        if annotation_container.request_exists:
-            validate_request_data_for_handler[annotation_container.request_param_name] = request
+            return await handler(**validate_request_data_for_handler)
 
-        return await handler(**validate_request_data_for_handler)
+        if issubclass(handler, AbstractView):  # type: ignore[arg-type]
+            return await handler(request)
 
-    async def _validate_request_for_handler(
-            self,
-            request: Request,
-            annotation_container: AnnotationContainer,
-    ) -> Dict[str, Any]:
-        return await self._validate_request(annotation_container=annotation_container, request=request)
+        raise ValueError('Unknown handler type')
 
     async def _validate_request_for_middleware(
             self,
@@ -190,29 +186,10 @@ class Application(AiohttpApplication):
     ) -> Dict[str, Any]:
         annotation_container = app._get_middleware_annotation_container(middleware)
         if annotation_container:
-            return await self._validate_request(annotation_container=annotation_container, request=request)
-
-        return {}
-
-    async def _validate_request(
-            self,
-            annotation_container: AnnotationContainer,
-            request: Request,
-    ) -> Dict[str, Any]:
-        values: Dict[str, Any] = {}
-        errors: List[Dict[str, Any]] = []
-
-        for param_container in annotation_container:
-            param_values, param_errors = await param_container.get_request_data(request)
-            if param_errors:
-                errors += param_errors
-            else:
-                values.update(cast(Dict[str, Any], param_values))
-
-        if errors:
-            raise HTTPValidationFailure(
-                validation_failure_field_name=self._client_errors_response_field_name,
-                errors=_normalize_errors(errors),
+            return await _validate_request(
+                request=request,
+                annotation_container=annotation_container,
+                errors_response_field_name=self._client_errors_response_field_name,
             )
 
-        return values
+        return {}

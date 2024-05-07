@@ -98,6 +98,23 @@ def _create_class_handler_as_default_def(type_: Any, param: Any, expected_data: 
     return Foo
 
 
+def _create_class_extended_handler_success(type_: Any, param: Any, expected_data: Any) -> Any:
+    class Foo(web.View):
+        def __init__(self, request: web.Request) -> None:
+            super().__init__(request)
+            self.foo = 'foo'
+
+        async def post(
+                self,
+                attr: type_ = param,
+        ) -> web.Response:
+            assert self.foo
+            assert attr == expected_data
+            return web.Response()
+
+    return Foo
+
+
 success_definition_test_parameters = [
     param(str, Header, {'headers': {'attr': 'attr'}}, 'attr', id='header-param'),
     param(str, Cookie, {'cookies': {'attr': 'attr'}}, 'attr', id='cookie-param'),
@@ -125,6 +142,7 @@ create_method_as_decorated_route_func_parameters = [
 create_view_parameters = [
     param(_create_class_handler_as_annotated_def, id='attr-definition-as-annotated'),
     param(_create_class_handler_as_default_def, id='attr-definition-as-default'),
+    param(_create_class_extended_handler_success, id='extended-view'),
 ]
 
 
