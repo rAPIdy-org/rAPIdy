@@ -1,9 +1,8 @@
 from abc import ABC
 from types import FunctionType
-from typing import Any, Awaitable, Callable, cast, Optional, Type, Union
+from typing import Awaitable, Callable, cast, Optional, Type, Union
 
 from aiohttp.abc import AbstractView
-from aiohttp.web_request import Request
 from aiohttp.web_response import StreamResponse
 from aiohttp.web_urldispatcher import (
     _requote_path,
@@ -23,6 +22,7 @@ from aiohttp.web_urldispatcher import (
 
 from rapidy import hdrs
 from rapidy._annotation_container import AnnotationContainer, create_annotation_container, HandlerEnumType
+from rapidy._web_request_validation import _validate_request
 from rapidy.typedefs import Handler, HandlerType, MethodHandler
 
 __all__ = [
@@ -152,10 +152,6 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
 
 
 class View(AioHTTPView):
-    def __init__(self, request: Request, **request_validated_data: Any) -> None:
-        super().__init__(request)
-        self._request_validated_data = request_validated_data
-
     async def _iter(self) -> StreamResponse:
         if self.request.method not in hdrs.METH_ALL:  # aiohttp code  # pragma: no cover
             self._raise_allowed_methods()
@@ -166,7 +162,13 @@ class View(AioHTTPView):
 
         method = cast(MethodHandler, method)
 
-        ret = await method(**self._request_validated_data)
+        validated_data = await _validate_request(
+            request=self.request,
+            annotation_container=self._request.match_info.route.get_method_container(self.request.method),
+            errors_response_field_name=self._request.app._client_errors_response_field_name,
+        )
+
+        ret = await method(**validated_data)
 
         assert isinstance(ret, StreamResponse)
         return ret

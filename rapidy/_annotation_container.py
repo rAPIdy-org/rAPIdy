@@ -15,6 +15,9 @@ from rapidy.request_params import create_param_model_field_by_request_param, Par
 from rapidy.typedefs import Handler, MethodHandler, Middleware, NoArgAnyCallable, ValidateReturn
 
 
+# FIXME: I don't like this solution as it is being used now.
+#  We need to mark handlers somehow so that we don't have
+#  to check them every time for issubclass(handler, AbstractView) or isinstance(handler, FunctionType).
 class HandlerEnumType(str, Enum):
     func = 'func'
     method = 'method'
@@ -24,21 +27,21 @@ class HandlerEnumType(str, Enum):
     def is_func(self) -> bool:
         return self == self.func
 
-    @property
-    def is_method(self) -> bool:
-        return self == self.method
-
 
 class AnnotationContainerAddFieldError(TypeError):
     pass
 
 
 class RequestFieldAlreadyExistError(Exception):
-    _base_err_msg = 'Error during attribute definition in the handler - request param defined twice.'
+    _base_err_msg = (
+        'Error during attribute definition in the handler - request param defined twice.'
+        'The error may be because the first attribute of the handler is not annotated.'
+        'By default, `rAPIdy` will pass `web.Request` to the first attribute if it has no type annotation.'
+    )
 
     def __init__(self, *args: Any, handler: Any):
         super().__init__(
-            f'{self._base_err_msg} {_create_handler_info_msg(handler)}',
+            f'\n\n{self._base_err_msg} {_create_handler_info_msg(handler)}',
             *args,
         )
 
@@ -278,10 +281,6 @@ class AnnotationContainer:
 
         return self._request_param_name
 
-    @property
-    def is_method_container(self) -> bool:
-        return self._handler_type.is_method
-
     def add_param(
             self,
             name: str,
@@ -342,15 +341,20 @@ def create_annotation_container(
     container = AnnotationContainer(handler=handler, handler_type=handler_type)
 
     endpoint_signature = inspect.signature(handler)
-    signature_params = endpoint_signature.parameters
+    signature_params = endpoint_signature.parameters.items()
 
-    for param_name, param in signature_params.items():
+    num_of_extracted_signatures = 0
+
+    for param_name, param in signature_params:
+        num_of_extracted_signatures += 1
+
         try:
             annotation, param_field_info, default = extract_handler_attr_annotations(param=param, handler=handler)
         except NotParameterError:
             if handler_type.is_func:
                 if not get_args(param.annotation):
-                    if issubclass(Request, param.annotation):
+                    # FIXME: Fix the processing logic for the 1-st attribute to return a specific error
+                    if issubclass(Request, param.annotation) or num_of_extracted_signatures == 1:
                         container.set_request_field(param_name)
 
             continue
@@ -366,6 +370,7 @@ def create_annotation_container(
                 )
             except AnnotationContainerAddFieldError as annotation_container_add_field_error:
                 raise RequestParamError(handler=handler) from annotation_container_add_field_error
+
         else:  # pragma: no cover
             raise
 
