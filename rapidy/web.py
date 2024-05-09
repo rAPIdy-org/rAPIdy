@@ -97,6 +97,7 @@ from rapidy.web_exceptions import (
     HTTPUnsupportedMediaType as HTTPUnsupportedMediaType,
     HTTPUpgradeRequired as HTTPUpgradeRequired,
     HTTPUseProxy as HTTPUseProxy,
+    HTTPValidationFailure as HTTPValidationFailure,
     HTTPVariantAlsoNegotiates as HTTPVariantAlsoNegotiates,
     HTTPVersionNotSupported as HTTPVersionNotSupported,
 )
@@ -206,6 +207,7 @@ __all = [
     'HTTPUnauthorized',
     'HTTPUnavailableForLegalReasons',
     'HTTPUnprocessableEntity',
+    'HTTPValidationFailure',
     'HTTPUnsupportedMediaType',
     'HTTPUpgradeRequired',
     'HTTPUseProxy',
