@@ -17,13 +17,12 @@ from aiohttp.web_urldispatcher import (
     StaticResource,
     UrlDispatcher as AioHTTPUrlDispatcher,
     UrlMappingMatchInfo,
-    View as AioHTTPView,
+    View,
 )
 
 from rapidy import hdrs
-from rapidy._annotation_container import AnnotationContainer, create_annotation_container, HandlerEnumType
-from rapidy._web_request_validation import _validate_request
-from rapidy.typedefs import Handler, HandlerType, MethodHandler
+from rapidy._web_request_validation import handler_validation_wrapper, view_validation_wrapper
+from rapidy.typedefs import Handler, HandlerType
 
 __all__ = [
     'UrlDispatcher',
@@ -52,38 +51,17 @@ class ResourceRoute(AioHTTPResourceRoute, ABC):
             *,
             expect_handler: Optional[_ExpectHandler] = None,
     ) -> None:
+        if isinstance(handler, FunctionType):
+            handler = handler_validation_wrapper(handler)
+        elif issubclass(handler, View):  # type: ignore[arg-type]
+            handler = view_validation_wrapper(handler)  # type: ignore[arg-type]
+
         super().__init__(
             method=method,
             handler=handler,
             expect_handler=expect_handler,
             resource=resource,
         )
-
-        self.annotation_containers = {}
-
-        if isinstance(handler, FunctionType):
-            self.annotation_containers[method.lower()] = create_annotation_container(
-                handler,
-                handler_type=HandlerEnumType.func,
-            )
-
-        elif issubclass(handler, AbstractView):  # type: ignore[arg-type]
-            for method in (  # noqa: WPS335 WPS352 WPS440
-                handler_attr
-                for handler_attr in dir(handler)
-                if handler_attr.upper() in hdrs.METH_ALL
-            ):
-                method_handler: Optional[MethodHandler] = getattr(handler, method, None)
-                if method_handler is None:  # NOTE: Scenario is impossible.  # pragma: no cover
-                    raise
-
-                self.annotation_containers[method.lower()] = create_annotation_container(
-                    method_handler,
-                    handler_type=HandlerEnumType.method,
-                )
-
-    def get_method_container(self, method: str) -> AnnotationContainer:
-        return self.annotation_containers[method.lower()]
 
 
 class Resource(AioHTTPResource, ABC):
@@ -149,26 +127,3 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
     ) -> AbstractRoute:
         resource = self.add_resource(path, name=name)
         return resource.add_route(method, handler, expect_handler=expect_handler)
-
-
-class View(AioHTTPView):
-    async def _iter(self) -> StreamResponse:
-        if self.request.method not in hdrs.METH_ALL:  # aiohttp code  # pragma: no cover
-            self._raise_allowed_methods()
-
-        method: Optional[MethodHandler] = getattr(self, self.request.method.lower(), None)
-        if method is None:  # aiohttp code  # pragma: no cover
-            self._raise_allowed_methods()
-
-        method = cast(MethodHandler, method)
-
-        validated_data = await _validate_request(
-            request=self.request,
-            annotation_container=self._request.match_info.route.get_method_container(self.request.method),
-            errors_response_field_name=self._request.app._client_errors_response_field_name,
-        )
-
-        ret = await method(**validated_data)
-
-        assert isinstance(ret, StreamResponse)
-        return ret
