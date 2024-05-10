@@ -144,6 +144,8 @@ class BodyBase(ParamFieldInfo, ABC):
             body_max_size: Optional[int] = None,
             **field_info_kwargs: Any,
     ) -> None:
+        # FIXME:
+        #  now must be called after the definition of extractor in the inheritor class.
         self.body_max_size = body_max_size or MAX_BODY_SIZE
 
         self.extractor = partial(self.extractor, max_size=self.body_max_size)
