@@ -1,6 +1,5 @@
 import inspect
 from abc import ABC, abstractmethod
-from enum import Enum
 from types import FunctionType
 from typing import Any, Dict, Iterator, Optional, Set, Type, Union
 
@@ -13,19 +12,6 @@ from rapidy._fields import ModelField
 from rapidy._validators import validate_request_param_data
 from rapidy.request_params import create_param_model_field_by_request_param, ParamFieldInfo, ParamType, ValidateType
 from rapidy.typedefs import Handler, MethodHandler, Middleware, NoArgAnyCallable, ValidateReturn
-
-
-# FIXME: I don't like this solution as it is being used now.
-#  We need to mark handlers somehow so that we don't have
-#  to check them every time for issubclass(handler, AbstractView) or isinstance(handler, FunctionType).
-class HandlerEnumType(str, Enum):
-    func = 'func'
-    method = 'method'
-    middleware = 'middleware'
-
-    @property
-    def is_func(self) -> bool:
-        return self == self.func
 
 
 class AnnotationContainerAddFieldError(TypeError):
@@ -250,13 +236,11 @@ class AnnotationContainer:
     def __init__(
             self,
             handler: Union[Handler, MethodHandler, Middleware],
-            handler_type: HandlerEnumType,
     ) -> None:
         self._handler = handler
         self._params: Dict[str, ParamAnnotationContainer] = {}
         self._request_exists: bool = False
         self._request_param_name: Optional[str] = None
-        self._handler_type = handler_type
 
     def __iter__(self) -> Iterator[ParamAnnotationContainer]:
         for param_container in self._params.values():
@@ -336,9 +320,9 @@ class AnnotationContainer:
 
 def create_annotation_container(
         handler: Union[FunctionType, Middleware],
-        handler_type: HandlerEnumType,
+        is_func_handler: bool = False,
 ) -> AnnotationContainer:
-    container = AnnotationContainer(handler=handler, handler_type=handler_type)
+    container = AnnotationContainer(handler=handler)
 
     endpoint_signature = inspect.signature(handler)
     signature_params = endpoint_signature.parameters.items()
@@ -351,7 +335,7 @@ def create_annotation_container(
         try:
             annotation, param_field_info, default = extract_handler_attr_annotations(param=param, handler=handler)
         except NotParameterError:
-            if handler_type.is_func:
+            if is_func_handler:
                 if not get_args(param.annotation):
                     # FIXME: Fix the processing logic for the 1-st attribute to return a specific error
                     if issubclass(Request, param.annotation) or num_of_extracted_signatures == 1:
