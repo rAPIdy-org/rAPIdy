@@ -1,14 +1,16 @@
 import asyncio
 import logging
 import warnings
-from typing import Any, Dict, Iterable, Iterator, Mapping, Optional, Tuple
+from typing import Any, Callable, Coroutine, Dict, Iterable, Iterator, Mapping, Optional, Tuple
 
 from aiohttp.log import web_logger
 from aiohttp.web_app import Application as AiohttpApplication, CleanupError
 from aiohttp.web_middlewares import _fix_request_current_app
 from aiohttp.web_request import Request
 
+from rapidy import hdrs
 from rapidy._annotation_container import AnnotationContainer
+from rapidy._version import SERVER_INFO
 from rapidy._web_request_validation import middleware_validation_wrapper
 from rapidy.constants import CLIENT_MAX_SIZE
 from rapidy.typedefs import Middleware
@@ -20,6 +22,25 @@ __all__ = (
     'Application',
     'CleanupError',
 )
+
+
+InnerDeco = Callable[[], Coroutine[Any, Any, None]]
+
+
+def hide_server_info_deco(show_server_info_in_response: bool = False) -> Callable[[Any], InnerDeco]:
+    def deco(prepare_headers_bound_method: Any) -> InnerDeco:
+        response = prepare_headers_bound_method.__self__
+
+        async def inner() -> None:
+            await prepare_headers_bound_method()
+            if show_server_info_in_response:
+                response._headers[hdrs.SERVER] = SERVER_INFO
+            else:
+                response._headers.pop(hdrs.SERVER)
+
+        return inner
+
+    return deco
 
 
 class Application(AiohttpApplication):
@@ -56,7 +77,7 @@ class Application(AiohttpApplication):
         self._middleware_annotation_containers: Dict[int, AnnotationContainer] = {}
 
         # It is hidden by default, as I believe showing server information is a potential vulnerability.
-        self._server_info_in_response = server_info_in_response
+        self._hide_server_info_deco = hide_server_info_deco(server_info_in_response)
 
     @property
     def router(self) -> UrlDispatcher:
@@ -82,6 +103,15 @@ class Application(AiohttpApplication):
 
         yield _fix_request_current_app(self), True
 
+    async def _prepare_response(self, resp: StreamResponse) -> StreamResponse:
+        resp._prepare_headers = self._hide_server_info_deco(resp._prepare_headers)
+        return resp
+
     async def _handle(self, request: Request) -> StreamResponse:
         request._cache['errors_response_field_name'] = self._client_errors_response_field_name  # FIXME
-        return await super()._handle(request)
+
+        resp = await super()._handle(request)
+
+        await self._prepare_response(resp)
+
+        return resp

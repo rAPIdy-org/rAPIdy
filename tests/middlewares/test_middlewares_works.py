@@ -169,7 +169,7 @@ async def test_unsupported_old_style_middleware(aiohttp_client: AiohttpClient) -
         assert body == BODY_DATA
         return web.Response()
 
-    app = web.Application(middlewares=[unsupported_old_style_request_id_middleware])  # type: ignore[list-item]
+    app = web.Application(middlewares=[unsupported_old_style_request_id_middleware])
     app.add_routes([web.post('/', handler)])
 
     client = await aiohttp_client(app)
