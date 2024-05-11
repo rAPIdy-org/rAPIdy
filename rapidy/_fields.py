@@ -33,10 +33,6 @@ class ParamFieldInfo(FieldInfo, ABC):
         if PYDANTIC_V1:
             self._validate()  # check specify both default and default_factory
 
-        extractor = getattr(self, 'extractor') or getattr(self.__class__, 'extractor', None)  # noqa: B009
-        if not extractor:
-            raise
-
 
 if PYDANTIC_V1:  # noqa: C901
     from pydantic import BaseConfig  # noqa: WPS433

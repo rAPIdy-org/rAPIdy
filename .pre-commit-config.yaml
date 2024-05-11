@@ -14,9 +14,13 @@ repos:
       - id: check-json
       - id: check-toml
       - id: check-yaml
-      - id: name-tests-test
-        args: [ --pytest-test-first ]
-        exclude: ^tests/helpers.py|^tests/mypy/cases
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+    - id: name-tests-test
+      args: [ --pytest-test-first ]
+      exclude: ^tests/helpers.py|^tests/mypy/cases
 
   - repo: https://github.com/PyCQA/isort
     rev: 5.13.1
