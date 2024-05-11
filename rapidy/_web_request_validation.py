@@ -1,4 +1,4 @@
-from functools import partial
+from functools import partial, wraps
 from typing import Any, cast, Dict, List, Type, TYPE_CHECKING
 
 from rapidy import hdrs
@@ -42,6 +42,7 @@ async def validate_request(
 def handler_validation_wrapper(handler: Handler) -> Handler:
     annotation_container = create_annotation_container(handler, is_func_handler=True)
 
+    @wraps(handler)
     async def inner(request: 'Request') -> StreamResponse:
         validated_data = await validate_request(
             request=request,
@@ -69,6 +70,7 @@ def view_validation_wrapper(view: Type['View']) -> 'View':
 
         annotation_containers[method.lower()] = create_annotation_container(method_handler)
 
+    @wraps(view)
     async def inner(request: 'Request') -> StreamResponse:
         instance_view = view(request)
         method_name = request.method.lower()
