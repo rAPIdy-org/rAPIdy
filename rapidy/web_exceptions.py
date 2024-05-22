@@ -1,4 +1,5 @@
-from rapidy._version import AIOHTTP_VERSION_TUPLE
+from rapidy._client_errors import _normalize_errors
+from rapidy.version import AIOHTTP_VERSION_TUPLE
 
 if AIOHTTP_VERSION_TUPLE >= (3, 9, 0):
     from aiohttp.web_exceptions import HTTPMove, NotAppKeyWarning
@@ -66,7 +67,6 @@ from aiohttp.web_exceptions import (
     HTTPVersionNotSupported,
 )
 
-from rapidy.media_types import ApplicationJSON
 from rapidy.typedefs import LooseHeaders, ValidationErrorList
 
 __all = [
@@ -140,9 +140,10 @@ __all__ = tuple(__all)
 
 
 class HTTPValidationFailure(HTTPUnprocessableEntity):
+    validation_failure_field_name: str = 'errors'
+
     def __init__(
             self,
-            validation_failure_field_name: str,
             errors: ValidationErrorList,
             *,
             headers: Optional[LooseHeaders] = None,
@@ -151,13 +152,16 @@ class HTTPValidationFailure(HTTPUnprocessableEntity):
             text: Optional[str] = None,
             content_type: Optional[str] = None,
     ) -> None:
-        self._errors = errors
+        self._errors = _normalize_errors(errors)
+        if text is None:
+            text = json.dumps({self.validation_failure_field_name: self._errors}, default=str)
+
         super().__init__(
             headers=headers,
             reason=reason,
             body=body,
-            text=json.dumps({validation_failure_field_name: errors}) if text is None else text,
-            content_type=ApplicationJSON if content_type is None else content_type,
+            text=text,
+            content_type='application/json' if content_type is None else content_type,
         )
 
     @property

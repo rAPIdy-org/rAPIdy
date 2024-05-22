@@ -20,7 +20,7 @@ repos:
     hooks:
     - id: name-tests-test
       args: [ --pytest-test-first ]
-      exclude: ^tests/helpers.py|^tests/mypy/cases
+      exclude: ^tests/helpers.py|^tests/test_mypy/cases|^.*base.py
 
   - repo: https://github.com/PyCQA/isort
     rev: 5.13.1

@@ -1,6 +1,0 @@
-tests/mypy/cases/default/header/module.py:5: error: "default" and "default_factory" cannot be specified together for a requests parameter.  [rapidy-param]
-tests/mypy/cases/default/header/module.py:9: error: "default" and "default_factory" cannot be specified together for a requests parameter.  [rapidy-param]
-tests/mypy/cases/default/header/module.py:11: error: "default" or "default_factory" cannot be specified for "rapidy.request_params.HeaderRaw"  [rapidy-param]
-tests/mypy/cases/default/header/module.py:12: error: "default" or "default_factory" cannot be specified for "rapidy.request_params.HeaderRaw"  [rapidy-param]
-tests/mypy/cases/default/header/module.py:13: error: "default" or "default_factory" cannot be specified for "rapidy.request_params.HeaderRaw"  [rapidy-param]
-Found 5 errors in 1 file (checked 1 source file)

@@ -1,182 +1,142 @@
 import inspect
-from dataclasses import is_dataclass
-from typing import Any, cast, NamedTuple, Sequence, Type, Union
+from copy import deepcopy
+from typing import Any, cast, List, NamedTuple, Optional, Type, Union
 
-from pydantic import BaseModel
-from typing_extensions import Annotated, get_args, get_origin
+from aiohttp.web_request import Request
+from typing_extensions import Annotated, Doc, get_args, get_origin
 
-from rapidy._client_errors import _create_handler_attr_info_msg
-from rapidy.request_params import ParamFieldInfo
+from rapidy._annotation_helpers import annotation_is_optional, get_base_annotations
+from rapidy._base_exceptions import RapidyException
+from rapidy.request_parameters import ParamFieldInfo
 from rapidy.typedefs import Handler, Required, Undefined
 
 
-class AnnotationData(NamedTuple):
-    type_: Any
-    param_field_info: ParamFieldInfo
-    default_value: Any
-
-
-class NotParameterError(Exception):
+class NotRapidyParameterError(Exception):
     pass
 
 
-class ParameterCannotUseDefaultError(Exception):
-    _base_err_msg = 'Handler attribute with Type `{class_name}` cannot have a default value.'
-
-    def __init__(self, *args: Any, class_name: str, handler: Any, param_name: str) -> None:
-        super().__init__(
-            f'{self._base_err_msg.format(class_name=class_name)}\n{_create_handler_attr_info_msg(handler, param_name)}',
-            *args,
-        )
+class ParameterCannotUseDefaultError(RapidyException):
+    message = 'Handler attribute with Type `{class_name}` cannot have a default value.'
 
 
-class ParameterCannotUseDefaultFactoryError(Exception):
-    _base_err_msg = 'Handler attribute with Type `{class_name}` cannot have a default_factory.'
-
-    def __init__(self, *args: Any, class_name: str, handler: Any, param_name: str) -> None:
-        super().__init__(
-            f'{self._base_err_msg.format(class_name=class_name)}\n{_create_handler_attr_info_msg(handler, param_name)}',
-            *args,
-        )
+class ParameterCannotUseDefaultFactoryError(RapidyException):
+    message = 'Handler attribute with Type `{class_name}` cannot have a default_factory.'
 
 
-class SpecifyBothDefaultAndDefaultFactoryError(TypeError):
-    _base_err_msg = 'Cannot specify both default and default_factory in `{class_name}`.'
-
-    def __init__(self, *args: Any, class_name: str, handler: Any, param_name: str) -> None:
-        super().__init__(
-            f'{self._base_err_msg.format(class_name=class_name)}\n{_create_handler_attr_info_msg(handler, param_name)}',
-            *args,
-        )
+class SpecifyBothDefaultAndDefaultFactoryError(RapidyException):
+    message = 'Cannot specify both default and default_factory in `{class_name}`.'
 
 
-class IncorrectDefineDefaultValueError(Exception):
-    _base_err_msg = (
+class ParameterCannotBeOptionalError(RapidyException):
+    message = 'A parameter `{class_name}` cannot be optional.'
+
+
+class SpecifyBothDefaultAndOptionalError(RapidyException):
+    message = 'A parameter cannot be optional if it contains a default value in `{class_name}`.'
+
+
+class SpecifyBothDefaultFactoryAndOptionalError(RapidyException):
+    message = 'A parameter cannot be optional if it contains a default factory in `{class_name}`.'
+
+
+class IncorrectDefineDefaultValueError(RapidyException):
+    message = (
         'Default value cannot be set in `{class_name}`. '
         'You cannot specify a default value using Param(<default_value>, ...) and `=` at the same time.'
     )
 
-    def __init__(self, *args: Any, class_name: str, handler: Any, param_name: str) -> None:
-        super().__init__(
-            f'{self._base_err_msg.format(class_name=class_name)}\n{_create_handler_attr_info_msg(handler, param_name)}',
-            *args,
-        )
 
-
-class UnsupportedSchemaDataTypeError(TypeError):
-    def __init__(self, *args: Any, err_msg: str, handler: Any, param_name: str) -> None:
-        super().__init__(
-            f'{err_msg}\n{_create_handler_attr_info_msg(handler, param_name)}',
-            *args,
-        )
-
-
-def _get_annotation_data_by_annotated_flow(
-        attr_type: Any,
-        param_field_info: ParamFieldInfo,
-        handler: Handler,
-        param: inspect.Parameter,
-) -> AnnotationData:
-    default = _get_annotated_definition_attr_default(handler=handler, field_info=param_field_info, param=param)
-    return AnnotationData(
-        type_=attr_type,
-        param_field_info=param_field_info,
-        default_value=default,
+class RequestFieldAlreadyExistsError(RapidyException):
+    message = (
+        'Error during attribute definition in the handler - request param defined twice.'
+        'The error may be because the first attribute of the handler is not annotated.'
+        'By default, `rAPIdy` will pass `web.Request` to the first attribute if it has no type annotation.'
     )
 
 
-def _get_annotation_data_by_default_value_flow(
-        handler: Handler,
-        param: inspect.Parameter,
-) -> AnnotationData:
-    param_field_info = _prepare_field_info(param.default)
-    default = _get_default_definition_attr_default(handler=handler, field_info=param_field_info, param_name=param.name)
-    return AnnotationData(
-        type_=param.annotation,
-        param_field_info=param_field_info,
-        default_value=default,
-    )
-
-
-def _get_annotation_data(
-        handler: Handler,
-        param: Any,
-) -> AnnotationData:
-    annotation_origin = get_origin(param.annotation)
-
-    if annotation_origin is Annotated:
-        annotated_args = get_args(param.annotation)
-        if len(annotated_args) != 2:
-            raise NotParameterError
-
-        return _get_annotation_data_by_annotated_flow(
-            attr_type=annotated_args[0],
-            param_field_info=_prepare_field_info(annotated_args[1]),
-            handler=handler,
-            param=param,
-        )
-
-    if param.default is inspect.Signature.empty:
-        raise NotParameterError
-
-    return _get_annotation_data_by_default_value_flow(
-        handler=handler,
-        param=param,
-    )
-
-
-def _prepare_field_info(raw_field_info: Union[ParamFieldInfo, Type[ParamFieldInfo]]) -> ParamFieldInfo:
+def prepare_field_info(
+        attr_annotation: Any,
+        attr_name: str,
+        raw_field_info: Union[ParamFieldInfo, Type[ParamFieldInfo]],
+) -> ParamFieldInfo:
     if not isinstance(raw_field_info, ParamFieldInfo):
         if isinstance(raw_field_info, type) and issubclass(raw_field_info, ParamFieldInfo):
             raw_field_info = raw_field_info()
         else:
-            raise NotParameterError
+            raise NotRapidyParameterError
 
-    return cast(ParamFieldInfo, raw_field_info)
+    prepared_field_info = cast(ParamFieldInfo, deepcopy(raw_field_info))
+    prepared_field_info.prepare(annotation=attr_annotation, attribute_name=attr_name)
+
+    return prepared_field_info
 
 
-def _get_annotated_definition_attr_default(
+def check_possibility_of_default(
+        can_default: bool,
+        default_exists: bool,
+        default_is_none: bool,
+        default_factory_exists: bool,
+        param_is_optional: bool,
         handler: Handler,
-        param: Any,
+        param: inspect.Parameter,
+        field_info: ParamFieldInfo,
+) -> None:
+    if not can_default and param_is_optional:
+        raise ParameterCannotBeOptionalError.create_with_handler_and_attr_info(
+            handler=handler,
+            attr_name=param.name,
+            class_name=field_info.__class__.__name__,
+        )
+
+    if default_exists and not can_default:
+        raise ParameterCannotUseDefaultError.create_with_handler_and_attr_info(
+            handler=handler,
+            attr_name=param.name,
+            class_name=field_info.__class__.__name__,
+        )
+
+    if default_factory_exists and not can_default:
+        raise ParameterCannotUseDefaultFactoryError.create_with_handler_and_attr_info(
+            handler=handler,
+            attr_name=param.name,
+            class_name=field_info.__class__.__name__,
+        )
+
+    # NOTE: This error is caused earlier by `pydantic` for some scenarios.
+    if default_exists and default_factory_exists:
+        raise SpecifyBothDefaultAndDefaultFactoryError.create_with_handler_and_attr_info(
+            handler=handler,
+            attr_name=param.name,
+            class_name=field_info.__class__.__name__,
+        )
+
+    if default_exists and not default_is_none and param_is_optional:
+        raise SpecifyBothDefaultAndOptionalError.create_with_handler_and_attr_info(
+            handler=handler,
+            attr_name=param.name,
+            class_name=field_info.__class__.__name__,
+        )
+
+    if default_factory_exists and param_is_optional:
+        raise SpecifyBothDefaultFactoryAndOptionalError.create_with_handler_and_attr_info(
+            handler=handler,
+            attr_name=param.name,
+            class_name=field_info.__class__.__name__,
+        )
+
+
+def get_annotated_definition_attr_default(
+        param: inspect.Parameter,
+        handler: Handler,
+        type_: Any,
         field_info: ParamFieldInfo,
 ) -> Any:
     default_value_for_param_exists = param.default is not inspect.Signature.empty
-    default_value_for_field_exists = not (field_info.default is Undefined or field_info.default is Required)
-    default_factory_for_field_exists = field_info.default_factory is not None
+    default_value_for_field_exists = check_default_value_for_field_exists(field_info)
 
-    default_exists = default_value_for_param_exists or default_value_for_field_exists
-    can_default = field_info.can_default and not field_info.validate_type.is_no_validate()
+    param_is_optional = annotation_is_optional(type_)
 
-    if default_exists and not can_default:
-        raise ParameterCannotUseDefaultError(
-            class_name=field_info.__class__.__name__,
-            handler=handler,
-            param_name=param.name,
-        )
-
-    if default_factory_for_field_exists and not can_default:
-        raise ParameterCannotUseDefaultFactoryError(
-            class_name=field_info.__class__.__name__,
-            handler=handler,
-            param_name=param.name,
-        )
-
-    if default_exists and default_factory_for_field_exists:
-        if field_info.default_factory is not None:
-            raise SpecifyBothDefaultAndDefaultFactoryError(
-                class_name=field_info.__class__.__name__,
-                handler=handler,
-                param_name=param.name,
-            )
-
-    if default_value_for_param_exists and default_value_for_field_exists:
-        raise IncorrectDefineDefaultValueError(
-            class_name=field_info.__class__.__name__,
-            handler=handler,
-            param_name=param.name,
-        )
-
-    default = inspect.Signature.empty
+    default: Any = inspect.Signature.empty
 
     if default_value_for_param_exists:
         default = param.default
@@ -184,87 +144,221 @@ def _get_annotated_definition_attr_default(
     elif default_value_for_field_exists:
         default = field_info.default
 
+    elif param_is_optional:
+        default = None
+
+    check_possibility_of_default(
+        can_default=field_info.can_default,
+        default_exists=default_value_for_param_exists or default_value_for_field_exists,
+        default_is_none=default is None,
+        default_factory_exists=field_info.default_factory is not None,
+        param_is_optional=param_is_optional,
+        handler=handler,
+        param=param,
+        field_info=field_info,
+    )
+
+    if default_value_for_param_exists and default_value_for_field_exists:
+        raise IncorrectDefineDefaultValueError.create_with_handler_and_attr_info(
+            handler=handler,
+            attr_name=param.name,
+            class_name=field_info.__class__.__name__,
+        )
+
     return default
 
 
-def _get_default_definition_attr_default(
+def get_default_definition_attr_default(
         handler: Handler,
-        param_name: str,
+        type_: Any,
+        param: inspect.Parameter,
         field_info: ParamFieldInfo,
 ) -> Any:
-    can_default = field_info.can_default
+    param_is_optional = annotation_is_optional(type_)
 
-    if field_info.default is not Undefined and not can_default:
-        raise ParameterCannotUseDefaultError(
-            class_name=field_info.__class__.__name__,
-            handler=handler,
-            param_name=param_name,
-        )
+    check_possibility_of_default(
+        can_default=field_info.can_default,
+        default_exists=check_default_value_for_field_exists(field_info),
+        default_is_none=field_info.default is None,
+        default_factory_exists=field_info.default_factory is not None,
+        param_is_optional=param_is_optional,
+        handler=handler,
+        param=param,
+        field_info=field_info,
+    )
 
-    if field_info.default_factory is not None and not can_default:
-        raise ParameterCannotUseDefaultFactoryError(
-            class_name=field_info.__class__.__name__,
-            handler=handler,
-            param_name=param_name,
-        )
+    if param_is_optional:
+        return None
 
     return field_info.default
 
 
-def _raise_if_unsupported_union_schema_data_type(
-        union_attributes: Sequence[Any],
-        *,
-        handler: Handler,
-        param_name: str,
-) -> None:
-    if not (len(union_attributes) == 2 and type(None) in union_attributes):  # noqa: WPS516
-        raise UnsupportedSchemaDataTypeError(
-            err_msg='Schema annotated type must be a pydantic.BaseModel or dataclasses.dataclass.',
-            handler=handler,
-            param_name=param_name,
+def check_default_value_for_field_exists(field_info: ParamFieldInfo) -> bool:
+    return not (field_info.default is Undefined or field_info.default is Required)
+
+
+def create_attribute_field_info(handler: Handler, param: inspect.Parameter) -> ParamFieldInfo:
+    annotation_origin = get_origin(param.annotation)
+
+    if annotation_origin is Annotated:
+        annotated_args = get_args(param.annotation)
+        if len(annotated_args) != 2:
+            raise NotRapidyParameterError
+
+        attr_annotation, attr_param_field_info = annotated_args
+
+        prepared_param_field_info = prepare_field_info(attr_annotation, param.name, attr_param_field_info)
+        default = get_annotated_definition_attr_default(
+            param=param, handler=handler, type_=attr_annotation, field_info=prepared_param_field_info,
         )
 
+    else:
+        if param.default is inspect.Signature.empty:
+            raise NotRapidyParameterError
 
-def _raise_if_unsupported_annotation_type(
-        annotation: Any,
-        *,
-        handler: Handler,
-        param_name: str,
-) -> None:
-    try:
-        is_subclass_of_base_model = issubclass(annotation, BaseModel)
-    except TypeError as type_error_exc:
-        raise UnsupportedSchemaDataTypeError(
-            err_msg='Unsupported data type for schema.',
-            handler=handler,
-            param_name=param_name,
-        ) from type_error_exc
+        attr_annotation, attr_param_field_info = param.annotation, param.default
 
-    if not (is_subclass_of_base_model or is_dataclass(annotation)):
-        raise UnsupportedSchemaDataTypeError(
-            err_msg='Schema annotated type must be a pydantic.BaseModel or dataclasses.dataclass.',
-            handler=handler,
-            param_name=param_name,
+        prepared_param_field_info = prepare_field_info(attr_annotation, param.name, attr_param_field_info)
+        default = get_default_definition_attr_default(
+            param=param, handler=handler, type_=param.annotation, field_info=prepared_param_field_info,
         )
 
+    if not isinstance(prepared_param_field_info, ParamFieldInfo):  # pragma: no cover
+        raise
 
-def extract_handler_attr_annotations(
-        *,
-        handler: Handler,
-        param: inspect.Parameter,
-) -> AnnotationData:
-    annotation_data = _get_annotation_data(handler, param)
+    prepared_param_field_info.default = default
 
-    if annotation_data.param_field_info.validate_type.is_schema():
-        checked_annotation_type = annotation_data.type_
+    return prepared_param_field_info
 
-        if get_origin(annotation_data.type_) is Union:
-            union_attributes = get_args(annotation_data.type_)
 
-            _raise_if_unsupported_union_schema_data_type(union_attributes, handler=handler, param_name=param.name)
+class EndpointHandlerInfo(NamedTuple):
+    request_attr_name: Annotated[
+        Optional[str],
+        Doc(
+            """
+            Name of the attribute expecting the incoming `web.Request`.
+            """,
+        ),
+    ]
+    attr_fields_info: Annotated[
+        List[ParamFieldInfo],
+        Doc(
+            """
+            Contains `ParamFieldInfo` for each attribute that can be processed by the Rapidy endpoint-handler.
+            """,
+        ),
+    ]
 
-            checked_annotation_type = union_attributes[1] if union_attributes[0] is None else union_attributes[0]
 
-        _raise_if_unsupported_annotation_type(checked_annotation_type, handler=handler, param_name=param.name)
+def get_endpoint_handler_info(
+        endpoint_handler: Annotated[
+            Handler,
+            Doc(
+                """
+                Endpoint handler for extracting annotation information.
 
-    return annotation_data
+                Examples:
+                    >>> def handler() -> web.Response: ... # <--- this object - handler
+
+                    >>> @routes.post('/')
+                    >>> def handler() -> web.Response: ... # <--- this object - handler
+
+                    >>> class Handler(web.View):
+                    >>>     def post() -> web.Response: ...  # <--- this object - post
+                """,
+            ),
+        ],
+        request_attr_can_declare: Annotated[
+            bool,
+            Doc(
+                """
+                Flag that determines whether a handler in attributes can receive a `web.Request` injection.
+
+                NOTE:
+                    If the flag is not set -> the example will not work.
+                        >>> def handler(request: web.Request) -> ...: ...  #  injection won't happen
+                """,
+            ),
+        ] = False,
+) -> EndpointHandlerInfo:
+    """Extract annotation information from a handler function or view-handler method.
+
+    Raises:
+        RequestFieldAlreadyExistsError: if two attr expecting to be injected by `web.Request`
+
+    Examples:
+        >>> from rapidy import web
+
+        >>> async def handler() -> web.Response:
+        >>>     ...
+        >>> get_endpoint_handler_info(handler)
+        EndpointHandlerInfo(
+            attr_fields_info=[],
+            request_attr_name=None,
+        )
+
+        >>> async def handler(request) -> web.Response:
+        >>>     ...
+        >>> get_endpoint_handler_info(handler)
+        EndpointHandlerInfo(
+            attr_fields_info=[],
+            request_attr_name='request',
+        )
+
+        >>> async def handler(f: str = web.Header()) -> web.Response:
+        >>>     ...
+        >>> get_endpoint_handler_info(handler)
+        EndpointHandlerInfo(
+            attr_fields_info=[ParamFieldInfo(http_request_param_type='header', ...)],
+            request_attr_name=None,
+        )
+
+        >>> async def handler(
+        >>>     f1: str = web.Body(),
+        >>>     f2: str = web.Header(),
+        >>>     f3: str = web.Header(),
+        >>>     request_attr: web.Request,
+        >>> ) -> web.Response:
+        >>>    ...
+        >>> get_endpoint_handler_info(handler)
+        EndpointHandlerInfo(
+            attr_fields_info=[
+                ParamFieldInfo(http_request_param_type='header', ...),
+                ParamFieldInfo(http_request_param_type='header', ...),
+                ParamFieldInfo(http_request_param_type='body', ...),
+            ],
+            request_attr_name='request_attr',
+        )
+    """
+    endpoint_signature = inspect.signature(endpoint_handler)
+    signature_params = endpoint_signature.parameters
+
+    request_attr_name = None
+    attr_fields_info: List[ParamFieldInfo] = []
+
+    for param_name, param in signature_params.items():
+        try:
+            field_info = create_attribute_field_info(param=param, handler=endpoint_handler)
+        except NotRapidyParameterError:
+            if request_attr_can_declare:  # Need to inject `web.Request` in a functional handler
+                signature_index = list(signature_params.keys()).index(param_name)
+
+                base_annotations = get_base_annotations(param.annotation)
+                if len(base_annotations) > 1:
+                    # If there is more than one base attribute -> don't know what to do -> skip it.
+                    continue
+
+                base_annotation = base_annotations[0]
+                if (
+                    base_annotation is inspect.Signature.empty and signature_index == 0
+                    or issubclass(Request, base_annotation)
+                ):  # If the first handler attribute is empty or the attribute contains the `web.Request` annotation
+                    if request_attr_name is not None:  # protection against double injection of `web.Request`
+                        raise RequestFieldAlreadyExistsError.create_with_handler_info(handler=endpoint_handler)
+
+                    request_attr_name = param.name
+
+        else:
+            attr_fields_info.append(field_info)
+
+    return EndpointHandlerInfo(request_attr_name=request_attr_name, attr_fields_info=attr_fields_info)
