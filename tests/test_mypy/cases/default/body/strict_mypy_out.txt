@@ -1,0 +1,2 @@
+cases/default/body/module.py:5: error: "default" and "default_factory" cannot be specified together for a requests parameter.  [rapidy-param]
+Found 1 error in 1 file (checked 1 source file)

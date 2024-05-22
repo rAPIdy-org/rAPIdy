@@ -1,4 +1,5 @@
-from rapidy._version import AIOHTTP_VERSION_TUPLE
+from rapidy.request_enums import BodyType
+from rapidy.version import AIOHTTP_VERSION_TUPLE
 
 if AIOHTTP_VERSION_TUPLE >= (3, 9, 0):
     from aiohttp.web import AppKey as AppKey
@@ -14,31 +15,16 @@ from aiohttp.web_ws import (
     WSMsgType as WSMsgType,
 )
 
-from rapidy.request_params import (
-    BytesBody as BytesBody,
+from rapidy.request_parameters import (
+    Body as Body,
     Cookie as Cookie,
-    CookieRaw as CookieRaw,
-    CookieSchema as CookieSchema,
-    FormDataBody as FormDataBody,
-    FormDataBodyRaw as FormDataBodyRaw,
-    FormDataBodySchema as FormDataBodySchema,
+    Cookies as Cookies,
     Header as Header,
-    HeaderRaw as HeaderRaw,
-    HeaderSchema as HeaderSchema,
-    JsonBody as JsonBody,
-    JsonBodyRaw as JsonBodyRaw,
-    JsonBodySchema as JsonBodySchema,
-    MultipartBody as MultipartBody,
-    MultipartBodyRaw as MultipartBodyRaw,
-    MultipartBodySchema as MultipartBodySchema,
-    Path as Path,
-    PathRaw as PathRaw,
-    PathSchema as PathSchema,
-    Query as Query,
-    QueryRaw as QueryRaw,
-    QuerySchema as QuerySchema,
-    StreamBody as StreamBody,
-    TextBody as TextBody,
+    Headers as Headers,
+    PathParam as PathParam,
+    PathParams as PathParams,
+    QueryParam as QueryParam,
+    QueryParams as QueryParams,
 )
 from rapidy.web_app import Application as Application, CleanupError as CleanupError
 from rapidy.web_exceptions import (
@@ -273,30 +259,16 @@ __all = [
     'WSMsgType',
     'run_app',
     # request_params
-    'BytesBody',
+    'BodyType',
+    'Body',
     'Cookie',
-    'CookieSchema',
-    'CookieRaw',
-    'FormDataBody',
-    'FormDataBodySchema',
-    'FormDataBodyRaw',
+    'Cookies',
     'Header',
-    'HeaderSchema',
-    'HeaderRaw',
-    'JsonBody',
-    'JsonBodySchema',
-    'JsonBodyRaw',
-    'MultipartBody',
-    'MultipartBodySchema',
-    'MultipartBodyRaw',
-    'Path',
-    'PathSchema',
-    'PathRaw',
-    'Query',
-    'QuerySchema',
-    'QueryRaw',
-    'StreamBody',
-    'TextBody',
+    'Headers',
+    'PathParam',
+    'PathParams',
+    'QueryParam',
+    'QueryParams',
 ]
 if AIOHTTP_VERSION_TUPLE >= (3, 9, 0):
     __all.extend([
