@@ -54,15 +54,13 @@ DictStrListStr = Dict[str, List[str]]
 Handler = Callable[..., Awaitable['StreamResponse']]
 MethodHandler = Callable[..., Awaitable['StreamResponse']]
 HandlerType = Union[Handler, Type[AbstractView]]
-Middleware = Callable[[Request, Handler], Awaitable['StreamResponse']]
+Middleware = Callable[[Request, Handler], Awaitable['StreamResponse']]  # TODO: protocol
 
 HandlerOrMethod = Union[Handler, MethodHandler]
 
 ResultValidate: TypeAlias = Dict[str, Any]
 ValidationErrorList: TypeAlias = List[Dict[str, Any]]
 ValidateReturn: TypeAlias = Tuple[Optional[ResultValidate], Optional[ValidationErrorList]]
-
-RouterDeco = Callable[[HandlerType], HandlerType]
 
 NoArgAnyCallable = Callable[[], Any]
 

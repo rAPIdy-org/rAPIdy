@@ -156,6 +156,8 @@ class HTTPValidationFailure(HTTPUnprocessableEntity):
             headers=headers,
             reason=reason,
             body=body,
+
+            # TODO: енамы не сериализует TypeError: Object of type Foo is not JSON serializable
             text=json.dumps({validation_failure_field_name: errors}) if text is None else text,
             content_type=ApplicationJSON if content_type is None else content_type,
         )

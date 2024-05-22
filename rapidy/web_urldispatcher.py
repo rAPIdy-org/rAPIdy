@@ -21,7 +21,7 @@ from aiohttp.web_urldispatcher import (
 )
 
 from rapidy import hdrs
-from rapidy._web_request_validation import handler_validation_wrapper, view_validation_wrapper
+from rapidy.request._validate.helpers import handler_validation_wrapper, view_validation_wrapper
 from rapidy.typedefs import Handler, HandlerType
 
 __all__ = [

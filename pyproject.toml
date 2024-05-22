@@ -81,6 +81,7 @@ ignore = [
     "D107",    #  Missing docstring in __init__"
     "P101",    #  format string does contain unindexed parameters
     "S101",    #  Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+    "WPS100",  #  Found wrong module name
     "WPS110",  #  Found wrong variable name: X
     "WPS111",  #  Found too short name: d < X
     "WPS113",  #  Found same alias import: X
@@ -97,6 +98,7 @@ ignore = [
     "WPS220",  #  Found overly complex annotation: X > 3
     "WPS226",  #  Found string literal over-use: X > 3
     "WPS231",  #  Found function with too much cognitive complexity: X > 12
+    "WPS232",  #  Found module cognitive complexity that is too high: X > 8
     "WPS234",  #  Found too deep nesting
     "WPS235",  #  Found too many imported names from a module: X > 8
     "WPS238",  #  Found too many raises in a function: X > 3
@@ -120,6 +122,7 @@ ignore = [
     "WPS510",  #  Found `in` used with a non-set container
     "WPS529",  #  Found implicit `.get()` dict usage
     "WPS600",  #  Found subclassing a builtin: X
+    "WPS602",  #  Found using `@staticmethod`
     "WPS604",  #  Found incorrect node inside `class` body
     "W503",    #  line break before binary operator
 ]
@@ -127,6 +130,7 @@ per-file-ignores = [
     'rapidy/__init__.py: N813 WPS412 WPS413 WPS433 WPS442',
     'rapidy/_version.py: WPS116',
     'rapidy/web.py: F401 WPS112 WPS232 WPS433',
+    'rapidy/_base_exceptions.py: WPS336',
     'rapidy/web_exceptions.py: D400 F401 WPS112 WPS433',
     'rapidy/fields.py: C901 WPS113 WPS433',
     'rapidy/typedefs.py: WPS433 WPS113 WPS440',
@@ -134,6 +138,7 @@ per-file-ignores = [
     'rapidy/mypy/__init__.py: WPS412',
     'rapidy/mypy/*: WPS433',
     'rapidy/mypy/_type_helpers.py: WPS221 WPS602',
+    'rapidy/_annotations/extractor_helpers.py: WPS516',
 ]
 
 

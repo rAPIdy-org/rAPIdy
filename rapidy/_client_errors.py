@@ -96,48 +96,10 @@ elif PYDANTIC_V2:
         ]
 
     def _normalize_errors(errors: List[Any]) -> ValidationErrorList:
-        for error in errors:  # TODO: FIXME
+        for error in errors:  # FIXME: ...
             error.pop('url', None)
             error.pop('input', None)
         return errors
 
 else:
     raise Exception
-
-
-class ExtractError(ClientError, ABC):
-    pass
-
-
-class ExtractBodyError(ExtractError, ABC):
-    type = 'body_extraction'
-
-
-class BodyDataSizeExceedError(ExtractBodyError):
-    msg_template = 'Failed to extract body data. Body data exceeds the allowed size `{body_max_size}`'
-
-
-class ExtractJsonError(ExtractBodyError):
-    msg_template = 'Failed to extract body data as Json: {json_decode_err_msg}'
-
-
-class ExtractMultipartError(ExtractBodyError):
-    msg_template = 'Failed to extract body data as Multipart: {multipart_error}'
-
-
-class ExtractMultipartPartError(ExtractMultipartError):
-    msg_template = 'Failed to extract body data as Multipart. Failed to read part `{part_num}`: {multipart_error}'
-
-
-def _create_handler_info_msg(handler: Any) -> str:
-    return (
-        f'\nHandler path: `{handler.__code__.co_filename}`'
-        f'\nHandler name: `{handler.__name__}`\n'
-    )
-
-
-def _create_handler_attr_info_msg(handler: Any, attr_name: str) -> str:
-    return (
-        f'{_create_handler_info_msg(handler)}'
-        f'Attribute name: `{attr_name}`\n'
-    )

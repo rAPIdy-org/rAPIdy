@@ -9,10 +9,10 @@ from aiohttp.web_middlewares import _fix_request_current_app
 from aiohttp.web_request import Request
 
 from rapidy import hdrs
-from rapidy._annotation_container import AnnotationContainer
+from rapidy._annotations.container import AnnotationContainer
 from rapidy._version import SERVER_INFO
-from rapidy._web_request_validation import middleware_validation_wrapper
 from rapidy.constants import CLIENT_MAX_SIZE
+from rapidy.request._validate.helpers import middleware_validation_wrapper
 from rapidy.typedefs import Middleware
 from rapidy.web_middlewares import is_aiohttp_new_style_middleware, is_rapidy_middleware
 from rapidy.web_response import StreamResponse
@@ -57,8 +57,6 @@ class Application(AiohttpApplication):
             debug: Any = ...,
             server_info_in_response: bool = False,
     ) -> None:
-        # TODO: Add a check that in body extractors the size does not exceed the client size
-
         super().__init__(
             logger=logger,
             router=router,
