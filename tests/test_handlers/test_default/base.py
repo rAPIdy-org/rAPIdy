@@ -13,6 +13,8 @@ multipart_writer = MultipartWriter(boundary=BOUNDARY)
 
 @dataclass
 class TestCase:
+    __test__ = False
+
     id: str
     param_type: Type[ParamFieldInfo]
     annotation: Any = Any

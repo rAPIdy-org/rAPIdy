@@ -10,7 +10,7 @@ from rapidy.mypy._version import MYPY_VERSION_TUPLE
 
 AnyTypeExplicit = AnyType(TypeOfAny.explicit)
 
-RAPIDY_PARAM_BASE = 'rapidy.request_params.'
+RAPIDY_PARAM_BASE = 'rapidy.web.'
 BUILTINS_NAME = 'builtins' if MYPY_VERSION_TUPLE >= (0, 930) else '__builtins__'
 
 ALL_RAPIDY_PARAMS: Set[str] = {f'{RAPIDY_PARAM_BASE}{param}' for param in request_params.__all__}  # noqa: WPS407

@@ -118,6 +118,8 @@ class Schema(BaseModel):
 
 @dataclass
 class TestCase:
+    __test__ = False
+
     id: str
 
     annotation: Any
