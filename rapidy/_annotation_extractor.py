@@ -6,7 +6,7 @@ from aiohttp.web_request import Request
 from typing_extensions import Annotated, Doc, get_args, get_origin
 
 from rapidy._annotation_helpers import annotation_is_optional, get_base_annotations
-from rapidy._base_exceptions import RapidyException
+from rapidy._base_exceptions import RapidyHandlerException
 from rapidy.request_parameters import ParamFieldInfo
 from rapidy.typedefs import Handler, Required, Undefined
 
@@ -15,38 +15,38 @@ class NotRapidyParameterError(Exception):
     pass
 
 
-class ParameterCannotUseDefaultError(RapidyException):
+class ParameterCannotUseDefaultError(RapidyHandlerException):
     message = 'Handler attribute with Type `{class_name}` cannot have a default value.'
 
 
-class ParameterCannotUseDefaultFactoryError(RapidyException):
+class ParameterCannotUseDefaultFactoryError(RapidyHandlerException):
     message = 'Handler attribute with Type `{class_name}` cannot have a default_factory.'
 
 
-class SpecifyBothDefaultAndDefaultFactoryError(RapidyException):
+class SpecifyBothDefaultAndDefaultFactoryError(RapidyHandlerException):
     message = 'Cannot specify both default and default_factory in `{class_name}`.'
 
 
-class ParameterCannotBeOptionalError(RapidyException):
+class ParameterCannotBeOptionalError(RapidyHandlerException):
     message = 'A parameter `{class_name}` cannot be optional.'
 
 
-class SpecifyBothDefaultAndOptionalError(RapidyException):
+class SpecifyBothDefaultAndOptionalError(RapidyHandlerException):
     message = 'A parameter cannot be optional if it contains a default value in `{class_name}`.'
 
 
-class SpecifyBothDefaultFactoryAndOptionalError(RapidyException):
+class SpecifyBothDefaultFactoryAndOptionalError(RapidyHandlerException):
     message = 'A parameter cannot be optional if it contains a default factory in `{class_name}`.'
 
 
-class IncorrectDefineDefaultValueError(RapidyException):
+class IncorrectDefineDefaultValueError(RapidyHandlerException):
     message = (
         'Default value cannot be set in `{class_name}`. '
         'You cannot specify a default value using Param(<default_value>, ...) and `=` at the same time.'
     )
 
 
-class RequestFieldAlreadyExistsError(RapidyException):
+class RequestFieldAlreadyExistsError(RapidyHandlerException):
     message = (
         'Error during attribute definition in the handler - request param defined twice.'
         'The error may be because the first attribute of the handler is not annotated.'

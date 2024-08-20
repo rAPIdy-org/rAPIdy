@@ -6,7 +6,7 @@ from aiohttp.web_request import Request
 from typing_extensions import Annotated, Doc, TypeAlias
 
 from rapidy._annotation_extractor import get_endpoint_handler_info
-from rapidy._base_exceptions import RapidyException
+from rapidy._base_exceptions import RapidyHandlerException
 from rapidy._client_errors import _regenerate_error_with_loc, RequiredFieldIsMissing
 from rapidy._request_extractors import ExtractError, get_extractor
 from rapidy._request_param_field_info import ParamFieldInfo
@@ -21,14 +21,14 @@ AttributeValue: TypeAlias = Any
 _Handler = Union[FunctionType, Middleware]
 
 
-class AnotherDataExtractionTypeAlreadyExistsError(RapidyException):
+class AnotherDataExtractionTypeAlreadyExistsError(RapidyHandlerException):
     message = (
         'Attribute with this data extraction type cannot be added to the handler - '
         'another data extraction type is already use in handler.'
     )
 
 
-class AttributeAlreadyExistsError(RapidyException):
+class AttributeAlreadyExistsError(RapidyHandlerException):
     message = 'Attribute with this name or alias already exists.'
 
 
