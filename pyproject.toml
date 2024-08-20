@@ -131,6 +131,7 @@ ignore = [
     "WPS600",  #  Found subclassing a builtin: X
     "WPS602",  #  Found using `@staticmethod`
     "WPS604",  #  Found incorrect node inside `class` body
+    "WPS609",  #  Found direct magic attribute usage: __x__
     "W503",    #  line break before binary operator
 ]
 per-file-ignores = [

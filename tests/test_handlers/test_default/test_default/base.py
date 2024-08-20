@@ -12,7 +12,7 @@ from rapidy._annotation_extractor import (
     ParameterCannotUseDefaultFactoryError,
     SpecifyBothDefaultAndDefaultFactoryError,
 )
-from rapidy._base_exceptions import RapidyException
+from rapidy._base_exceptions import RapidyHandlerException
 from rapidy._request_param_field_info import ParamFieldInfo
 from rapidy.typedefs import Handler
 
@@ -82,7 +82,7 @@ def create_all_default_handlers_type(
         annotation: Any = Any,
         default: Any = DEFAULT_VALUE,
         **type_kwargs: Any,
-) -> Tuple[Tuple[Handler, Type[RapidyException]], ...]:
+) -> Tuple[Tuple[Handler, Type[RapidyHandlerException]], ...]:
     async def handler_1(p: Annotated[annotation, type_(**type_kwargs)] = default) -> web.Response:
         assert p == default
         return web.Response()
