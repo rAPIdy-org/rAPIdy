@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 from aiohttp.web_routedef import (
     AbstractRouteDef,
@@ -10,7 +10,7 @@ from aiohttp.web_routedef import (
 )
 
 from rapidy import hdrs
-from rapidy.typedefs import HandlerType, RouterDeco
+from rapidy.typedefs import HandlerType
 
 __all__ = (
     'AbstractRouteDef',
@@ -28,6 +28,8 @@ __all__ = (
     'view',
     'static',
 )
+
+RouterDeco = Callable[[HandlerType], HandlerType]
 
 
 def route(method: str, path: str, handler: HandlerType, **kwargs: Any) -> RouteDef:

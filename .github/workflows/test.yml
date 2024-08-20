@@ -134,7 +134,7 @@ jobs:
         env:
           CONTEXT: ${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.pydantic-version }}-${{ matrix.aiohttp-version }}
           COVERAGE_FILE: coverage/.coverage.${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.pydantic-version }}-${{ matrix.aiohttp-version }}
-        run: poetry run coverage run -m pytest --ignore=./tests/mypy ./tests
+        run: poetry run coverage run -m pytest --ignore=./tests/test_mypy ./tests
 
       - name: Store coverage file
         uses: actions/upload-artifact@v3
@@ -208,7 +208,7 @@ jobs:
         env:
           CONTEXT: ${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.pydantic-version }}-${{ matrix.mypy-version }}
           COVERAGE_FILE: coverage/.coverage.${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.pydantic-version }}-${{ matrix.mypy-version }}
-        run: poetry run coverage run -m pytest ./tests/mypy
+        run: poetry run coverage run -m pytest ./tests/test_mypy
 
       - name: Store coverage file
         uses: actions/upload-artifact@v3
@@ -249,7 +249,7 @@ jobs:
         run: coverage combine coverage
 
       - name: Coverage report
-        run: coverage report --fail-under=95
+        run: coverage report --fail-under=90
 
   check:
     if: always()

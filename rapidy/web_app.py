@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import warnings
-from typing import Any, Callable, Coroutine, Dict, Iterable, Iterator, Mapping, Optional, Tuple
+from typing import Any, Callable, Coroutine, Iterable, Iterator, Mapping, Optional, Tuple
 
 from aiohttp.log import web_logger
 from aiohttp.web_app import Application as AiohttpApplication, CleanupError
@@ -9,11 +9,9 @@ from aiohttp.web_middlewares import _fix_request_current_app
 from aiohttp.web_request import Request
 
 from rapidy import hdrs
-from rapidy._annotation_container import AnnotationContainer
-from rapidy._version import SERVER_INFO
-from rapidy._web_request_validation import middleware_validation_wrapper
-from rapidy.constants import CLIENT_MAX_SIZE
+from rapidy._request_validation_wrappers import middleware_validation_wrapper
 from rapidy.typedefs import Middleware
+from rapidy.version import SERVER_INFO
 from rapidy.web_middlewares import is_aiohttp_new_style_middleware, is_rapidy_middleware
 from rapidy.web_response import StreamResponse
 from rapidy.web_urldispatcher import UrlDispatcher
@@ -51,14 +49,11 @@ class Application(AiohttpApplication):
             router: Optional[UrlDispatcher] = None,
             middlewares: Iterable[Middleware] = (),
             handler_args: Optional[Mapping[str, Any]] = None,
-            client_max_size: int = CLIENT_MAX_SIZE,
-            client_errors_response_field_name: str = 'errors',
+            client_max_size: int = 1024**2,
             loop: Optional[asyncio.AbstractEventLoop] = None,
-            debug: Any = ...,
+            debug: Any = ...,  # mypy doesn't support ellipsis
             server_info_in_response: bool = False,
     ) -> None:
-        # TODO: Add a check that in body extractors the size does not exceed the client size
-
         super().__init__(
             logger=logger,
             router=router,
@@ -71,10 +66,6 @@ class Application(AiohttpApplication):
 
         # NOTE: override aiohttp router
         self._router = UrlDispatcher()
-
-        self._client_errors_response_field_name = client_errors_response_field_name
-
-        self._middleware_annotation_containers: Dict[int, AnnotationContainer] = {}
 
         # It is hidden by default, as I believe showing server information is a potential vulnerability.
         self._hide_server_info_deco = hide_server_info_deco(server_info_in_response)
@@ -108,10 +99,6 @@ class Application(AiohttpApplication):
         return resp
 
     async def _handle(self, request: Request) -> StreamResponse:
-        request._cache['errors_response_field_name'] = self._client_errors_response_field_name  # FIXME
-
         resp = await super()._handle(request)
-
         await self._prepare_response(resp)
-
         return resp
