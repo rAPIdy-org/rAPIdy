@@ -1,4 +1,5 @@
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Type, Union
+from contextlib import AbstractAsyncContextManager
+from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Type, TYPE_CHECKING, Union
 
 from aiohttp.abc import AbstractView
 from aiohttp.typedefs import (
@@ -18,6 +19,16 @@ from aiohttp.typedefs import (
 from typing_extensions import TypeAlias
 
 from rapidy._constants import PYDANTIC_V1, PYDANTIC_V2
+from rapidy.version import PY_VERSION_TUPLE
+
+if TYPE_CHECKING:
+    from web_app import Application
+
+    if PY_VERSION_TUPLE < (1, 9, 0):
+        AbstractAsyncContextManagerNone = AbstractAsyncContextManager
+    else:
+        AbstractAsyncContextManagerNone = AbstractAsyncContextManager[None]  # type: ignore[assignment, misc]
+
 
 __all__ = (
     'Byteish',
@@ -39,6 +50,10 @@ __all__ = (
     'MethodHandler',
     'HandlerType',
     'HandlerOrMethod',
+    'SyncOrAsync',
+    'CallableAsyncCTX',
+    'LifespanHook',
+    'LifespanCTX',
 )
 
 DictStrAny: TypeAlias = Dict[str, Any]
@@ -59,6 +74,17 @@ ValidationErrorList: TypeAlias = List[Dict[str, Any]]
 ValidateReturn: TypeAlias = Tuple[Optional[ResultValidate], Optional[ValidationErrorList]]
 
 NoArgAnyCallable: TypeAlias = Callable[[], Any]
+
+# LIFESPAN TYPES
+SyncOrAsync: TypeAlias = Union[Any, Awaitable[Any]]
+LifespanHook: TypeAlias = Union[
+    Callable[['Application'], SyncOrAsync],
+    Callable[[], SyncOrAsync],
+]
+
+CallableAsyncCTX = Callable[['Application'], 'AbstractAsyncContextManagerNone']  # type: ignore[type-arg]  # py3.8
+LifespanCTX = Union[CallableAsyncCTX, 'AbstractAsyncContextManagerNone']  # type: ignore[type-arg]  # py3.8
+
 
 if PYDANTIC_V1:
     from pydantic.error_wrappers import ErrorWrapper as ErrorWrapper

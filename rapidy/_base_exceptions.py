@@ -17,12 +17,18 @@ class RapidyException(Exception, ABC):  # noqa: N818
 
         super().__init__(self._wrap_message(message))
 
+    @staticmethod
+    def _wrap_message(message: str) -> str:
+        return RapidyException.border + message + RapidyException.border
+
+
+class RapidyHandlerException(RapidyException, ABC):  # noqa: N818
     @classmethod
     def create_with_handler_info(
             cls,
             handler: Any,
             **format_fields: str,
-    ) -> 'RapidyException':
+    ) -> 'RapidyHandlerException':
         new_message = cls.message + '\n' + cls._create_handler_info_msg(handler)
         return cls(new_message, **format_fields)
 
@@ -32,13 +38,9 @@ class RapidyException(Exception, ABC):  # noqa: N818
             handler: Any,
             attr_name: str,
             **format_fields: str,
-    ) -> 'RapidyException':
+    ) -> 'RapidyHandlerException':
         new_message = cls.message + '\n' + cls._create_handler_attr_info_msg(handler, attr_name)
         return cls(new_message, **format_fields)
-
-    @staticmethod
-    def _wrap_message(message: str) -> str:
-        return RapidyException.border + message + RapidyException.border
 
     @staticmethod
     def _create_handler_info_msg(handler: Any) -> str:
@@ -50,6 +52,6 @@ class RapidyException(Exception, ABC):  # noqa: N818
     @staticmethod
     def _create_handler_attr_info_msg(handler: Any, attr_name: str) -> str:
         return (
-            f'{RapidyException._create_handler_info_msg(handler)}'
+            f'{RapidyHandlerException._create_handler_info_msg(handler)}'
             f'\nAttribute name: `{attr_name}`'
         )
