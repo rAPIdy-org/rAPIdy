@@ -43,27 +43,27 @@ jobs:
           poetry-version: "1.7.1"
 
       - name: View poetry --help
-        run: poetry --help
+        run: python3 -m poetry --help
 
       - name: View poetry --version
-        run: poetry --version
+        run: python3 -m poetry --version
 
       - name: View poetry list
-        run: poetry list
+        run: python3 -m poetry list
 
       - name: View poetry list
-        run: poetry env list
+        run: python3 -m poetry env list
 
       - name: View poetry env info
-        run: poetry env info
+        run: python3 -m poetry env info
 
       - name: Install Pydantic v1
         if: matrix.pydantic-version == 'pydantic-v1'
-        run: poetry add "pydantic>=1.10.0,<2.0.0"
+        run: python3 -m poetry add "pydantic>=1.10.0,<2.0.0"
 
       - name: Install Pydantic v2
         if: matrix.pydantic-version == 'pydantic-v2'
-        run: poetry add "pydantic>=2.0.2,<3.0.0"
+        run: python3 -m poetry add "pydantic>=2.0.2,<3.0.0"
 
       - name: Run pre-commit
         uses: pre-commit/action@v3.0.0
