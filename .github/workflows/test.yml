@@ -51,6 +51,9 @@ jobs:
       - name: View poetry list
         run: poetry list
 
+      - name: View poetry list
+        run: poetry env info
+
       - name: Install Pydantic v1
         if: matrix.pydantic-version == 'pydantic-v1'
         run: poetry add "pydantic>=1.10.0,<2.0.0"
