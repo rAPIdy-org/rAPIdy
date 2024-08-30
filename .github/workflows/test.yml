@@ -45,6 +45,9 @@ jobs:
       - name: View python3 -V
         run: python3 -V
 
+      - name: View python3 -V
+        run: python3.11 -V
+
       - name: View poetry --help
         run: python3 -m poetry --help
 
