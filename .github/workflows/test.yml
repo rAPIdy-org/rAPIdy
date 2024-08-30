@@ -48,6 +48,9 @@ jobs:
       - name: View python3 -V
         run: python3.11 -V
 
+      - name: echo PATH
+        run: echo $PATH
+
       - name: View poetry --help
         run: python3 -m poetry --help
 
