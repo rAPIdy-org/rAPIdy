@@ -51,6 +51,9 @@ jobs:
       - name: View poetry --help
         run: python3 -m poetry --help
 
+      - name: View poetry env use python3.11
+        run: python3 -m poetry env use python3.11
+
       - name: View poetry --version
         run: python3 -m poetry --version
 
