@@ -48,6 +48,15 @@ jobs:
       - name: View python3 -V
         run: python3.11 -V
 
+      - name: View which python3
+        run: which python3
+
+      - name: View which python
+        run: which python
+
+      - name: View which python3
+        run: which python3.11
+
       - name: echo PATH
         run: echo $PATH
 
