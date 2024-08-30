@@ -42,6 +42,9 @@ jobs:
         with:
           poetry-version: "1.7.1"
 
+      - name: View python3 -V
+        run: python3 -V
+
       - name: View poetry --help
         run: python3 -m poetry --help
 
@@ -51,7 +54,7 @@ jobs:
       - name: View poetry list
         run: python3 -m poetry list
 
-      - name: View poetry list
+      - name: View poetry env list
         run: python3 -m poetry env list
 
       - name: View poetry env info
