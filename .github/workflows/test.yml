@@ -51,6 +51,15 @@ jobs:
       - name: View poetry --version
         run: python3 -m poetry --version
 
+      - name: View poetry about
+        run: python3 -m poetry about
+
+      - name: View poetry show
+        run: python3 -m poetry show
+
+      - name: View poetry version
+        run: python3 -m poetry version
+
       - name: View poetry list
         run: python3 -m poetry list
 
