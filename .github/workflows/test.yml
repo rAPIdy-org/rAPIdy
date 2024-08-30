@@ -52,6 +52,9 @@ jobs:
         run: poetry list
 
       - name: View poetry list
+        run: poetry env list
+
+      - name: View poetry env info
         run: poetry env info
 
       - name: Install Pydantic v1
