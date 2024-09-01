@@ -14,16 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  clear:
-    name: Clear cache
-    runs-on: ["self-hosted", "Ubuntu-latest"]
-    steps:
-      - uses: MyAlbum/purge-cache@v2
-
   pre-commit:
     runs-on: ["self-hosted", "Ubuntu-latest"]
-    needs:
-      - clear
     strategy:
       fail-fast: false
       max-parallel: 50
@@ -32,6 +24,8 @@ jobs:
           - "pydantic-v1"
           - "pydantic-v2"
     steps:
+      - uses: MyAlbum/purge-cache@v2
+
       - name: Dump github context
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
@@ -103,6 +97,8 @@ jobs:
           - python-version: "3.11"
             aiohttp-version: "3.8.1"
     steps:
+      - uses: MyAlbum/purge-cache@v2
+
       - name: Dump github context
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
@@ -177,6 +173,8 @@ jobs:
           - python-version: "3.9"
             mypy-version: "1.4.1"
     steps:
+      - uses: MyAlbum/purge-cache@v2
+
       - name: Dump github context
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
@@ -228,6 +226,8 @@ jobs:
     needs: [ "test", "test-mypy" ]
     runs-on: ["self-hosted", "Ubuntu-latest"]
     steps:
+      - uses: MyAlbum/purge-cache@v2
+
       - name: Dump github context
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
@@ -265,6 +265,8 @@ jobs:
       - coverage-combine
     runs-on: ["self-hosted", "Ubuntu-latest"]
     steps:
+      - uses: MyAlbum/purge-cache@v2
+
       - name: Dump github context
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
