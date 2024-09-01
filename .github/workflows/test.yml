@@ -14,14 +14,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  clear:
-    name: Clear cache
-    runs-on: ubuntu-latest
-    steps:
-      - uses: MyAlbum/purge-cache@v1
-        with:
-          max-age: 604800 # Cache max 7 days since last use (this is the default)
-
   pre-commit:
     runs-on: ["self-hosted", "Ubuntu-latest"]
     strategy:
@@ -32,6 +24,10 @@ jobs:
           - "pydantic-v1"
           - "pydantic-v2"
     steps:
+      - uses: MyAlbum/purge-cache@v1
+        with:
+          max-age: 604800 # Cache max 7 days since last use (this is the default)
+
       - name: Dump github context
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
