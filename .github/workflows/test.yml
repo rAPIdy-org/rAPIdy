@@ -24,9 +24,7 @@ jobs:
           - "pydantic-v1"
           - "pydantic-v2"
     steps:
-      - uses: MyAlbum/purge-cache@v1
-        with:
-          max-age: 604800 # Cache max 7 days since last use (this is the default)
+      - uses: MyAlbum/purge-cache@v2
 
       - name: Dump github context
         env:
@@ -99,9 +97,8 @@ jobs:
           - python-version: "3.11"
             aiohttp-version: "3.8.1"
     steps:
-      - uses: MyAlbum/purge-cache@v1
-        with:
-          max-age: 604800 # Cache max 7 days since last use (this is the default)
+      - uses: MyAlbum/purge-cache@v2
+
       - name: Dump github context
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
@@ -176,9 +173,8 @@ jobs:
           - python-version: "3.9"
             mypy-version: "1.4.1"
     steps:
-      - uses: MyAlbum/purge-cache@v1
-        with:
-          max-age: 604800 # Cache max 7 days since last use (this is the default)
+      - uses: MyAlbum/purge-cache@v2
+
       - name: Dump github context
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
@@ -230,9 +226,8 @@ jobs:
     needs: [ "test", "test-mypy" ]
     runs-on: ["self-hosted", "Ubuntu-latest"]
     steps:
-      - uses: MyAlbum/purge-cache@v1
-        with:
-          max-age: 604800 # Cache max 7 days since last use (this is the default)
+      - uses: MyAlbum/purge-cache@v2
+
       - name: Dump github context
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
@@ -270,9 +265,8 @@ jobs:
       - coverage-combine
     runs-on: ["self-hosted", "Ubuntu-latest"]
     steps:
-      - uses: MyAlbum/purge-cache@v1
-        with:
-          max-age: 604800 # Cache max 7 days since last use (this is the default)
+      - uses: MyAlbum/purge-cache@v2
+
       - name: Dump github context
         env:
           GITHUB_CONTEXT: ${{ toJson(github) }}
