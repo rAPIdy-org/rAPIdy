@@ -14,6 +14,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  clear:
+    name: Clear cache
+    runs-on: ubuntu-latest
+    steps:
+      - uses: MyAlbum/purge-cache@v1
+        with:
+          max-age: 604800 # Cache max 7 days since last use (this is the default)
+
   pre-commit:
     runs-on: ["self-hosted", "Ubuntu-latest"]
     strategy:
@@ -38,7 +46,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install poetry
-        uses: abatilo/actions-poetry@v3
+        uses: abatilo/actions-poetry@v2
         with:
           poetry-version: "1.7.1"
 
