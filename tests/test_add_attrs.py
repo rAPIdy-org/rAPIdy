@@ -41,7 +41,6 @@ class ViewHandler(web.View):
 
 @pytest.mark.parametrize('handler', [handler, ViewHandler])
 async def test_success_handler_add_attr(aiohttp_client: AiohttpClient, handler: HandlerType) -> None:
-
     app = web.Application(middlewares=[some_attr_middleware])
     app.add_routes([web.get('/', handler)])
 

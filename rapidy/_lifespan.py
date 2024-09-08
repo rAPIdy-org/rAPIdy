@@ -41,6 +41,8 @@ class Lifespan:
 
     @asynccontextmanager
     async def ctx_manager(self) -> AsyncGenerator[None, None]:
+        # NOTE: This code is taken almost unchanged from the https://litestar.dev/ project.
+
         async with AsyncExitStack() as exit_stack:
             for cleanup_hook in self.on_cleanup[::-1]:
                 exit_stack.push_async_callback(partial(self._call_lifespan_hook, cleanup_hook))

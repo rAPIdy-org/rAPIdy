@@ -3,9 +3,10 @@ from copy import deepcopy
 from typing import Any, cast, List, NamedTuple, Optional, Type, Union
 
 from aiohttp.web_request import Request
-from typing_extensions import Annotated, Doc, get_args, get_origin
+from aiohttp.web_response import StreamResponse
+from typing_extensions import Annotated, get_args, get_origin
 
-from rapidy._annotation_helpers import annotation_is_optional, get_base_annotations
+from rapidy._annotation_helpers import annotation_is_optional, get_base_annotations, lenient_issubclass
 from rapidy._base_exceptions import RapidyHandlerException
 from rapidy.request_parameters import ParamFieldInfo
 from rapidy.typedefs import Handler, Required, Undefined
@@ -65,8 +66,12 @@ def prepare_field_info(
         else:
             raise NotRapidyParameterError
 
+    if attr_annotation is inspect.Signature.empty:
+        attr_annotation = Any
+
     prepared_field_info = cast(ParamFieldInfo, deepcopy(raw_field_info))
-    prepared_field_info.prepare(annotation=attr_annotation, attribute_name=attr_name)
+    prepared_field_info.set_annotation(attr_annotation)
+    prepared_field_info.set_attribute_name(attr_name)
 
     return prepared_field_info
 
@@ -202,10 +207,10 @@ def create_attribute_field_info(handler: Handler, param: inspect.Parameter) -> P
 
     if annotation_origin is Annotated:
         annotated_args = get_args(param.annotation)
-        if len(annotated_args) != 2:
+        if len(annotated_args) < 2:
             raise NotRapidyParameterError
 
-        attr_annotation, attr_param_field_info = annotated_args
+        attr_annotation, attr_param_field_info, *_ = annotated_args
 
         prepared_param_field_info = prepare_field_info(attr_annotation, param.name, attr_param_field_info)
         default = get_annotated_definition_attr_default(
@@ -232,59 +237,51 @@ def create_attribute_field_info(handler: Handler, param: inspect.Parameter) -> P
 
 
 class EndpointHandlerInfo(NamedTuple):
-    request_attr_name: Annotated[
-        Optional[str],
-        Doc(
-            """
+    """Endpoint handler information.
+
+    Attributes:
+        request_attr_name:
             Name of the attribute expecting the incoming `web.Request`.
-            """,
-        ),
-    ]
-    attr_fields_info: Annotated[
-        List[ParamFieldInfo],
-        Doc(
-            """
+        response_attr_name:
+            Name of the attribute expecting the current `web.Response`.
+        attr_fields_info:
             Contains `ParamFieldInfo` for each attribute that can be processed by the Rapidy endpoint-handler.
-            """,
-        ),
-    ]
+        return_annotation:
+            Handler return annotation.
+    """
+
+    request_attr_name: Optional[str]
+    response_attr_name: Optional[str]
+    attr_fields_info: List[ParamFieldInfo]
+    return_annotation: Type[Any]
 
 
 def get_endpoint_handler_info(
-        endpoint_handler: Annotated[
-            Handler,
-            Doc(
-                """
-                Endpoint handler for extracting annotation information.
-
-                Examples:
-                    >>> def handler() -> web.Response: ... # <--- this object - handler
-
-                    >>> @routes.post('/')
-                    >>> def handler() -> web.Response: ... # <--- this object - handler
-
-                    >>> class Handler(web.View):
-                    >>>     def post() -> web.Response: ...  # <--- this object - post
-                """,
-            ),
-        ],
-        request_attr_can_declare: Annotated[
-            bool,
-            Doc(
-                """
-                Flag that determines whether a handler in attributes can receive a `web.Request` injection.
-
-                NOTE:
-                    If the flag is not set -> the example will not work.
-                        >>> def handler(request: web.Request) -> ...: ...  #  injection won't happen
-                """,
-            ),
-        ] = False,
+        endpoint_handler: Handler,
+        request_attr_can_declare: bool = False,
 ) -> EndpointHandlerInfo:
     """Extract annotation information from a handler function or view-handler method.
 
+    Args:
+        endpoint_handler:
+            Endpoint handler for extracting annotation information.
+            >>> def handler() -> web.Response: ... # <--- this object - handler
+
+            >>> @routes.post('/')
+            >>> def handler() -> web.Response: ... # <--- this object - handler
+
+            >>> class Handler(web.View):
+            >>>     def post(self) -> web.Response: ...  # <--- this object - post
+        request_attr_can_declare:
+            Flag that determines whether a handler in attributes can receive a `web.Request` injection.
+            If `request_attr_can_declare=False` -> the example will not work.
+            >>> def handler(request: web.Request) -> ...: ...  #  injection won't happen
+
     Raises:
         RequestFieldAlreadyExistsError: if two attr expecting to be injected by `web.Request`
+
+    Returns:
+        EndpointHandlerInfo - Endpoint handler information.
 
     Examples:
         >>> from rapidy import web
@@ -332,23 +329,32 @@ def get_endpoint_handler_info(
     """
     endpoint_signature = inspect.signature(endpoint_handler)
     signature_params = endpoint_signature.parameters
+    return_annotation = endpoint_signature.return_annotation
 
     request_attr_name = None
+    response_attr_name = None
     attr_fields_info: List[ParamFieldInfo] = []
 
     for param_name, param in signature_params.items():
-        try:
+        try:  # noqa: WPS229
             field_info = create_attribute_field_info(param=param, handler=endpoint_handler)
+            attr_fields_info.append(field_info)
         except NotRapidyParameterError:
+            # The block handles unknown attributes by extending the attribute injection logic.
+            #
+            # Currently, `rAPIdy` is only able to process two parameters
+            # that are not related to `rAPIdy` validation logic
+            # these are `web.Request` and `web.Response`.
+
+            signature_index = list(signature_params.keys()).index(param_name)
+
+            base_annotations = get_base_annotations(param.annotation)
+            if len(base_annotations) > 1:
+                # If there is more than one base attribute -> don't know what to do -> skip it.
+                continue
+
+            base_annotation = base_annotations[0]
             if request_attr_can_declare:  # Need to inject `web.Request` in a functional handler
-                signature_index = list(signature_params.keys()).index(param_name)
-
-                base_annotations = get_base_annotations(param.annotation)
-                if len(base_annotations) > 1:
-                    # If there is more than one base attribute -> don't know what to do -> skip it.
-                    continue
-
-                base_annotation = base_annotations[0]
                 if (
                     base_annotation is inspect.Signature.empty and signature_index == 0
                     or issubclass(Request, base_annotation)
@@ -357,8 +363,14 @@ def get_endpoint_handler_info(
                         raise RequestFieldAlreadyExistsError.create_with_handler_info(handler=endpoint_handler)
 
                     request_attr_name = param.name
+                    continue
 
-        else:
-            attr_fields_info.append(field_info)
+            if lenient_issubclass(base_annotation, StreamResponse):
+                response_attr_name = param.name
 
-    return EndpointHandlerInfo(request_attr_name=request_attr_name, attr_fields_info=attr_fields_info)
+    return EndpointHandlerInfo(
+        request_attr_name=request_attr_name,
+        response_attr_name=response_attr_name,
+        attr_fields_info=attr_fields_info,
+        return_annotation=return_annotation,
+    )

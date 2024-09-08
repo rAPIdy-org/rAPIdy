@@ -2,7 +2,7 @@ import pytest
 from aiohttp import StreamReader
 from aiohttp.pytest_plugin import AiohttpClient
 
-from rapidy.request_enums import BodyType
+from rapidy.enums import RequestBodyType
 from tests.test_handlers.test_default.base import body_test_cases, BodyTestCase
 from tests.test_handlers.test_default.test_optional.base import (
     base_test_optional,
@@ -24,7 +24,7 @@ async def test_optional(aiohttp_client: AiohttpClient, test_case: BodyTestCase) 
 
 @pytest.mark.parametrize('test_case', [pytest.param(test_case, id=test_case.id) for test_case in body_test_cases])
 async def test_optional_schema_param_fields(aiohttp_client: AiohttpClient, test_case: BodyTestCase) -> None:
-    if test_case.body_type in (BodyType.text, BodyType.binary):
+    if test_case.body_type in (RequestBodyType.text, RequestBodyType.binary):
         return
 
     await base_test_optional_schema_param_fields(

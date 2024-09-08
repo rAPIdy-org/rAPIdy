@@ -7,13 +7,13 @@ from typing import Any, Dict, Optional, Tuple, Type, TYPE_CHECKING, Union
 
 from aiohttp import StreamReader
 from pydantic import ValidationError
-from pydantic.fields import FieldInfo as FieldInfo
 from typing_extensions import Annotated
 
-from rapidy._client_errors import _regenerate_error_with_loc
+from rapidy._base_exceptions import RapidyException
+from rapidy._client_errors import regenerate_error_with_loc
 from rapidy._constants import PYDANTIC_V1, PYDANTIC_V2
-from rapidy._request_param_field_info import ParamFieldInfo
-from rapidy.request_enums import HTTPRequestParamType
+from rapidy._request_param_field_info import FieldInfo, ParamFieldInfo
+from rapidy.enums import HTTPRequestParamType
 from rapidy.typedefs import NoArgAnyCallable, Required, Undefined, ValidateReturn
 
 rapidy_inner_fake_annotations = {
@@ -21,20 +21,54 @@ rapidy_inner_fake_annotations = {
 }
 
 
+class ModelFieldCreationError(RapidyException):
+    message = """
+    Invalid args for response field!
+    Hint: check that `{type_info}` is a valid Pydantic field (e.g. Union[Response, dict, None]).
+    You can disable generating the response model from the type annotation:
+
+    Any way of creating `aiohttp` handler paths supports disabling generating the response model.
+
+    Examples:
+        >>> InvalidPydanticType = ...  # <- obj will raise ModelFieldCreationError
+        >>> app = web.Application()
+
+        >>> def handler() -> InvalidPydanticType:
+        >>>     pass
+        >>>
+        >>> app.router.add_post('/', handler, response_validate=False)  # <- disable generating the response model
+
+        >>> @routes.post('/', response_validate=False)  # <- disable generating the response model
+        >>> def handler() -> InvalidPydanticType:
+        >>>     pass
+
+        >>> class Handler(web.View):
+        >>>     def post(self) -> InvalidPydanticType:
+        >>>         pass
+        >>>
+        >>> app.router.add_post('/', Handler, response_validate=False)  # <- disable generating the response model
+
+        >>> route = web.post('/', Handler, response_validate=False)  # <- disable generating the response model
+        >>> app.add_routes([route])
+    """
+
+    def __init__(self, message: Optional[str] = None, *, type_: Type[Any], **format_fields: str) -> None:
+        super().__init__(message, **format_fields, type_info=f'{type_.__module__}.{type_.__name__}')  # noqa: WPS221
+
+
 @dataclass
 class BaseModelField(ABC):
     name: str
-    field_info: ParamFieldInfo
-    http_request_param_type: HTTPRequestParamType
+    field_info: FieldInfo
 
     @cached_property
     def default_exists(self) -> bool:
         return self.field_info.default is not Undefined or self.field_info.default_factory is not None
 
-    @property
-    @abstractmethod
+    @cached_property
     def alias(self) -> str:
-        raise NotImplementedError
+        alias = self.field_info.alias
+        return alias if alias is not None else self.name
 
     @property
     @abstractmethod
@@ -68,16 +102,13 @@ class BaseModelField(ABC):
 
 
 @dataclass
-class FakeModelField(BaseModelField):
-    name: str
-    field_info: ParamFieldInfo
+class BaseRequestModelField(BaseModelField, ABC):
     http_request_param_type: HTTPRequestParamType
+    field_info: ParamFieldInfo
 
-    @cached_property
-    def alias(self) -> str:
-        alias = self.field_info.alias
-        return alias if alias is not None else self.name
 
+@dataclass
+class FakeRequestModelField(BaseRequestModelField):
     @property
     def required(self) -> bool:
         return True
@@ -129,11 +160,40 @@ if PYDANTIC_V1:  # noqa: C901
                 final=final,
                 alias=alias,
                 field_info=field_info,
+                **kw,
             )
             self.field_info: ParamFieldInfo
 
             field_info_default_exist = self.field_info.default is not Undefined and self.default is not ...
             self.default_exists = field_info_default_exist or self.field_info.default_factory is not None
+
+    class RequestModelField(ModelField):
+        def __init__(
+                self,
+                name: str,
+                type_: Type[Any],
+                class_validators: Optional[Dict[str, Validator]],
+                model_config: Type[BaseConfig],
+                default: Any = Undefined,
+                default_factory: Optional[NoArgAnyCallable] = None,
+                required: 'BoolUndefined' = Undefined,
+                final: bool = False,
+                alias: Optional[str] = None,
+                field_info: Optional[ParamFieldInfo] = None,
+                **kw: Any,
+        ) -> None:
+            super().__init__(
+                name=name,
+                type_=type_,
+                class_validators=class_validators,
+                model_config=model_config,
+                default=default,
+                default_factory=default_factory,
+                required=required,
+                final=final,
+                alias=alias,
+                field_info=field_info,
+            )
 
             http_request_param_type: Optional[HTTPRequestParamType] = kw.pop('http_request_param_type', None)
             if http_request_param_type:
@@ -143,11 +203,11 @@ if PYDANTIC_V1:  # noqa: C901
         def need_validate(self) -> bool:
             return self.field_info.need_validate
 
-    def create_field(
+    def create_request_field(
             name: str,
             type_: Type[Any],
             field_info: ParamFieldInfo,
-    ) -> BaseModelField:
+    ) -> BaseRequestModelField:
         required = field_info.default in (Required, Undefined) and field_info.default_factory is None
 
         kwargs: Dict[str, Any] = {
@@ -163,19 +223,37 @@ if PYDANTIC_V1:  # noqa: C901
             'model_config': BaseConfig,
         }
         try:
-            return ModelField(**kwargs)
+            return RequestModelField(**kwargs)
         except Exception as exc:
             if field_info.annotation in rapidy_inner_fake_annotations:
-                return FakeModelField(
+                return FakeRequestModelField(
                     name=name,
                     field_info=field_info,
                     http_request_param_type=field_info.http_request_param_type,
                 )
-            raise exc
+            raise ModelFieldCreationError(type_=type_) from exc
 
+    def create_response_field(
+            name: str,
+            type_: Type[Any],
+            field_info: FieldInfo,
+    ) -> ModelField:
+        kwargs: Dict[str, Any] = {
+            'name': name,
+            'field_info': field_info,
+            'type_': type_,
+            'required': True,
+            'class_validators': {},
+            'model_config': BaseConfig,
+        }
+
+        try:
+            return ModelField(**kwargs)  # type: ignore[arg-type, unused-ignore]
+        except Exception as exc:
+            raise ModelFieldCreationError(type_=type_) from exc
 
 elif PYDANTIC_V2:
-    from pydantic import PydanticSchemaGenerationError, TypeAdapter  # noqa: WPS433
+    from pydantic import TypeAdapter  # noqa: WPS433
 
     def get_annotation_from_field_info(
             annotation: Any,
@@ -186,10 +264,6 @@ elif PYDANTIC_V2:
 
     @dataclass
     class ModelField(BaseModelField):  # type: ignore[no-redef]  # noqa: WPS440
-        name: str
-        field_info: ParamFieldInfo
-        http_request_param_type: HTTPRequestParamType
-
         @property
         def alias(self) -> str:
             alias = self.field_info.alias
@@ -216,47 +290,67 @@ elif PYDANTIC_V2:
             self._type_adapter: TypeAdapter[Any] = TypeAdapter(Annotated[self.field_info.annotation, self.field_info])
 
         def validate(
-            self,
-            value: Any,
-            values: Dict[str, Any],
-            *,
-            loc: Tuple[Union[int, str], ...],
+                self,
+                value: Any,
+                values: Dict[str, Any],
+                *,
+                loc: Tuple[Union[int, str], ...],
         ) -> ValidateReturn:
             try:
                 return (
-                    self._type_adapter.validate_python(value, from_attributes=True),
+                    self._type_adapter.validate_python(
+                        value,
+                        from_attributes=True,
+                        strict=False,  # note: it doesn't always work - pydantic err
+                    ),
                     None,
                 )
             except ValidationError as exc:
-                return None, _regenerate_error_with_loc(
+                return None, regenerate_error_with_loc(
                     errors=exc.errors(),
                     loc_prefix=loc,
                 )
 
-    def create_field(  # noqa: WPS440
+    @dataclass
+    class RequestModelField(ModelField):  # type: ignore[no-redef]
+        field_info: ParamFieldInfo
+        http_request_param_type: HTTPRequestParamType
+
+    def create_request_field(  # noqa: WPS440
             name: str,
             type_: Type[Any],
             field_info: ParamFieldInfo,
-    ) -> BaseModelField:
-        field_info.annotation = type_
+    ) -> BaseRequestModelField:
         try:
-            return ModelField(  # type: ignore[call-arg]
+            return RequestModelField(  # type: ignore[call-arg]
                 name=name,
                 field_info=field_info,
                 http_request_param_type=field_info.http_request_param_type,
             )
-        except PydanticSchemaGenerationError as pydantic_schema_generation_err:
+        except Exception as exc:
             if field_info.annotation in rapidy_inner_fake_annotations:
-                return FakeModelField(
+                return FakeRequestModelField(
                     name=name,
                     field_info=field_info,
                     http_request_param_type=field_info.http_request_param_type,
                 )
+            raise ModelFieldCreationError(type_=type_) from exc
 
-            raise pydantic_schema_generation_err
+    def create_response_field(
+            name: str,
+            type_: Type[Any],
+            field_info: FieldInfo,
+    ) -> ModelField:
+        try:
+            return ModelField(name=name, field_info=field_info)  # type: ignore[call-arg, unused-ignore]
+        except Exception as exc:
+            raise ModelFieldCreationError(type_=type_) from exc
+
+else:
+    raise ValueError
 
 
-def create_param_model_field(field_info: ParamFieldInfo) -> BaseModelField:
+def create_param_model_field(field_info: ParamFieldInfo) -> BaseRequestModelField:
     copied_field_info = deepcopy(field_info)
 
     copied_field_info.default = field_info.default if field_info.default is not inspect.Signature.empty else Required
@@ -268,4 +362,17 @@ def create_param_model_field(field_info: ParamFieldInfo) -> BaseModelField:
         annotation=field_info.annotation, field_info=field_info, field_name=attribute_name,
     )
 
-    return create_field(name=attribute_name, type_=inner_attribute_type, field_info=copied_field_info)
+    return create_request_field(name=attribute_name, type_=inner_attribute_type, field_info=copied_field_info)
+
+
+def create_response_model_field(type_: Union[Type[Any], None]) -> ModelField:
+    attribute_name = 'body'
+
+    field_info = FieldInfo(validate=True)
+    field_info.set_annotation(type_)
+
+    inner_attribute_type = get_annotation_from_field_info(
+        annotation=field_info.annotation, field_info=field_info, field_name=attribute_name,
+    )
+
+    return create_response_field(name=attribute_name, type_=inner_attribute_type, field_info=field_info)
