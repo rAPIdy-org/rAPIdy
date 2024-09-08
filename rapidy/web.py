@@ -1,4 +1,4 @@
-from rapidy.request_enums import BodyType
+from rapidy.enums import RequestBodyType
 from rapidy.version import AIOHTTP_VERSION_TUPLE
 
 if AIOHTTP_VERSION_TUPLE >= (3, 9, 0):
@@ -92,6 +92,7 @@ from rapidy.web_request import BaseRequest as BaseRequest, FileField as FileFiel
 from rapidy.web_response import (
     ContentCoding as ContentCoding,
     json_response as json_response,
+    JsonResponse as JsonResponse,
     Response as Response,
     StreamResponse as StreamResponse,
 )
@@ -213,6 +214,7 @@ __all = [
     'Response',
     'StreamResponse',
     'json_response',
+    'JsonResponse',
     # web_routedef
     'AbstractRouteDef',
     'RouteDef',

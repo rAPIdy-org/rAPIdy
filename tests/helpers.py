@@ -3,7 +3,7 @@ from typing import Dict
 from aiohttp.helpers import content_disposition_header
 
 from rapidy import hdrs
-from rapidy.request_enums import BodyType
+from rapidy.enums import RequestBodyType
 from rapidy.request_parameters import (
     Body,
     Cookie,
@@ -45,15 +45,15 @@ type_tuple_params = (
     (Header, Headers),
     (Cookie, Cookies),
     (QueryParam, QueryParams),
-    (Body(body_type=BodyType.json), Body(body_type=BodyType.x_www_form)),
+    (Body(body_type=RequestBodyType.json), Body(body_type=RequestBodyType.x_www_form)),
 )
 
 body_params = (
-    Body(body_type=BodyType.json),
-    Body(body_type=BodyType.x_www_form),
-    Body(body_type=BodyType.multipart_form_data),
-    Body(body_type=BodyType.binary),
-    Body(body_type=BodyType.text),
+    Body(body_type=RequestBodyType.json),
+    Body(body_type=RequestBodyType.x_www_form),
+    Body(body_type=RequestBodyType.multipart_form_data),
+    Body(body_type=RequestBodyType.binary),
+    Body(body_type=RequestBodyType.text),
 )
 
 

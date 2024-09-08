@@ -3,7 +3,7 @@ from typing import Any
 import pytest
 
 from rapidy import web
-from rapidy._request_handlers import AnotherDataExtractionTypeAlreadyExistsError
+from rapidy._endpoint_handlers import AnotherDataExtractionTypeAlreadyExistsError
 from tests.helpers import body_params, type_tuple_params
 
 
