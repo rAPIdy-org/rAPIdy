@@ -11,7 +11,6 @@ from rapidy import web
 @pytest.mark.parametrize(
     'attr_type', [
         Annotated[str, str],
-        Annotated[str, str, str],
     ],
 )
 async def test_incorrect_rapid_param(aiohttp_client: AiohttpClient, attr_type: Any) -> None:

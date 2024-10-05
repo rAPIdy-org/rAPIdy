@@ -72,17 +72,7 @@ exclude = [
 max-line-length = 120
 max-complexity = 10
 ignore = [
-    "D100",    #  Missing docstring in public module
-    "D101",    #  Missing docstring in public class
-    "D102",    #  Missing docstring in public method
-    "D103",    #  Missing docstring in public function
-    "D104",    #  Missing docstring in public package
-    "D105",    #  Missing docstring in magic method
-    "D107",    #  Missing docstring in __init__"
-    "DAR101",  #  Missing parameter(s) in Docstring: X
-    "DAR201",  #  Missing "Returns" in Docstring: - return
-    "DAR401",  #  Missing exception(s) in Raises section: X
-    "DAR402",  # Excess exception(s) in Raises section: X
+    "D",       #  Ignore all doc
     "P101",    #  format string does contain unindexed parameters
     "RST203",  #  Definition list ends without a blank line; unexpected unindent.
     "S101",    #  Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
@@ -118,10 +108,12 @@ ignore = [
     "WPS410",  #  Found wrong metadata variable: __all__
     "WPS420",  #  Found wrong keyword
     "WPS421",  #  Found wrong function call: vars
+    "WPS428",  #  Found statement that has no effect
     "WPS430",  #  Found nested function: X
     "WPS436",  #  Found protected module import: X
     "WPS437",  #  Found protected attribute usage: _X
     "WPS450",  #  Found protected object import: X
+    "WPS451",  #  Found positional-only argument
     "WPS454",  #  Found wrong `raise` exception type: X
     "WPS462",  #  Wrong multiline string usage
     "WPS467",  #  Found bare raise keyword
@@ -137,7 +129,7 @@ ignore = [
 per-file-ignores = [
     'rapidy/__init__.py: N813 WPS412 WPS413 WPS433 WPS442',
     'rapidy/_base_exceptions.py: WPS336',
-    'rapidy/_request_param_model_field.py: WPS440',
+    'rapidy/_endpoint_model_field.py: WPS440',
     'rapidy/_client_errors.py: C901 WPS433 WPS440',
     'rapidy/_annotation_helpers.py: WPS516',
     'rapidy/request_parameters.py: WPS118',

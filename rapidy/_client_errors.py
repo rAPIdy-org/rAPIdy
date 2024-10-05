@@ -4,8 +4,9 @@ from typing import Any, Dict, List, Tuple, Type, Union
 from pydantic import BaseModel, create_model
 
 from rapidy._constants import PYDANTIC_V1, PYDANTIC_V2
-from rapidy.typedefs import ErrorWrapper, ValidationErrorList
+from rapidy.typedefs import DictStrAny, ErrorWrapper, ValidationErrorList
 
+ErrorModel: Type[BaseModel] = create_model('Model')
 RequestErrorModel: Type[BaseModel] = create_model('Request')
 
 
@@ -42,27 +43,37 @@ if PYDANTIC_V1:
         type = 'value_error.missing'
         msg_template = 'field required'
 
-    def _regenerate_error_with_loc(
+    def regenerate_error_with_loc(
             *,
             errors: List[Any],
             loc_prefix: Tuple[Union[str, int], ...],
     ) -> List[Dict[str, Any]]:
         return [
             {**err, 'loc': loc_prefix + err.get('loc', ())}
-            for err in _normalize_errors(errors)
+            for err in normalize_errors(errors)
         ]
 
-    def _normalize_errors(errors: List[Any]) -> List[Dict[str, Any]]:
-        use_errors: List[Dict[str, Any]] = []
+    def normalize_error_wrapper(error: ErrorWrapper) -> List[DictStrAny]:
+        return ValidationError(errors=[error], model=RequestErrorModel).errors()
+
+    def normalize_list(errors: List[Any]) -> ValidationErrorList:
+        use_errors: ValidationErrorList = []
         for error in errors:
             if isinstance(error, ErrorWrapper):
-                new_errors = ValidationError(errors=[error], model=RequestErrorModel).errors()
+                new_errors = normalize_error_wrapper(error)
                 use_errors.extend(new_errors)
             elif isinstance(error, list):
-                use_errors.extend(_normalize_errors(error))
+                use_errors.extend(normalize_errors(error))
             else:
                 use_errors.append(error)
         return use_errors
+
+    def normalize_errors(errors: Union[Any, List[Any]]) -> ValidationErrorList:
+        if isinstance(errors, list):
+            return normalize_list(errors)
+        elif isinstance(errors, ErrorWrapper):
+            return normalize_error_wrapper(errors)
+        return [errors]
 
 elif PYDANTIC_V2:
     from pydantic import ValidationError
@@ -85,7 +96,7 @@ elif PYDANTIC_V2:
         type = 'missing'
         msg_template = 'Field required'
 
-    def _regenerate_error_with_loc(
+    def regenerate_error_with_loc(
             *,
             errors: List[Any],
             loc_prefix: Tuple[Union[str, int], ...],
@@ -95,11 +106,18 @@ elif PYDANTIC_V2:
             for err in errors
         ]
 
-    def _normalize_errors(errors: List[Any]) -> ValidationErrorList:
-        for error in errors:  # FIXME: ...
-            error.pop('url', None)
-            error.pop('input', None)
-        return errors
+    def error_dict_pop_useless_keys(error: Dict[str, Any]) -> None:  # TODO: need advice - not sure about this
+        error.pop('url', None)
+        error.pop('input', None)
+
+    def normalize_errors(errors: Union[Any, List[Any]]) -> ValidationErrorList:
+        if isinstance(errors, list):
+            for error in errors:
+                error_dict_pop_useless_keys(error)
+            return errors
+
+        error_dict_pop_useless_keys(errors)
+        return [errors]
 
 else:
     raise Exception

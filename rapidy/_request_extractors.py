@@ -13,8 +13,9 @@ from multidict import MultiDict, MultiDictProxy, MultiMapping
 
 from rapidy import hdrs
 from rapidy._client_errors import ClientError
+from rapidy._endpoint_helpers import get_content_type_by_request_body_type
 from rapidy._request_param_field_info import ParamFieldInfo
-from rapidy.request_enums import BodyType, get_content_type_by_body_type, HTTPRequestParamType
+from rapidy.enums import HTTPRequestParamType, RequestBodyType
 from rapidy.request_parameters import Body
 from rapidy.typedefs import DictStrAny, DictStrStr
 
@@ -117,12 +118,12 @@ _http_simple_request_param_extractor_map: Dict[HTTPRequestParamType, ExtractFunc
     HTTPRequestParamType.query: extract_query,
 }
 
-_body_type_extractor_map: Dict[BodyType, ExtractBodyFunction] = {
-    BodyType.text: extract_body_text,
-    BodyType.binary: extract_body_bytes,
-    BodyType.json: extract_body_json,
-    BodyType.x_www_form: extract_post_data,
-    BodyType.multipart_form_data: extract_post_data,
+_body_type_extractor_map: Dict[RequestBodyType, ExtractBodyFunction] = {
+    RequestBodyType.text: extract_body_text,
+    RequestBodyType.binary: extract_body_bytes,
+    RequestBodyType.json: extract_body_json,
+    RequestBodyType.x_www_form: extract_post_data,
+    RequestBodyType.multipart_form_data: extract_post_data,
 }
 
 
@@ -154,7 +155,7 @@ def get_body_extractor(body_field_info: Body) -> ExtractFunction:
 
 
 def create_checked_type_extractor(extractor: ExtractBodyFunction, body_field_info: Body) -> ExtractFunction:
-    expected_ctype = get_content_type_by_body_type(body_field_info.body_type)
+    expected_ctype = get_content_type_by_request_body_type(body_field_info.body_type)
 
     async def wrapped_extractor(request: Request) -> Optional[DictStrAny]:
         request_ctype = get_mimetype(request)

@@ -4,7 +4,6 @@ from typing import Any, Dict
 
 import pytest
 from aiohttp import MultipartWriter
-from aiohttp.web_routedef import RouteTableDef
 from pydantic import BaseModel
 from pytest import param
 from pytest_aiohttp.plugin import AiohttpClient
@@ -12,7 +11,7 @@ from typing_extensions import Annotated
 
 from rapidy import web
 from rapidy._request_param_field_info import ParamFieldInfo
-from rapidy.request_enums import BodyType
+from rapidy.enums import RequestBodyType
 from rapidy.request_parameters import (
     Body,
     Cookie,
@@ -25,6 +24,7 @@ from rapidy.request_parameters import (
     QueryParams,
 )
 from rapidy.web import Application
+from rapidy.web_routedef import RouteTableDef
 from tests.helpers import BOUNDARY, create_multipart_headers
 
 
@@ -211,14 +211,14 @@ test_cases = (
     TestCase(
         id='body-form',
         annotation=Schema,
-        type_=Body(body_type=BodyType.x_www_form),
+        type_=Body(body_type=RequestBodyType.x_www_form),
         request_kw=body_form_data_request_kw,
         expected_data=expected_extract_schema,
     ),
     TestCase(
         id='multipart-body',
         annotation=Schema,
-        type_=Body(body_type=BodyType.multipart_form_data, check_content_type=False),
+        type_=Body(body_type=RequestBodyType.multipart_form_data, check_content_type=False),
         request_kw=multipart_body_request_kw,
         expected_data=expected_extract_schema,
     ),
@@ -252,14 +252,14 @@ test_cases = (
     TestCase(
         id='body-form-data-raw',
         annotation=Dict[str, Any],
-        type_=Body(validate=False, body_type=BodyType.x_www_form),
+        type_=Body(validate=False, body_type=RequestBodyType.x_www_form),
         request_kw=body_form_data_request_kw,
         expected_data=expected_extract_raw,
     ),
     TestCase(
         id='multipart-body-raw',
         annotation=Dict[str, Any],
-        type_=Body(validate=False, body_type=BodyType.multipart_form_data, check_content_type=False),
+        type_=Body(validate=False, body_type=RequestBodyType.multipart_form_data, check_content_type=False),
         request_kw=multipart_body_request_kw,
         expected_data=expected_extract_raw,
     ),
