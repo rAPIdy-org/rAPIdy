@@ -1,14 +1,16 @@
 import inspect
 from abc import ABC, abstractmethod
 from concurrent.futures import Executor
+from dataclasses import is_dataclass
 from pprint import pformat
 from types import FunctionType
-from typing import Any, cast, Dict, List, Optional, Sequence, Tuple, Type, Union
+from typing import Any, cast, Dict, List, Mapping, Optional, Sequence, Tuple, Type, Union
 
 from aiohttp.helpers import parse_mimetype, sentinel
 from aiohttp.typedefs import JSONEncoder
 from aiohttp.web_request import Request
 from aiohttp.web_response import Response, StreamResponse
+from multidict import MultiDict, MultiDictProxy
 from typing_extensions import TypeAlias, TypeVar
 
 from rapidy._annotation_extractor import get_endpoint_handler_info
@@ -154,6 +156,9 @@ class AllDataHandler(HTTPRequestParameterHandler):
 
         loc = (rapid_param_type,)
 
+        if is_dataclass(model_field.type_) and isinstance(raw_data, (MultiDict, MultiDictProxy, Mapping)):
+            raw_data = self._create_dataclass_raw_data_by_multidict(raw_data, model_field_type=model_field.type_)
+
         validated_data, validated_errors = _validate_data_by_field(
             raw_data=raw_data,
             values={},
@@ -164,6 +169,19 @@ class AllDataHandler(HTTPRequestParameterHandler):
             return {}, validated_errors
 
         return {model_field.name: validated_data}, validated_errors
+
+    def _create_dataclass_raw_data_by_multidict(
+            self,
+            current_raw: Any,
+            *,
+            model_field_type: Type[Any],
+    ) -> Dict[str, Any]:
+        dataclass_attrs = inspect.signature(model_field_type).parameters.keys()
+        return {
+            attr_name: current_raw.get(attr_name)
+            for attr_name in dataclass_attrs
+            if attr_name in current_raw
+        }
 
 
 class HTTPResponseHandler:
