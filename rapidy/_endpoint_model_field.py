@@ -282,10 +282,6 @@ elif PYDANTIC_V2:
         def get_default(self) -> Any:
             return self.field_info.get_default(call_default_factory=True)
 
-        @property
-        def type_(self) -> Any:
-            return self.field_info.annotation
-
         def __post_init__(self) -> None:
             self._type_adapter: TypeAdapter[Any] = TypeAdapter(Annotated[self.field_info.annotation, self.field_info])
 
