@@ -58,25 +58,48 @@ pip install rapidy
 ```
 
 ## **Простое приложение**
-
 ```Python
 {!> ./index/ex.py !}
 ```
 
 <span class="success-color">Success</span> request validation
+
 ```bash
-{!> ./index/ex_success_validation.sh !}
+curl -X POST \
+-H "Content-Type: application/json" -d '{"username": "User", "password": "myAwesomePass"}' -v \
+http://127.0.0.1:8080/api/1
 ```
+
 ```
-{!> ./index/ex_success_validation_result.txt !}
+< HTTP/1.1 200 OK ... {"data": "success"}
 ```
 
 <span class="warning-color">Failed</span> request validation
+
 ```bash
-{!> ./index/ex_failure_validation.sh !}
+curl -X POST \
+-H "Content-Type: application/json" -d '{"username": "U", "password": "m"}' -v \
+http://127.0.0.1:8080/api/1
 ```
+
 ```
-{!> ./index/ex_failure_validation_result.txt !}
+< HTTP/1.1 422 Unprocessable Entity ...
+{
+    "errors": [
+        {
+            "loc": ["body", "username"],
+            "type": "string_too_short",
+            "msg": "String should have at least 3 characters",
+            "ctx": {"min_length": 3}
+        },
+        {
+            "type": "string_too_short",
+            "loc": ["body", "password"],
+            "msg": "String should have at least 8 characters",
+            "ctx": {"min_length": 8}
+        }
+    ]
+}
 ```
 
 **Быстрый старт [Quickstart](quickstart.md)**<br/>

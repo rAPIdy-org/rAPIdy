@@ -3,6 +3,8 @@
 
 Данный раздел покажет, как можно извлекать и проверять заголовки используя **`Rapidy`**.
 
+!!! tip "Более детальные сценарии применения вы найдете в примерах - **[Examples](../../../../examples.md)**."
+
 ## Header
 `Header` извлекает один конкретный заголовок.
 
@@ -10,7 +12,9 @@
 
 ```Python
 @routes.get('/')
-async def handler(host: str = web.Header(alias='Host')) -> ...:
+async def handler(
+    host: str = web.Header(alias='Host'),
+) -> ...:
 ```
 
 ```Python
