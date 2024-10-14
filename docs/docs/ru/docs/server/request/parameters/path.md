@@ -4,13 +4,16 @@ Path-параметры позволяют строить **динамическ
 Вы можете определить path-параметры используя синтаксис форматированных строк Python:
 ```Python hl_lines="1"
 @routes.get('/{user_id}')
-async def handler(user_id: str = web.PathParam()) -> ...:
+async def handler(
+    user_id: str = web.PathParam(),
+) -> ...:
 ```
 
 !!! note "Подробнее про динамические маршруты в `aiohttp` можно прочитать **<a href="https://docs.aiohttp.org/en/stable/web_quickstart.html#aiohttp-web-variable-handler" target="_blank">здесь</a>**."
 
 Данный раздел покажет, как можно извлекать и проверять path-параметры используя **`Rapidy`**.
 
+!!! tip "Более детальные сценарии применения вы найдете в примерах - **[Examples](../../../../examples.md)**."
 
 ## PathParam
 `PathParam` извлекает одиночный **path-параметр**.
@@ -19,7 +22,9 @@ async def handler(user_id: str = web.PathParam()) -> ...:
 
 ```Python
 @routes.get('/{user_id}')
-async def handler(user_id: str = web.PathParam()) -> ...:
+async def handler(
+    user_id: str = web.PathParam(),
+) -> ...:
 ```
 
 ```Python

@@ -119,7 +119,7 @@ nav:
             - docs/server/request/default.md
             - docs/server/request/validation_errors.md
         - Response:
-          - docs/server/response/index.md
+            - docs/server/response/index.md
         - Handlers:
             - docs/server/handlers/functional.md
             - docs/server/handlers/class_based_view.md
@@ -133,7 +133,10 @@ nav:
             - docs/server/advanced_usages/tips_and_tricks.md
     - HTTP Client:
         - docs/client/index.md
-    - Testing
+    - Encoders:
+        - docs/encoders/json_compatible_encoder.md
+    - Testing:
+        - docs/testing/index.md
 
 #    - For Beginners:
 #        - docs/beginners/index.md
