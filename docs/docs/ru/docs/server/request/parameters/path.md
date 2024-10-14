@@ -35,7 +35,7 @@ async def handler(
 
 !!! note "Помните, вы можете проверить данные используя любой тип поддерживаемый `pydantic`."
 
-### Извлечение заголовков в готовую схему
+### Извлечение в готовую схему
 #### pydantic.BaseModel
 ```Python
 from pydantic import BaseModel
@@ -51,6 +51,10 @@ async def handler(
 ```
 
 #### dataclasses.dataclass
+!!! note ""
+    `dataclasses.dataclass` поддерживаются в качестве типа модели, но у вас не получится
+    задать `alias` используя стандартные инструменты `dataclasses.dataclass`.
+
 ```Python
 from dataclasses import dataclass
 
@@ -115,8 +119,9 @@ path_data=web.PathParams()
 
 ## Значения по умолчанию
 
-!!! warning ""
-    `PathParam` и `PathParams` не поддерживают значения по умолчанию.
+!!! warning "`PathParam` и `PathParams` не поддерживают значения по умолчанию."
+    Это вполне логичное архитектурное ограничение. Без этого бы решения невозможно было бы правильно построить
+    динамическую работу роутеров.
 
 ### default
 ```python

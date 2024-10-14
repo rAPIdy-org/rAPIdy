@@ -133,6 +133,7 @@ nav:
             - docs/server/advanced_usages/tips_and_tricks.md
     - HTTP Client:
         - docs/client/index.md
+    - Testing
 
 #    - For Beginners:
 #        - docs/beginners/index.md

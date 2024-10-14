@@ -30,7 +30,7 @@ async def handler(
 
 !!! note "Помните, вы можете проверить данные используя любой тип поддерживаемый `pydantic`."
 
-### Извлечение заголовков в готовую схему
+### Извлечение в готовую схему
 #### pydantic.BaseModel
 ```Python
 from pydantic import BaseModel, Field
@@ -48,14 +48,14 @@ async def handler(
 #### dataclasses.dataclass
 !!! note ""
     `dataclasses.dataclass` поддерживаются в качестве типа модели, но у вас не получится
-    задать `alias` используя стандартные инструменты `dataclasses.dataclass`, чтобы извлечь cookie.
+    задать `alias` используя стандартные инструменты `dataclasses.dataclass`.
 
 ```Python
 from dataclasses import dataclass
 
 @dataclass
 class CookieData:
-    UserID: str  # camelCase syntax :c
+    UserID: str  # camelCase syntax if cookie name is 'UserID'
     user_session: str  # cannot extract if cookie name is 'User-Session'
 
 @routes.get('/')
@@ -115,6 +115,12 @@ headers_data=web.Cookies()
 ```
 
 ## Значения по умолчанию
+Значение по умолчанию для `Cookie` будет использоваться, если в поступившем запросе не будет найден 
+`cookie` с таким именем.
+
+Значение по умолчанию для `Cookies` будет использоваться, если в поступившем запросе не будет найдено 
+ни одного `cookie`.
+
 ### default
 ```python
 @routes.get('/')
