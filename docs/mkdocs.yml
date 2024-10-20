@@ -115,7 +115,13 @@ nav:
                 - docs/server/request/parameters/headers.md
                 - docs/server/request/parameters/cookies.md
                 - docs/server/request/parameters/query.md
-                - docs/server/request/parameters/body.md
+                - Body:
+                    - docs/server/request/parameters/body/index.md
+                    - docs/server/request/parameters/body/json.md
+                    - docs/server/request/parameters/body/x_www_form_urlencoded.md
+                    - docs/server/request/parameters/body/multipart.md
+                    - docs/server/request/parameters/body/text.md
+                    - docs/server/request/parameters/body/binary.md
             - docs/server/request/default.md
             - docs/server/request/validation_errors.md
         - Response:
