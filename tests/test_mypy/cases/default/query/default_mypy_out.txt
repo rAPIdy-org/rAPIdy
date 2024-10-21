@@ -1,0 +1,3 @@
+cases/default/query/module.py:5: error: "default" and "default_factory" cannot be specified together for a requests parameter.  [rapidy-param]
+cases/default/query/module.py:9: error: "default" and "default_factory" cannot be specified together for a requests parameter.  [rapidy-param]
+Found 2 errors in 1 file (checked 1 source file)

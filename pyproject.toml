@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "rAPIdy"
-version = "0.2.2"
+version = "1.0.0"
 description = "rAPIdy - write quickly - write beautifully"
 authors = [
     "Daniil Grois <daniil.grois@gmail.com>",
@@ -49,8 +49,10 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.8"
-aiohttp = "^3.8.1"
+aiohttp = "3.9.5"
 pydantic = ">=1.7.4,!=1.8,!=1.8.1,!=1.8.2,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0"
+yarl = "<1.13.0"  # FIXME: 1.13.0 - aiohttp backwards compatibility broken
+
 
 [tool.poetry.group.test.dependencies]
 pytest = "7.*"
@@ -72,15 +74,11 @@ exclude = [
 max-line-length = 120
 max-complexity = 10
 ignore = [
-    "D100",    #  Missing docstring in public module
-    "D101",    #  Missing docstring in public class
-    "D102",    #  Missing docstring in public method
-    "D103",    #  Missing docstring in public function
-    "D104",    #  Missing docstring in public package
-    "D105",    #  Missing docstring in magic method
-    "D107",    #  Missing docstring in __init__"
+    "D",       #  Ignore all doc
     "P101",    #  format string does contain unindexed parameters
+    "RST203",  #  Definition list ends without a blank line; unexpected unindent.
     "S101",    #  Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
+    "WPS100",  #  Found wrong module name
     "WPS110",  #  Found wrong variable name: X
     "WPS111",  #  Found too short name: d < X
     "WPS113",  #  Found same alias import: X
@@ -97,6 +95,7 @@ ignore = [
     "WPS220",  #  Found overly complex annotation: X > 3
     "WPS226",  #  Found string literal over-use: X > 3
     "WPS231",  #  Found function with too much cognitive complexity: X > 12
+    "WPS232",  #  Found module cognitive complexity that is too high: X > 8
     "WPS234",  #  Found too deep nesting
     "WPS235",  #  Found too many imported names from a module: X > 8
     "WPS238",  #  Found too many raises in a function: X > 3
@@ -104,33 +103,44 @@ ignore = [
     "WPS305",  #  Found `f` string
     "WPS306",  #  Found class without a base class: X
     "WPS318",  #  Found extra indentation
+    "WPS320",  #  Found multi-line function type annotation
     "WPS326",  #  Found implicit string concatenation
     "WPS337",  #  Found multiline conditions
     "WPS402",  #  Found `noqa` comments overuse: X
     "WPS410",  #  Found wrong metadata variable: __all__
     "WPS420",  #  Found wrong keyword
     "WPS421",  #  Found wrong function call: vars
+    "WPS428",  #  Found statement that has no effect
     "WPS430",  #  Found nested function: X
     "WPS436",  #  Found protected module import: X
     "WPS437",  #  Found protected attribute usage: _X
     "WPS450",  #  Found protected object import: X
+    "WPS451",  #  Found positional-only argument
     "WPS454",  #  Found wrong `raise` exception type: X
+    "WPS462",  #  Wrong multiline string usage
     "WPS467",  #  Found bare raise keyword
     "WPS473",  #  Found too many empty lines in `def`: X > 23
     "WPS510",  #  Found `in` used with a non-set container
     "WPS529",  #  Found implicit `.get()` dict usage
     "WPS600",  #  Found subclassing a builtin: X
+    "WPS602",  #  Found using `@staticmethod`
     "WPS604",  #  Found incorrect node inside `class` body
+    "WPS609",  #  Found direct magic attribute usage: __x__
     "W503",    #  line break before binary operator
 ]
 per-file-ignores = [
     'rapidy/__init__.py: N813 WPS412 WPS413 WPS433 WPS442',
-    'rapidy/_version.py: WPS116',
+    'rapidy/_base_exceptions.py: WPS336',
+    'rapidy/_endpoint_model_field.py: WPS440',
+    'rapidy/_client_errors.py: C901 WPS433 WPS440',
+    'rapidy/_annotation_helpers.py: WPS516',
+    'rapidy/request_parameters.py: WPS118',
+    'rapidy/web_app.py: WPS404',
+    'rapidy/version.py: WPS116',
     'rapidy/web.py: F401 WPS112 WPS232 WPS433',
     'rapidy/web_exceptions.py: D400 F401 WPS112 WPS433',
-    'rapidy/fields.py: C901 WPS113 WPS433',
     'rapidy/typedefs.py: WPS433 WPS113 WPS440',
-    'rapidy/_client_errors.py: C901 WPS433 WPS440',
+
     'rapidy/mypy/__init__.py: WPS412',
     'rapidy/mypy/*: WPS433',
     'rapidy/mypy/_type_helpers.py: WPS221 WPS602',
@@ -175,7 +185,17 @@ filterwarnings = [
 parallel = true
 source = [
     "rapidy",
-    "tests",
 ]
 relative_files = true
 context = '${CONTEXT}'
+
+[tool.coverage.report]
+exclude_also = [
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
