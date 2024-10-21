@@ -9,13 +9,14 @@ from pathlib import Path, PurePath
 from typing import Any, Callable, Deque, Dict, FrozenSet, List, Optional, overload, Pattern, Set, Tuple, Type, Union
 from uuid import UUID
 
+from aiohttp.typedefs import DEFAULT_JSON_ENCODER
 from pydantic import BaseModel
 from pydantic.color import Color
 from pydantic.networks import AnyUrl, NameEmail
 from pydantic.types import SecretBytes, SecretStr
 from typing_extensions import Literal, TypeAlias
 
-from rapidy._constants import DEFAULT_DUMPS_ENCODER, PYDANTIC_V1, PYDANTIC_V2
+from rapidy._constants import PYDANTIC_V1, PYDANTIC_V2
 from rapidy.enums import Charset
 from rapidy.typedefs import JSONEncoder
 
@@ -223,7 +224,7 @@ def simplify_data(
         custom_encoder: Optional[CustomEncoder] = None,
         charset: Union[str, Charset] = Charset.utf8,
         dumps: bool = False,
-        dumps_encoder: JSONEncoder = DEFAULT_DUMPS_ENCODER,
+        dumps_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
 ) -> Union[str, Any]:
     """Convert any object to something that can be encoded in JSON.
 

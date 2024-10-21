@@ -1,10 +1,9 @@
-import json
 from concurrent.futures import Executor
 from typing import Any, Callable, Optional, Type, Union
 
 from aiohttp.abc import AbstractView
 from aiohttp.helpers import sentinel
-from aiohttp.typedefs import JSONEncoder, PathLike
+from aiohttp.typedefs import DEFAULT_JSON_ENCODER, JSONEncoder, PathLike
 from aiohttp.web_routedef import AbstractRouteDef, RouteDef, RouteTableDef as AioHTTPRouteTableDef, StaticDef
 
 from rapidy import hdrs
@@ -63,7 +62,7 @@ def get(
         response_exclude_defaults: bool = False,
         response_exclude_none: bool = False,
         response_custom_encoder: Optional[CustomEncoder] = None,
-        response_json_encoder: JSONEncoder = json.dumps,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
         **kwargs: Any,
 ) -> RouteDef:
     """Create a new RouteDef item for registering GET web-handler.
@@ -166,7 +165,7 @@ def post(
         response_exclude_defaults: bool = False,
         response_exclude_none: bool = False,
         response_custom_encoder: Optional[CustomEncoder] = None,
-        response_json_encoder: JSONEncoder = json.dumps,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
         **kwargs: Any,
 ) -> RouteDef:
     """Create a new RouteDef item for registering POST web-handler.
@@ -261,7 +260,7 @@ def put(
         response_exclude_defaults: bool = False,
         response_exclude_none: bool = False,
         response_custom_encoder: Optional[CustomEncoder] = None,
-        response_json_encoder: JSONEncoder = json.dumps,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
         **kwargs: Any,
 ) -> RouteDef:
     """Create a new RouteDef item for registering PUT web-handler.
@@ -356,7 +355,7 @@ def patch(
         response_exclude_defaults: bool = False,
         response_exclude_none: bool = False,
         response_custom_encoder: Optional[CustomEncoder] = None,
-        response_json_encoder: JSONEncoder = json.dumps,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
         **kwargs: Any,
 ) -> RouteDef:
     """Create a new RouteDef item for registering PATCH web-handler.
@@ -451,7 +450,7 @@ def delete(
         response_exclude_defaults: bool = False,
         response_exclude_none: bool = False,
         response_custom_encoder: Optional[CustomEncoder] = None,
-        response_json_encoder: JSONEncoder = json.dumps,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
         **kwargs: Any,
 ) -> RouteDef:
     """Create a new RouteDef item for registering DELETE web-handler.
@@ -546,7 +545,7 @@ def view(
         response_exclude_defaults: bool = False,
         response_exclude_none: bool = False,
         response_custom_encoder: Optional[CustomEncoder] = None,
-        response_json_encoder: JSONEncoder = json.dumps,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
         **kwargs: Any,
 ) -> RouteDef:
     """Create a new RouteDef item for adding class-based view handler.
@@ -658,7 +657,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             response_exclude_defaults: bool = False,
             response_exclude_none: bool = False,
             response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = json.dumps,
+            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
             **kwargs: Any,
     ) -> RouterDeco:
         """Add a new RouteDef item for registering GET web-handler.
@@ -757,7 +756,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             response_exclude_defaults: bool = False,
             response_exclude_none: bool = False,
             response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = json.dumps,
+            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
             **kwargs: Any,
     ) -> RouterDeco:
         """Add a new RouteDef item for registering POST web-handler.
@@ -848,7 +847,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             response_exclude_defaults: bool = False,
             response_exclude_none: bool = False,
             response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = json.dumps,
+            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
             **kwargs: Any,
     ) -> RouterDeco:
         """Add a new RouteDef item for registering PUT web-handler.
@@ -939,7 +938,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             response_exclude_defaults: bool = False,
             response_exclude_none: bool = False,
             response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = json.dumps,
+            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
             **kwargs: Any,
     ) -> RouterDeco:
         """Add a new RouteDef item for registering PATCH web-handler.
@@ -1030,7 +1029,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             response_exclude_defaults: bool = False,
             response_exclude_none: bool = False,
             response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = json.dumps,
+            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
             **kwargs: Any,
     ) -> RouterDeco:
         """Add a new RouteDef item for registering DELETE web-handler.
@@ -1130,7 +1129,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             response_exclude_defaults: bool = False,
             response_exclude_none: bool = False,
             response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = json.dumps,
+            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
             **kwargs: Any,
     ) -> RouterDeco:
         """Add a new RouteDef item for adding class-based view handler.

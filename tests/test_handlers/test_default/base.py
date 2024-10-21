@@ -4,7 +4,7 @@ from typing import Any, Dict, Type
 from aiohttp import MultipartWriter, StreamReader
 
 from rapidy._request_param_field_info import ParamFieldInfo
-from rapidy.enums import RequestBodyType
+from rapidy.enums import ContentType
 from rapidy.request_parameters import Body, Cookie, Cookies, Header, PathParam, PathParams, QueryParam, QueryParams
 from tests.helpers import BOUNDARY
 
@@ -24,7 +24,7 @@ class TestCase:
 @dataclass
 class BodyTestCase(TestCase):
     param_type: Type[Body] = Body
-    body_type: RequestBodyType = RequestBodyType.json
+    content_type: ContentType = ContentType.json
 
 
 params_test_cases = (
@@ -62,32 +62,32 @@ params_test_cases = (
 body_test_cases = (
     BodyTestCase(
         id='json',
-        body_type=RequestBodyType.json,
+        content_type=ContentType.json,
         request_kwargs={'json': {}},
     ),
     BodyTestCase(
         id='x-www-form-urlencoded',
-        body_type=RequestBodyType.x_www_form,
+        content_type=ContentType.x_www_form,
         request_kwargs={'data': ' '},
     ),
     BodyTestCase(
         id='multipart-body',
-        body_type=RequestBodyType.multipart_form_data,
+        content_type=ContentType.m_part_form_data,
         request_kwargs={'data': multipart_writer},
     ),
     BodyTestCase(
         id='text-body',
-        body_type=RequestBodyType.text,
+        content_type=ContentType.text_plain,
         request_kwargs={'data': ' '},
     ),
     BodyTestCase(
         id='bytes-body',
-        body_type=RequestBodyType.binary,
+        content_type=ContentType.stream,
         request_kwargs={'data': ' '},
     ),
     BodyTestCase(
         id='stream-body',
-        body_type=RequestBodyType.binary,
+        content_type=ContentType.stream,
         annotation=StreamReader,
         request_kwargs={'data': ' '},
     ),
