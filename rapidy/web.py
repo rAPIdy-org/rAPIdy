@@ -1,4 +1,3 @@
-from rapidy.enums import RequestBodyType
 from rapidy.version import AIOHTTP_VERSION_TUPLE
 
 if AIOHTTP_VERSION_TUPLE >= (3, 9, 0):
@@ -15,6 +14,7 @@ from aiohttp.web_ws import (
     WSMsgType as WSMsgType,
 )
 
+from rapidy.enums import Charset as Charset, ContentType as ContentType, HeaderName as HeaderName
 from rapidy.request_parameters import (
     Body as Body,
     Cookie as Cookie,

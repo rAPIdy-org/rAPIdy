@@ -1,10 +1,9 @@
 from typing import Any, Optional, Union
 
-from aiohttp.typedefs import JSONEncoder, LooseHeaders
+from aiohttp.typedefs import DEFAULT_JSON_ENCODER, JSONEncoder, LooseHeaders
 from aiohttp.web_response import ContentCoding, Response, StreamResponse
 
 from rapidy._base_exceptions import RapidyException
-from rapidy._constants import DEFAULT_DUMPS_ENCODER
 from rapidy.encoders import CustomEncoder, Exclude, Include, simplify_data
 from rapidy.enums import Charset, ContentType
 
@@ -37,7 +36,7 @@ def json_response(
         custom_encoder: Optional[CustomEncoder] = None,
         charset: Union[str, Charset] = Charset.utf8,
         dumps: bool = True,
-        dumps_encoder: JSONEncoder = DEFAULT_DUMPS_ENCODER,
+        dumps_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
 ) -> Response:
     """Low-level factory. Required to explicitly create a json response.
 

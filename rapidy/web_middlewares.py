@@ -1,9 +1,8 @@
-import json
 from concurrent.futures import Executor
 from typing import Any, Callable, NamedTuple, Optional, overload, Type, TypeVar, Union
 
 from aiohttp.helpers import sentinel
-from aiohttp.typedefs import JSONEncoder
+from aiohttp.typedefs import DEFAULT_JSON_ENCODER, JSONEncoder
 from aiohttp.web_middlewares import middleware as aiohttp_middleware, normalize_path_middleware
 
 from rapidy.encoders import CustomEncoder, Exclude, Include
@@ -57,7 +56,7 @@ def middleware(
         response_exclude_defaults: bool = False,
         response_exclude_none: bool = False,
         response_custom_encoder: Optional[CustomEncoder] = None,
-        response_json_encoder: JSONEncoder = json.dumps,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
 ) -> Callable[[Any], TMiddleware]:
     ...  # noqa: WPS428
 
@@ -78,7 +77,7 @@ def middleware(
         response_exclude_defaults: bool = False,
         response_exclude_none: bool = False,
         response_custom_encoder: Optional[CustomEncoder] = None,
-        response_json_encoder: JSONEncoder = json.dumps,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
 ) -> Union[TMiddleware, Callable[[Any], TMiddleware]]:
     """rAPIdy middleware decorator.
 

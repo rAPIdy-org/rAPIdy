@@ -21,7 +21,7 @@ async def test_default(test_case: BodyTestCase, *, aiohttp_client: AiohttpClient
         type_=test_case.param_type,
         annotation=test_case.annotation,
         can_default=_body_type_can_default(test_case),
-        body_type=test_case.body_type,
+        body_type=test_case.content_type,
         check_content_type=False,  # only for tests
     )
 
@@ -35,7 +35,7 @@ async def test_optional_default(test_case: BodyTestCase, *, aiohttp_client: Aioh
         annotation=test_case.annotation,
         default=None,
         can_default=_body_type_can_default(test_case),
-        body_type=test_case.body_type,
+        body_type=test_case.content_type,
         check_content_type=False,  # only for tests
     )
 
@@ -47,7 +47,7 @@ async def test_incorrect_define_default_annotated_def(test_case: BodyTestCase) -
 
     await base_test_incorrect_define_default_annotated_def(
         test_case.param_type,
-        body_type=test_case.body_type,
+        body_type=test_case.content_type,
         check_content_type=False,  # only for tests
     )
 

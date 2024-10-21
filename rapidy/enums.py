@@ -3,7 +3,7 @@ from enum import Enum
 __all__ = [
     'ContentType',
     'Charset',
-    'RequestBodyType',
+    'HeaderName',
 ]
 
 
@@ -17,13 +17,14 @@ class ContentType(str, Enum):
         https://www.iana.org/assignments/media-types/media-types.xhtml
     """
 
+    any = '*/*'
+
     # application
     json = 'application/json'
     ldap = 'application/ld+json'
     app_xml = 'application/xml'
     zip = 'application/zip'
     pdf = 'application/pdf'
-    ogg = 'audio/ogg'
     stream = 'application/octet-stream'
     x_www_form = 'application/x-www-form-urlencoded'
 
@@ -34,6 +35,7 @@ class ContentType(str, Enum):
     text_csv = 'text/csv'
     text_js = 'text/javascript'
     text_xml = 'text/xml'
+    text_any = 'text/*'
 
     # multipart
     m_part_mixed = 'multipart/mixed'
@@ -108,14 +110,6 @@ class HeaderName(str, Enum):
     www_authenticate = 'WWW-Authenticate'
     proxy_authenticate = 'Proxy-Authenticate'
     proxy_authorization = 'Proxy-Authorization'
-
-
-class RequestBodyType(str, Enum):
-    text = 'text'
-    binary = 'binary'
-    json = 'json'
-    x_www_form = 'x_www_form'
-    multipart_form_data = 'multipart_form_data'
 
 
 class HTTPRequestParamType(str, Enum):

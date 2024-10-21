@@ -45,7 +45,6 @@ async def base_test_optional(
         assert resp.status == HTTPStatus.OK
 
 
-
 async def base_test_optional_schema_param_fields(
         aiohttp_client: AiohttpClient,
         type_: Type[ParamFieldInfo],

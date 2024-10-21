@@ -7,6 +7,7 @@ from pytest_aiohttp.plugin import AiohttpClient
 from typing_extensions import Annotated, Final
 
 from rapidy import web
+from rapidy.enums import ContentType
 from rapidy.request_parameters import Body, Header
 from rapidy.typedefs import HandlerType, Middleware
 from rapidy.web import middleware
@@ -112,7 +113,7 @@ async def test_multiple_new_style_middlewares_validation(
         auth_middleware: Middleware,
         request_id_middleware: Middleware,
 ) -> None:
-    async def handler(body: Annotated[str, Body]) -> web.Response:
+    async def handler(body: Annotated[str, Body(content_type=ContentType.text_plain)]) -> web.Response:
         assert body == BODY_DATA
         return web.Response()
 
@@ -142,7 +143,7 @@ async def test_multiple_new_style_middlewares_in_subapp_validation(
         auth_middleware: Middleware,
         request_id_middleware: Middleware,
 ) -> None:
-    async def protected_handler(body: Annotated[str, Body]) -> web.Response:
+    async def protected_handler(body: Annotated[str, Body(content_type=ContentType.text_plain)]) -> web.Response:
         assert body == BODY_DATA
         return web.Response()
 

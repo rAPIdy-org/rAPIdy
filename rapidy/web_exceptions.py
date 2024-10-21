@@ -1,5 +1,6 @@
+from aiohttp.typedefs import DEFAULT_JSON_ENCODER
+
 from rapidy._client_errors import normalize_errors
-from rapidy._constants import DEFAULT_DUMPS_ENCODER
 from rapidy.version import AIOHTTP_VERSION_TUPLE
 
 if AIOHTTP_VERSION_TUPLE >= (3, 9, 0):
@@ -155,7 +156,7 @@ class HTTPValidationFailure(HTTPUnprocessableEntity):
     ) -> None:
         self._errors = normalize_errors(errors)
         if text is None:
-            text = DEFAULT_DUMPS_ENCODER({self.validation_failure_field_name: self._errors}, default=str)
+            text = DEFAULT_JSON_ENCODER({self.validation_failure_field_name: self._errors}, default=str)
 
         super().__init__(
             headers=headers,

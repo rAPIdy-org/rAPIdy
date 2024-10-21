@@ -1,4 +1,3 @@
-import json
 from abc import ABC
 from concurrent.futures import Executor
 from types import FunctionType
@@ -6,7 +5,7 @@ from typing import Any, cast, Final, Optional, Type, Union
 
 from aiohttp.abc import AbstractView
 from aiohttp.helpers import sentinel
-from aiohttp.typedefs import JSONEncoder
+from aiohttp.typedefs import DEFAULT_JSON_ENCODER, JSONEncoder
 from aiohttp.web_urldispatcher import (
     _ExpectHandler,
     _requote_path,
@@ -183,7 +182,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_exclude_defaults: bool = False,
             response_exclude_none: bool = False,
             response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = json.dumps,
+            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
             **kwargs: Any,
     ) -> AbstractRoute:
         """Shortcut for add_route with method GET.
@@ -284,7 +283,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_exclude_defaults: bool = False,
             response_exclude_none: bool = False,
             response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = json.dumps,
+            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
             **kwargs: Any,
     ) -> AbstractRoute:
         """Shortcut for add_route with method POST.
@@ -379,7 +378,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_exclude_defaults: bool = False,
             response_exclude_none: bool = False,
             response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = json.dumps,
+            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
             **kwargs: Any,
     ) -> AbstractRoute:
         """Shortcut for add_route with method PUT.
@@ -474,7 +473,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_exclude_defaults: bool = False,
             response_exclude_none: bool = False,
             response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = json.dumps,
+            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
             **kwargs: Any,
     ) -> AbstractRoute:
         """Shortcut for add_route with method PATCH.
@@ -569,7 +568,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_exclude_defaults: bool = False,
             response_exclude_none: bool = False,
             response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = json.dumps,
+            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
             **kwargs: Any,
     ) -> AbstractRoute:
         """Shortcut for add_route with method DELETE.
@@ -664,7 +663,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_exclude_defaults: bool = False,
             response_exclude_none: bool = False,
             response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = json.dumps,
+            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
             **kwargs: Any,
     ) -> AbstractRoute:
         """Shortcut for add_route with ANY methods for a class-based view.
