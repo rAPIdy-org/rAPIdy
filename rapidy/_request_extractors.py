@@ -1,8 +1,6 @@
 import traceback
 import warnings
 from abc import ABC
-from decimal import Decimal
-from enum import Enum
 from functools import partial
 from json import JSONDecodeError
 from typing import Any, Awaitable, Callable, Dict, Mapping, Optional, Type, Union
@@ -122,9 +120,6 @@ _http_simple_request_param_extractor_map: Dict[HTTPRequestParamType, ExtractFunc
 
 
 def _get_body_extractor_by_annotation(annotation: Type[Any]) -> Optional[ExtractBodyFunction]:
-    if lenient_issubclass(annotation, (str, int, float, Decimal, Enum)):
-        return extract_body_text
-
     if lenient_issubclass(annotation, bytes):
         return extract_body_bytes
 
