@@ -9,13 +9,13 @@ from rapidy import web
 from rapidy.request_parameters import Body
 
 
-def _create_annotated_def_handler(type_: Any, param: Any) -> Any:
-    async def handler(attr: Annotated[type_, param]) -> Any: return web.Response()
+def _create_annotated_def_handler(param: Any) -> Any:
+    async def handler(attr: Annotated[Any, param]) -> Any: return web.Response()
     return handler
 
 
-def _create_default_def_handler(type_: Any, param: Any) -> Any:
-    async def handler(attr: type_ = param) -> Any: return web.Response()
+def _create_default_def_handler(param: Any) -> Any:
+    async def handler(attr: Any = param) -> Any: return web.Response()
     return handler
 
 
@@ -36,7 +36,7 @@ async def test_check_annotation(
         param: Any,
         create_handler_func: Any,
 ) -> None:
-    handler = create_handler_func(str, Body)
+    handler = create_handler_func(param)
 
     app = web.Application()
     app.add_routes([web.post('/', handler)])
