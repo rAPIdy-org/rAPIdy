@@ -1,6 +1,7 @@
+from contextlib import AbstractAsyncContextManager
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Type, TYPE_CHECKING, Union
 
-from aiohttp.abc import AbstractView, Request
+from aiohttp.abc import AbstractView
 from aiohttp.typedefs import (
     Byteish,
     DEFAULT_JSON_DECODER,
@@ -17,10 +18,17 @@ from aiohttp.typedefs import (
 )
 from typing_extensions import TypeAlias
 
-from rapidy.constants import PYDANTIC_V1, PYDANTIC_V2
+from rapidy._constants import PYDANTIC_V1, PYDANTIC_V2
+from rapidy.version import PY_VERSION_TUPLE
 
 if TYPE_CHECKING:
-    from rapidy.web_response import StreamResponse
+    from web_app import Application
+
+    if PY_VERSION_TUPLE < (1, 9, 0):
+        AbstractAsyncContextManagerNone = AbstractAsyncContextManager
+    else:
+        AbstractAsyncContextManagerNone = AbstractAsyncContextManager[None]  # type: ignore[assignment, misc]
+
 
 __all__ = (
     'Byteish',
@@ -39,32 +47,44 @@ __all__ = (
     'PathLike',
     'DictStrAny',
     'DictStrStr',
-    'DictStrListAny',
-    'DictStrListStr',
     'MethodHandler',
     'HandlerType',
     'HandlerOrMethod',
+    'SyncOrAsync',
+    'CallableAsyncCTX',
+    'LifespanHook',
+    'LifespanCTX',
 )
 
-DictStrAny = Dict[str, Any]
-DictStrStr = Dict[str, str]
-DictStrListAny = Dict[str, List[Any]]
-DictStrListStr = Dict[str, List[str]]
+DictStrAny: TypeAlias = Dict[str, Any]
+DictStrStr: TypeAlias = Dict[str, str]
 
-Handler = Callable[..., Awaitable['StreamResponse']]
-MethodHandler = Callable[..., Awaitable['StreamResponse']]
-HandlerType = Union[Handler, Type[AbstractView]]
-Middleware = Callable[[Request, Handler], Awaitable['StreamResponse']]
 
-HandlerOrMethod = Union[Handler, MethodHandler]
+_Handler: TypeAlias = Callable[..., Awaitable[Any]]
+
+Handler: TypeAlias = _Handler
+MethodHandler: TypeAlias = _Handler
+HandlerType: TypeAlias = Union[Handler, Type[AbstractView]]
+Middleware: TypeAlias = _Handler
+
+HandlerOrMethod: TypeAlias = Union[Handler, MethodHandler]
 
 ResultValidate: TypeAlias = Dict[str, Any]
 ValidationErrorList: TypeAlias = List[Dict[str, Any]]
 ValidateReturn: TypeAlias = Tuple[Optional[ResultValidate], Optional[ValidationErrorList]]
 
-RouterDeco = Callable[[HandlerType], HandlerType]
+NoArgAnyCallable: TypeAlias = Callable[[], Any]
 
-NoArgAnyCallable = Callable[[], Any]
+# LIFESPAN TYPES
+SyncOrAsync: TypeAlias = Union[Any, Awaitable[Any]]
+LifespanHook: TypeAlias = Union[
+    Callable[['Application'], SyncOrAsync],
+    Callable[[], SyncOrAsync],
+]
+
+CallableAsyncCTX = Callable[['Application'], 'AbstractAsyncContextManagerNone']  # type: ignore[type-arg]  # py3.8
+LifespanCTX = Union[CallableAsyncCTX, 'AbstractAsyncContextManagerNone']  # type: ignore[type-arg]  # py3.8
+
 
 if PYDANTIC_V1:
     from pydantic.error_wrappers import ErrorWrapper as ErrorWrapper

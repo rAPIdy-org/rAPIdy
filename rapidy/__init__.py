@@ -1,4 +1,4 @@
-__version__ = '0.2.2'
+__version__ = '1.0.0'
 
 from typing import Tuple, TYPE_CHECKING
 
@@ -225,7 +225,7 @@ def __getattr__(name: str) -> object:  # noqa: WPS413 WPS433
     global GunicornUVLoopWebWorker, GunicornWebWorker
 
     # Importing gunicorn takes a long time (>100ms), so only import if actually needed.
-    if name in ('GunicornUVLoopWebWorker', 'GunicornWebWorker'):
+    if name in ('GunicornUVLoopWebWorker', 'GunicornWebWorker'):  # pragma: no cover
         try:
             from aiohttp.worker import GunicornUVLoopWebWorker as guv, GunicornWebWorker as gw  # noqa: N813 WPS433
         except ImportError:

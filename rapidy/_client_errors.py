@@ -3,9 +3,10 @@ from typing import Any, Dict, List, Tuple, Type, Union
 
 from pydantic import BaseModel, create_model
 
-from rapidy.constants import PYDANTIC_V1, PYDANTIC_V2
-from rapidy.typedefs import ErrorWrapper, ValidationErrorList
+from rapidy._constants import PYDANTIC_V1, PYDANTIC_V2
+from rapidy.typedefs import DictStrAny, ErrorWrapper, ValidationErrorList
 
+ErrorModel: Type[BaseModel] = create_model('Model')
 RequestErrorModel: Type[BaseModel] = create_model('Request')
 
 
@@ -42,27 +43,37 @@ if PYDANTIC_V1:
         type = 'value_error.missing'
         msg_template = 'field required'
 
-    def _regenerate_error_with_loc(
+    def regenerate_error_with_loc(
             *,
             errors: List[Any],
             loc_prefix: Tuple[Union[str, int], ...],
     ) -> List[Dict[str, Any]]:
         return [
             {**err, 'loc': loc_prefix + err.get('loc', ())}
-            for err in _normalize_errors(errors)
+            for err in normalize_errors(errors)
         ]
 
-    def _normalize_errors(errors: List[Any]) -> List[Dict[str, Any]]:
-        use_errors: List[Dict[str, Any]] = []
+    def normalize_error_wrapper(error: ErrorWrapper) -> List[DictStrAny]:
+        return ValidationError(errors=[error], model=RequestErrorModel).errors()
+
+    def normalize_list(errors: List[Any]) -> ValidationErrorList:
+        use_errors: ValidationErrorList = []
         for error in errors:
             if isinstance(error, ErrorWrapper):
-                new_errors = ValidationError(errors=[error], model=RequestErrorModel).errors()
+                new_errors = normalize_error_wrapper(error)
                 use_errors.extend(new_errors)
             elif isinstance(error, list):
-                use_errors.extend(_normalize_errors(error))
+                use_errors.extend(normalize_errors(error))
             else:
                 use_errors.append(error)
         return use_errors
+
+    def normalize_errors(errors: Union[Any, List[Any]]) -> ValidationErrorList:
+        if isinstance(errors, list):
+            return normalize_list(errors)
+        elif isinstance(errors, ErrorWrapper):
+            return normalize_error_wrapper(errors)
+        return [errors]
 
 elif PYDANTIC_V2:
     from pydantic import ValidationError
@@ -85,7 +96,7 @@ elif PYDANTIC_V2:
         type = 'missing'
         msg_template = 'Field required'
 
-    def _regenerate_error_with_loc(
+    def regenerate_error_with_loc(
             *,
             errors: List[Any],
             loc_prefix: Tuple[Union[str, int], ...],
@@ -95,49 +106,18 @@ elif PYDANTIC_V2:
             for err in errors
         ]
 
-    def _normalize_errors(errors: List[Any]) -> ValidationErrorList:
-        for error in errors:  # TODO: FIXME
-            error.pop('url', None)
-            error.pop('input', None)
-        return errors
+    def error_dict_pop_useless_keys(error: Dict[str, Any]) -> None:  # TODO: need advice - not sure about this
+        error.pop('url', None)
+        error.pop('input', None)
+
+    def normalize_errors(errors: Union[Any, List[Any]]) -> ValidationErrorList:
+        if isinstance(errors, list):
+            for error in errors:
+                error_dict_pop_useless_keys(error)
+            return errors
+
+        error_dict_pop_useless_keys(errors)
+        return [errors]
 
 else:
     raise Exception
-
-
-class ExtractError(ClientError, ABC):
-    pass
-
-
-class ExtractBodyError(ExtractError, ABC):
-    type = 'body_extraction'
-
-
-class BodyDataSizeExceedError(ExtractBodyError):
-    msg_template = 'Failed to extract body data. Body data exceeds the allowed size `{body_max_size}`'
-
-
-class ExtractJsonError(ExtractBodyError):
-    msg_template = 'Failed to extract body data as Json: {json_decode_err_msg}'
-
-
-class ExtractMultipartError(ExtractBodyError):
-    msg_template = 'Failed to extract body data as Multipart: {multipart_error}'
-
-
-class ExtractMultipartPartError(ExtractMultipartError):
-    msg_template = 'Failed to extract body data as Multipart. Failed to read part `{part_num}`: {multipart_error}'
-
-
-def _create_handler_info_msg(handler: Any) -> str:
-    return (
-        f'\nHandler path: `{handler.__code__.co_filename}`'
-        f'\nHandler name: `{handler.__name__}`\n'
-    )
-
-
-def _create_handler_attr_info_msg(handler: Any, attr_name: str) -> str:
-    return (
-        f'{_create_handler_info_msg(handler)}'
-        f'Attribute name: `{attr_name}`\n'
-    )
