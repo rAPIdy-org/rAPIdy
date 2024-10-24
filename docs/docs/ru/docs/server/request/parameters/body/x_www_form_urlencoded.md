@@ -1,6 +1,6 @@
 # X-WWW-Form-Urlencoded
 
-**application/x-www-form-urlencoded** - является распространенным типом контента, используемым при отправке данных 
+**X-WWW-Form-Urlencoded** *(mime-type: `application/x-www-form-urlencoded`)* - является распространенным типом контента, используемым при отправке данных 
 через HTML-формы в Интернете.
 
 Это способ кодирования пар ключ-значение в виде строки в формате key1=value1&key2=value2.
@@ -78,9 +78,11 @@ async def handler(
 
     !!! example "Пример обработчика"
         ```python
+        from rapidy import StreamReader
+
         @routes.post('/')
         async def handler(
-            user_data: web.StreamReader = web.Body(content_type=ContentType.x_www_form),
+            user_data: StreamReader = Body(content_type=ContentType.x_www_form),
         ) -> ...:
         ```
     !!! info "Код `Rapidy`"

@@ -252,9 +252,11 @@ async def handler(
 
     !!! example "Пример обработчика"
         ```python
+        from rapidy import StreamReader
+
         @routes.post('/')
         async def handler(
-            user_data: web.StreamReader = web.Body(),
+            user_data: StreamReader = web.Body(),
         ) -> ...:
         ```
     !!! info "Код `Rapidy`"

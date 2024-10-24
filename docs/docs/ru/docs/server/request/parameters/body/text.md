@@ -1,5 +1,29 @@
 # Text
 
+Text *(mime-type: `text/*`)* — тип данных представляющий собой строку.
+
+!!! info "`Rapidy` будет работать с любым текстом независимо от его `subtype`."
+    Например: `text/plain`, `text/html`, `text/css`, `text/xml`, `...`, `text/*`.
+
+
+!!! info ""
+    Для декодирования текста будет использоваться параметр `charset` заголовка <br/>`Content-Type`.
+    Если `charset` не определен клиентом, текст будет декодирован с помощью `utf-8`.
+
+
+```Python
+from rapidy.enums import ContentType
+
+@routes.post('/')
+async def handler(
+    text_data: str = web.Body(content_type=ContentType.text_plain),
+    # or 
+    text_data: str = web.Body(content_type=ContentType.text_html),
+    # or any mime-type with type `text`
+    text_data: str = web.Body(content_type=ContentType.text_any),
+) -> ...:
+```
+
 ## Как извлекаются сырые данные
 `Rapidy` внутри себя использует вызов `text` объекта `Request`, а затем передает полученный объект на валидацию 
 в `pydantic` модель.
@@ -46,9 +70,11 @@
 
     !!! example "Пример обработчика"
         ```python
+        from rapidy import StreamReader
+
         @routes.post('/')
         async def handler(
-            user_data: web.StreamReader = web.Body(content_type=ContentType.text_plain),
+            user_data: StreamReader = web.Body(content_type=ContentType.text_plain),
         ) -> ...:
         ```
     !!! info "Код `Rapidy`"

@@ -1,20 +1,23 @@
 # Multipart Form Data
 
-**multipart/form-data** - один из наиболее часто используемых типов содержимого для отправки двоичных данных на сервер. 
+**Form Data** *(mime-type: `multipart/form-data`)* - один из наиболее часто используемых типов содержимого 
+для отправки **двоичных** данных на сервер. 
+
 Multipart означает, что данные отправляются на сервер отдельными частями. 
 Каждый из компонентов может иметь свой тип содержимого, имя файла и данные. 
 Данные отделяются друг от друга граничной строкой. 
-Curl отправляет многокомпонентный запрос со специально отформатированным телом сообщения POST в виде серии «частей», 
-разделенных границами MIME.
 
 
 ```Python
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from rapidy.enums import ContentType
 
 class UserData(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     username: str
     password: str
+    image: FileField
 
 @routes.post('/')
 async def handler(
@@ -23,6 +26,29 @@ async def handler(
     user_data: UserData = web.Body(content_type='multipart/form-data'),
 ) -> ...:
 ```
+
+!!! example ""
+    ```text
+    POST /  HTTP/1.1
+    Host: localhost:8080
+    Content-Type: multipart/form-data; boundary=---WD9146A
+    Content-Length: ...
+
+    ---WD9146A
+    Content-Disposition: form-data; name="username"
+    
+    User
+    ---WD9146A
+    Content-Disposition: form-data; name="password"
+    
+    myAwesomePass
+    ---WD9146A
+    Content-Disposition: form-data; name="image"; filename="image.png";
+    Content-Type: image/png
+
+    <... binary data ...>
+    ---WD9146A
+    ```
 
 ??? example "Отправка с помощью `curl`"
     ```bash
@@ -33,23 +59,6 @@ async def handler(
     http://127.0.0.1:8080
     ```
 
-    !!! example ""
-        ```text
-        POST /  HTTP/1.1
-        Host: localhost:8080
-        Content-Type: multipart/form-data; boundary=---WD9146A
-        Content-Length: ...
-
-        ---WD9146A
-        Content-Disposition: form-data; name="username"
-        
-        User
-        ---WD9146A
-        Content-Disposition: form-data; name="password"
-        
-        myAwesomePass
-        ---WD9146A
-        ```
 
 ## Как извлекаются сырые данные
 `Rapidy` внутри себя использует вызов `post` объекта `Request`, а затем передает полученный объект на валидацию 
@@ -99,10 +108,12 @@ async def handler(
 - StreamReader
 
     !!! example "Пример обработчика"
-        ```python
+        ```python 
+        from rapidy import StreamReader
+
         @routes.post('/')
         async def handler(
-            user_data: web.StreamReader = web.Body(content_type=ContentType.m_part_form_data),
+            user_data: StreamReader = web.Body(content_type=ContentType.m_part_form_data),
         ) -> ...:
         ```
     !!! info "Код `Rapidy`"
