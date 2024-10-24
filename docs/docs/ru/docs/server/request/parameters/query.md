@@ -1,7 +1,6 @@
 # QueryParams
-
-
-Query-параметры представляют собой набор пар ключ-значение, которые идут после знака <span class="green-color">?</span> в URL-адресе, 
+## Описание
+**Query-параметры** представляют собой набор пар ключ-значение, которые идут после знака <span class="green-color">?</span> в URL-адресе, 
 разделенные символами <span class="green-color">&</span>.
 
 !!! example "Пример URL со строкой запроса, включающей три параметра."
@@ -88,32 +87,34 @@ async def handler(
 
 Если по какой-то причине вам необходимо пропустить шаг с валидацией, воспользуйтесь следующими способами:
 
-```python
-query: int = web.QueryParam(validate=False)
-# ...
+!!! info "Прямое отключение валидации"
+    Установите параметру `QueryParam` или `QueryParams` аттрибут `validate=False`
+    ```python
+    query: int = web.QueryParam(validate=False)
+    # ...
+    
+    query_params_data: int = web.QueryParams(validate=False)
+    # <MultiDictProxy('query': ..., 'star_rating', ...)>
+    ```
 
-query_params_data: int = web.QueryParams(validate=False)
-# <MultiDictProxy('query': ..., 'star_rating', ...)>
-```
+!!! info "Отключение с использованием `Any`"
+    ```python
+    query: Any = web.QueryParam()
+    # ...
+    
+    query_params_data: Any = web.QueryParams()
+    # <MultiDictProxy('query': ..., 'star_rating', ...)>
+    ```
 
-### Отключение с использованием `Any`
-```python
-query: Any = web.QueryParam()
-# ...
-
-query_params_data: Any = web.QueryParams()
-# <MultiDictProxy('query': ..., 'star_rating', ...)>
-```
-
-### Не используйте типипизацию
-Если не указать тип вообще - по умолчанию внутри будет проставлен тип `Any`.
-```python
-query=web.QueryParam()
-# ...
-
-query_params_data=web.QueryParams()
-# <MultiDictProxy('query': ..., 'star_rating', ...)>
-```
+!!! info "Не используйте типипизацию"
+    Если не указать тип вообще - по умолчанию внутри будет проставлен тип `Any`.
+    ```python
+    query=web.QueryParam()
+    # ...
+    
+    query_params_data=web.QueryParams()
+    # <MultiDictProxy('query': ..., 'star_rating', ...)>
+    ```
 
 ## Значения по умолчанию
 Значение по умолчанию для `QueryParam` будет использоваться, если в поступившем запросе не будет найден 

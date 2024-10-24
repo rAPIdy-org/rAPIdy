@@ -1,15 +1,13 @@
 # Text
-
-Text *(mime-type: `text/*`)* — тип данных представляющий собой строку.
+## Описание
+**Text** *(mime-type: `text/*`)* — тип данных представляющий собой строку.
 
 !!! info "`Rapidy` будет работать с любым текстом независимо от его `subtype`."
     Например: `text/plain`, `text/html`, `text/css`, `text/xml`, `...`, `text/*`.
 
-
 !!! info ""
     Для декодирования текста будет использоваться параметр `charset` заголовка <br/>`Content-Type`.
     Если `charset` не определен клиентом, текст будет декодирован с помощью `utf-8`.
-
 
 ```Python
 from rapidy.enums import ContentType
@@ -23,6 +21,71 @@ async def handler(
     text_data: str = web.Body(content_type=ContentType.text_any),
 ) -> ...:
 ```
+
+## Извлечение без валидации
+!!! note "Эти способы не являются рекомендованными."
+!!! note "Если валидация отключена, параметр выведет базовую структуру `aiohttp`."
+    - `Body(content_type=ContentType.text_plain)` - `str`
+
+!!! info "Прямое отключение валидации"
+    Установите параметру `Body` аттрибут `validate=False`
+    ```python
+    class DataEnum(Enum):
+        test = 'test'
+    
+    @routes.post('/')
+    async def handler(
+        data: DataEnum = web.Body(validate=False, content_type=ContentType.text_plain),
+    ) -> ...:
+    ```
+
+!!! info "Отключение с использованием `Any`"
+    ```python
+    @routes.post('/')
+    async def handler(
+        data: Any = web.Body(content_type=ContentType.text_plain),
+    ) -> ...:
+    ```
+
+!!! info "Не используйте типипизацию"
+    Если не указать тип вообще - по умолчанию внутри будет проставлен тип `Any`.
+    ```python
+    @routes.post('/')
+    async def handler(
+        data = web.Body(content_type=ContentType.text_plain),
+    ) -> ...:
+    ```
+
+## Значения по умолчанию
+Если не будет передано тело http-запроса значение по умолчанию *(если оно есть)* будет подставлено в аттрибут.
+
+!!! example "Значение по умолчанию присутствует"
+    ```python
+    class DataEnum(Enum):
+        test = 'test'
+    
+    @routes.post('/')
+    async def handler(
+        data: DataEnum = web.Body('some_data', content_type=ContentType.text_plain),
+        # or
+        data: DataEnum = web.Body(default_factory=lambda: 'some_data', content_type=ContentType.text_plain),
+    ) -> ...:
+    ```
+
+!!! example "Опциональное тело запроса"
+    ```python
+    class DataEnum(Enum):
+        test = 'test'
+
+    @routes.post('/')
+    async def handler(
+        data: DataEnum | None = web.Body(content_type=ContentType.text_plain),
+        # or
+        data: Optional[DataEnum] = web.Body(content_type=ContentType.text_plain),
+        # or 
+        data: Union[DataEnum, None] = web.Body(content_type=ContentType.text_plain),
+    ) -> ...:
+    ```
 
 ## Как извлекаются сырые данные
 `Rapidy` внутри себя использует вызов `text` объекта `Request`, а затем передает полученный объект на валидацию 
@@ -86,3 +149,23 @@ async def handler(
             return request.content
         ```
     !!! warning "Валидация `pydantic` для `StreamReader` не будет работать."
+    ??? warning "Невозможно задать значение по-умолчанию для `StreamReader`."
+        При попытке установить значение по умолчанию для `Body` с аннотацией `StreamReader` через `default` или 
+        `default_factory` будет поднята ошибка `ParameterCannotUseDefaultError`.
+        ```python
+        from rapidy import StreamReader
+
+        @routes.post('/')
+        async def handler(
+            user_data: StreamReader = web.Body(content_type=ContentType.text_plain),
+        ) -> ...:
+        ```  
+        ```text
+        ------------------------------
+        Handler attribute with Type `Body` cannot have a default value.
+    
+        Handler path: `<full_path>/main.py`
+        Handler name: `handler`
+        Attribute name: `data`
+        ------------------------------
+        ```

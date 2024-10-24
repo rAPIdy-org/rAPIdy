@@ -1,5 +1,6 @@
 # Path
-Path-параметры позволяют строить **динамические маршруты** внутри вашего приложения.
+## Описание
+**Path-параметры** позволяют строить **динамические маршруты** внутри вашего приложения.
 
 Вы можете определить path-параметры используя синтаксис форматированных строк Python:
 ```Python hl_lines="1"
@@ -92,38 +93,37 @@ async def handler(
 
 Если по какой-то причине вам необходимо пропустить шаг с валидацией, воспользуйтесь следующими способами:
 
-### Прямое отключение валидации
-Установите параметру `PathParam` или `PathParams` аттрибут `validate=False`
+!!! info "Прямое отключение валидации"
+    Установите параметру `PathParam` или `PathParams` аттрибут `validate=False`
 
-```python
-user_id: int = web.PathParam(validate=False)
-# ...
+    ```python
+    user_id: int = web.PathParam(validate=False)
+    # ...
+    
+    path_data: int = web.PathParams(validate=False)
+    # {'user_id': ..., 'user_data': ...}
+    ```
 
-path_data: int = web.PathParams(validate=False)
-# {'user_id': ..., 'user_data': ...}
-```
+!!! info "Отключение с использованием `Any`"
+    ```python
+    user_id: Any = web.PathParam()
+    # ...
+    
+    path_data: Any = web.PathParams()
+    # {'user_id': ..., 'user_data': ...}
+    ```
 
-### Отключение с использованием `Any`
-```python
-user_id: Any = web.PathParam()
-# ...
-
-path_data: Any = web.PathParams()
-# {'user_id': ..., 'user_data': ...}
-```
-
-### Не используйте типипизацию
-Если не указать тип вообще - по умолчанию внутри будет проставлен тип `Any`.
-```python
-user_id=web.PathParam()
-# ...
-
-path_data=web.PathParams()
-# {'user_id': ..., 'user_data': ...}
-```
+!!! info "Не используйте типипизацию"
+    Если не указать тип вообще - по умолчанию внутри будет проставлен тип `Any`.
+    ```python
+    user_id=web.PathParam()
+    # ...
+    
+    path_data=web.PathParams()
+    # {'user_id': ..., 'user_data': ...}
+    ```
 
 ## Значения по умолчанию
-
 !!! warning "`PathParam` и `PathParams` не поддерживают значения по умолчанию."
     Это вполне логичное архитектурное ограничение. Без этого решения невозможно правильно построить
     динамическую работу роутеров.

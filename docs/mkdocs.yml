@@ -110,9 +110,6 @@ nav:
         - docs/server/index.md
         - Request:
             - docs/server/request/index.md
-            - Extraction and validation:
-              - docs/server/request/extraction_and_validation/index.md
-            - docs/server/request/annotation.md
             - Parameters:
                 - docs/server/request/parameters/index.md
                 - docs/server/request/parameters/path.md
@@ -126,7 +123,6 @@ nav:
                     - docs/server/request/parameters/body/multipart.md
                     - docs/server/request/parameters/body/text.md
                     - docs/server/request/parameters/body/binary.md
-            - docs/server/request/default.md
             - docs/server/request/validation_errors.md
         - Response:
             - docs/server/response/index.md

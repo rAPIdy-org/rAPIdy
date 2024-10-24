@@ -1,6 +1,6 @@
 # Cookies
-
-Cookie – небольшой набор данных о пользователе хранимый на его устройстве без изменений и какой-либо обработки.
+## Описание
+**Cookie** – небольшой набор данных о пользователе хранимый на его устройстве без изменений и какой-либо обработки.
 
 Веб-клиент всякий раз при обращении к соответствующему сайту пересылает эти данные веб-серверу 
 в составе HTTP-запроса.
@@ -80,7 +80,6 @@ async def handler(
 
 ## Извлечение без валидации
 !!! note "Эти способы не являются рекомендованными."
-
 !!! note "Если валидация отключена, параметр выведет базовую структуру `aiohttp` для этого http-параметра."
     - `Cookie` - `str`
     - `Cookies` - `Mapping[str, str]`
@@ -88,35 +87,35 @@ async def handler(
 
 Если по какой-то причине вам необходимо пропустить шаг с валидацией, воспользуйтесь следующими способами:
 
-### Прямое отключение валидации
-Установите параметру `Cookie` или `Cookies` аттрибут `validate=False`
+!!! info "Прямое отключение валидации"
+    Установите параметру `Cookie` или `Cookies` аттрибут `validate=False`
+    
+    ```python
+    user_id: int = web.Cookie(alias='UserID', validate=False)
+    # ...
+    
+    cookie_data: int = web.Cookies(validate=False)
+    # {'UserID': ..., 'User-Session': ...}
+    ```
 
-```python
-user_id: int = web.Cookie(alias='UserID', validate=False)
-# ...
+!!! info "Отключение с использованием `Any`"
+    ```python
+    user_id: Any = web.Cookie(alias='UserID')
+    # ...
+    
+    headers_data: Any = web.Cookies()
+    # {'UserID': ..., 'User-Session': ...}
+    ```
 
-cookie_data: int = web.Cookies(validate=False)
-# {'UserID': ..., 'User-Session': ...}
-```
-
-### Отключение с использованием `Any`
-```python
-user_id: Any = web.Cookie(alias='UserID')
-# ...
-
-headers_data: Any = web.Cookies()
-# {'UserID': ..., 'User-Session': ...}
-```
-
-### Не используйте типипизацию
-Если не указать тип вообще - по умолчанию внутри будет проставлен тип `Any`.
-```python
-user_id=web.Cookie(alias='UserID')
-# ...
-
-headers_data=web.Cookies()
-# {'UserID': ..., 'User-Session': ...}
-```
+!!! info "Не используйте типипизацию"
+    Если не указать тип вообще - по умолчанию внутри будет проставлен тип `Any`.
+    ```python
+    user_id=web.Cookie(alias='UserID')
+    # ...
+    
+    headers_data=web.Cookies()
+    # {'UserID': ..., 'User-Session': ...}
+    ```
 
 ## Значения по умолчанию
 Значение по умолчанию для `Cookie` будет использоваться, если в поступившем запросе не будет найден 

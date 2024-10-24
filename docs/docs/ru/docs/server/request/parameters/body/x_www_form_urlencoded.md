@@ -1,5 +1,5 @@
 # X-WWW-Form-Urlencoded
-
+## Описание
 **X-WWW-Form-Urlencoded** *(mime-type: `application/x-www-form-urlencoded`)* - является распространенным типом контента, используемым при отправке данных 
 через HTML-формы в Интернете.
 
@@ -27,6 +27,77 @@ async def handler(
     -H "Content-Type: application/x-www-form-urlencoded" \
     -d "username=User&password=myAwesomePass" \
     http://127.0.0.1:8080
+    ```
+
+## Извлечение без валидации
+!!! note "Эти способы не являются рекомендованными."
+!!! note "Если валидация отключена, параметр выведет базовую структуру `aiohttp`."
+    - `Body(content_type=ContentType.x_www_form)` - `MultiDictProxy[str]`
+
+!!! info "Прямое отключение валидации"
+    Установите параметру `Body` аттрибут `validate=False`
+    ```python
+    from pydantic import BaseModel
+        
+    class BodyData(BaseModel):
+        ...
+    
+    @routes.post('/')
+    async def handler(
+        data: BodyData = web.Body(validate=False, content_type=ContentType.x_www_form),
+    ) -> ...:
+    ```
+
+!!! info "Отключение с использованием `Any`"
+    ```python
+    @routes.post('/')
+    async def handler(
+        data: Any = web.Body(content_type=ContentType.x_www_form),
+    ) -> ...:
+    ```
+
+!!! info "Не используйте типипизацию"
+    Если не указать тип вообще - по умолчанию внутри будет проставлен тип `Any`.
+    ```python
+    @routes.post('/')
+    async def handler(
+        data = web.Body(content_type=ContentType.x_www_form),
+    ) -> ...:
+    ```
+
+## Значения по умолчанию
+Если не будет передано тело http-запроса значение по умолчанию *(если оно есть)* будет подставлено в аттрибут.
+
+!!! example "Значение по умолчанию присутствует"
+    ```python
+    from pydantic import BaseModel
+    
+    class BodyData(BaseModel):
+        ...
+    
+    @routes.post('/')
+    async def handler(
+        data: BodyData = web.Body('some_data', content_type=ContentType.x_www_form),
+        # or
+        data: BodyData = web.Body(default_factory=lambda: 'some_data', content_type=ContentType.x_www_form),
+    ) -> ...:
+    ```
+
+!!! example "Опциональное тело запроса"
+    ```python
+    from pydantic import BaseModel
+    
+    class BodyData(BaseModel):
+        ...
+    
+    @routes.post('/')
+    async def handler(
+        data: BodyData | None = web.Body(content_type=ContentType.x_www_form),
+        # or
+        data: Optional[BodyData] = web.Body(content_type=ContentType.x_www_form),
+        # or 
+        data: Union[BodyData, None] = web.Body(content_type=ContentType.x_www_form),
+    ) -> ...:
     ```
 
 ## Как извлекаются сырые данные
@@ -94,3 +165,23 @@ async def handler(
             return request.content
         ```
     !!! warning "Валидация `pydantic` для `StreamReader` не будет работать."
+    ??? warning "Невозможно задать значение по-умолчанию для `StreamReader`."
+        При попытке установить значение по умолчанию для `Body` с аннотацией `StreamReader` через `default` или 
+        `default_factory` будет поднята ошибка `ParameterCannotUseDefaultError`.
+        ```python
+        from rapidy import StreamReader
+
+        @routes.post('/')
+        async def handler(
+            user_data: StreamReader = web.Body(content_type=ContentType.x_www_form),
+        ) -> ...:
+        ```  
+        ```text
+        ------------------------------
+        Handler attribute with Type `Body` cannot have a default value.
+    
+        Handler path: `<full_path>/main.py`
+        Handler name: `handler`
+        Attribute name: `data`
+        ------------------------------
+        ```

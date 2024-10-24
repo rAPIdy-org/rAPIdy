@@ -1,5 +1,6 @@
 # Headers
-Заголовки HTTP позволяют клиенту и серверу отправлять дополнительную информацию с HTTP запросом или ответом.
+## Описание
+**HTTP-заголовки** позволяют клиенту и серверу отправлять дополнительную информацию с HTTP запросом или ответом.
 
 Данный раздел покажет, как можно извлекать и проверять заголовки используя **`Rapidy`**.
 
@@ -83,35 +84,35 @@ async def handler(
 
 Если по какой-то причине вам необходимо пропустить шаг с валидацией, воспользуйтесь следующими способами:
 
-### Прямое отключение валидации
-Установите параметру `Header` или `Headers` аттрибут `validate=False`
+!!! info "Прямое отключение валидации"
+    Установите параметру `Header` или `Headers` аттрибут `validate=False`
 
-```python
-header_host: int = web.Header(alias='Host', validate=False)
-# "0.0.0.0:8080"
+    ```python
+    header_host: int = web.Header(alias='Host', validate=False)
+    # "0.0.0.0:8080"
+    
+    headers_data: int = web.Headers(validate=False)
+    # <CIMultiDictProxy('Host': '0.0.0.0:8080', 'Connection': 'keep-alive', 'Upgrade-Insecure-Requests': '1', 'User-Agent': '...')>
+    ```
 
-headers_data: int = web.Headers(validate=False)
-# <CIMultiDictProxy('Host': '0.0.0.0:8080', 'Connection': 'keep-alive', 'Upgrade-Insecure-Requests': '1', 'User-Agent': '...')>
-```
+!!! info "Отключение с использованием `Any`"
+    ```python
+    header_host: Any = web.Header(alias='Host')
+    # "0.0.0.0:8080"
+    
+    headers_data: Any = web.Headers()
+    # <CIMultiDictProxy('Host': '0.0.0.0:8080', 'Connection': 'keep-alive', 'Upgrade-Insecure-Requests': '1', 'User-Agent': '...')>
+    ```
 
-### Отключение с использованием `Any`
-```python
-header_host: Any = web.Header(alias='Host')
-# "0.0.0.0:8080"
-
-headers_data: Any = web.Headers()
-# <CIMultiDictProxy('Host': '0.0.0.0:8080', 'Connection': 'keep-alive', 'Upgrade-Insecure-Requests': '1', 'User-Agent': '...')>
-```
-
-### Не используйте типипизацию
-Если не указать тип вообще - по умолчанию внутри будет проставлен тип `Any`.
-```python
-header_host=web.Header(alias='Host')
-# "0.0.0.0:8080"
-
-headers_data=web.Headers()
-# <CIMultiDictProxy('Host': '0.0.0.0:8080', 'Connection': 'keep-alive', 'Upgrade-Insecure-Requests': '1', 'User-Agent': '...')>
-```
+!!! info "Не используйте типипизацию"
+    Если не указать тип вообще - по умолчанию внутри будет проставлен тип `Any`.
+    ```python
+    header_host=web.Header(alias='Host')
+    # "0.0.0.0:8080"
+    
+    headers_data=web.Headers()
+    # <CIMultiDictProxy('Host': '0.0.0.0:8080', 'Connection': 'keep-alive', 'Upgrade-Insecure-Requests': '1', 'User-Agent': '...')>
+    ```
 
 ## Значения по умолчанию
 Значение по умолчанию для `Header` будет использоваться, если в поступившем запросе не будет найден 

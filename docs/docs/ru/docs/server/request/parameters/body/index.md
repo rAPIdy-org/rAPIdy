@@ -1,6 +1,6 @@
 # Body
-
-HTTP тело запроса является частью сообщения запроса, переносящего данные от клиента к серверу. 
+## Описание
+**HTTP тело запроса** является частью сообщения запроса, переносящего данные от клиента к серверу. 
 Это имеет решающее значение для таких методов, как POST, PUT и PATCH, используемых для создания, обновления или 
 изменения ресурсов. 
 
@@ -123,3 +123,80 @@ async def handler(
     data: Any = web.Body(json_decoder=decoder),
 ) -> ...:
 ```
+
+## Извлечение без валидации
+Практически все типы `Body` поддерживают извлечение данных без валидации.
+
+!!! note "Эти способы не являются рекомендованными."
+!!! note "Если валидация отключена, параметр выведет базовую структуру `aiohttp` для этого тела http."
+!!! note "Более подробно вы можете прочитать об этом в разделе **Извлечение без валидации** любого из body-параметров."
+
+!!! info "Прямое отключение валидации"
+    Установите параметру `Body` аттрибут `validate=False`
+    ```python
+    from pydantic import BaseModel
+        
+    class BodyData(BaseModel):
+        ...
+    
+    @routes.post('/')
+    async def handler(
+        data: BodyData = web.Body(validate=False),
+    ) -> ...:
+    ```
+
+!!! info "Отключение с использованием `Any`"
+    ```python
+    @routes.post('/')
+    async def handler(
+        data: Any = web.Body(),
+    ) -> ...:
+    ```
+
+!!! info "Не используйте типипизацию"
+    Если не указать тип вообще - по умолчанию внутри будет проставлен тип `Any`.
+    ```python
+    @routes.post('/')
+    async def handler(
+        data = web.Body(),
+    ) -> ...:
+    ```
+
+## Значения по умолчанию
+Практически все типы `Body` поддерживают значения по умолчанию.
+
+Если не будет передано тело http-запроса значение по умолчанию *(если оно есть)* будет подставлено в аттрибут.
+
+!!! example "Значение по умолчанию присутствует"
+    ```python
+    from pydantic import BaseModel
+    
+    class BodyData(BaseModel):
+        ...
+    
+    @routes.post('/')
+    async def handler(
+        data: BodyData = web.Body('some_data'),
+        # or
+        data: BodyData = web.Body(default_factory=lambda: 'some_data'),
+    ) -> ...:
+    ```
+
+!!! example "Опциональное тело запроса"
+    ```python
+    from pydantic import BaseModel
+    
+    class BodyData(BaseModel):
+        ...
+    
+    @routes.post('/')
+    async def handler(
+        data: BodyData | None = web.Body(),
+        # or
+        data: Optional[BodyData] = web.Body(),
+        # or 
+        data: Union[BodyData, None] = web.Body(),
+    ) -> ...:
+    ```
+
+!!! note "Более подробно вы можете прочитать об этом в разделе **Значения по умолчанию** любого из body-параметров."

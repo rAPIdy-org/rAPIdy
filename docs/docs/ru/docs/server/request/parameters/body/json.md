@@ -1,5 +1,5 @@
 # Json
-
+## Описание
 **Json** (JavaScript Object Notation) *(mime-type: `application/json`)* - текстовый формат обмена структурированными 
 данными, основанный на JavaScript. Сейчас формат независим от JS и может использоваться в любом языке программирования. 
 
@@ -192,6 +192,79 @@ async def handler(
 ) -> ...:
 ```
 
+## Извлечение без валидации
+!!! note "Эти способы не являются рекомендованными."
+!!! note "Если валидация отключена, параметр выведет данные так как их распаковал `json-декодер`."
+
+!!! info "Прямое отключение валидации"
+    Установите параметру `Body` аттрибут `validate=False`
+    ```python
+    from pydantic import BaseModel
+        
+    class BodyData(BaseModel):
+        ...
+    
+    @routes.post('/')
+    async def handler(
+        data: BodyData = web.Body(validate=False),
+    ) -> ...:
+    ```
+
+!!! info "Отключение с использованием `Any`"
+    ```python
+    @routes.post('/')
+    async def handler(
+        data: Any = web.Body(),
+    ) -> ...:
+    ```
+
+!!! info "Не используйте типипизацию"
+    Если не указать тип вообще - по умолчанию внутри будет проставлен тип `Any`.
+    ```python
+    @routes.post('/')
+    async def handler(
+        data = web.Body(),
+    ) -> ...:
+    ```
+
+## Значения по умолчанию
+Если не будет передано тело http-запроса значение по умолчанию *(если оно есть)* будет подставлено в аттрибут.
+
+!!! example "Значение по умолчанию присутствует"
+    ```python
+    from pydantic import BaseModel
+    
+    class BodyData(BaseModel):
+        ...
+    
+    @routes.post('/')
+    async def handler(
+        data: BodyData = web.Body('some_data'),
+        # or
+        data: BodyData = web.Body(default_factory=lambda: 'some_data'),
+    ) -> ...:
+    ```
+
+!!! example "Опциональное тело запроса"
+    ```python
+    from pydantic import BaseModel
+    
+    class BodyData(BaseModel):
+        ...
+    
+    @routes.post('/')
+    async def handler(
+        data: BodyData | None = web.Body(),
+        # or
+        data: Optional[BodyData] = web.Body(),
+        # or 
+        data: Union[BodyData, None] = web.Body(),
+    ) -> ...:
+    ```
+    !!! warning ""
+        Если сервер ожидает опциональную модель, а клиент отправит `{}` вместо пустого тела, то в аттрибуте `data` 
+        все равно будет `None`.
+
 ## Как извлекаются сырые данные
 `Rapidy` внутри себя использует вызов `json` объекта `Request`, а затем передает полученный объект на валидацию 
 в `pydantic` модель.
@@ -268,3 +341,23 @@ async def handler(
             return request.content
         ```
     !!! warning "Валидация `pydantic` для `StreamReader` не будет работать."
+    ??? warning "Невозможно задать значение по-умолчанию для `StreamReader`."
+        При попытке установить значение по умолчанию для `Body` с аннотацией `StreamReader` через `default` или 
+        `default_factory` будет поднята ошибка `ParameterCannotUseDefaultError`.
+        ```python
+        from rapidy import StreamReader
+
+        @routes.post('/')
+        async def handler(
+            user_data: StreamReader = web.Body(),
+        ) -> ...:
+        ```  
+        ```text
+        ------------------------------
+        Handler attribute with Type `Body` cannot have a default value.
+    
+        Handler path: `<full_path>/main.py`
+        Handler name: `handler`
+        Attribute name: `data`
+        ------------------------------
+        ```
