@@ -9,6 +9,7 @@ from typing_extensions import Annotated
 from rapidy import web
 from rapidy._annotation_extractor import ParameterCannotBeOptionalError
 from rapidy._request_param_field_info import ParamFieldInfo
+from rapidy.version import PY_VERSION_TUPLE
 
 
 async def base_test_optional(
@@ -26,10 +27,26 @@ async def base_test_optional(
         assert data is None
         return web.Response()
 
+    handlers = [handler_annotated_def, handler_default_def]
+    if PY_VERSION_TUPLE >= (3, 10, 0):
+        async def handler_annotated_union_type_def(
+                data: Annotated[annotation | None, type_(**type_kwargs)],  # type: ignore[syntax, unused-ignore]
+        ) -> web.Response:
+            assert data is None
+            return web.Response()
+
+        async def handler_default_union_type_def(
+                data: annotation | None = type_(**type_kwargs),  # type: ignore[syntax, unused-ignore]
+        ) -> web.Response:
+            assert data is None
+            return web.Response()
+
+        handlers.extend((handler_annotated_union_type_def, handler_default_union_type_def))
+
     app = web.Application()
     counter, paths = 0, []
 
-    for handler in handler_annotated_def, handler_default_def:
+    for handler in handlers:
         path = f'/{counter}'
         if not can_default:
             with pytest.raises(ParameterCannotBeOptionalError):
