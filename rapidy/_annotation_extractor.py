@@ -4,9 +4,14 @@ from typing import Any, cast, List, NamedTuple, Optional, Type, Union
 
 from aiohttp.web_request import Request
 from aiohttp.web_response import StreamResponse
-from typing_extensions import Annotated, get_args, get_origin
+from typing_extensions import get_args
 
-from rapidy._annotation_helpers import annotation_is_optional, get_base_annotations, lenient_issubclass
+from rapidy._annotation_helpers import (
+    annotation_is_annotated,
+    annotation_is_optional,
+    get_base_annotations,
+    lenient_issubclass,
+)
 from rapidy._base_exceptions import RapidyHandlerException
 from rapidy.request_parameters import ParamFieldInfo
 from rapidy.typedefs import Handler, Required, Undefined
@@ -203,9 +208,7 @@ def check_default_value_for_field_exists(field_info: ParamFieldInfo) -> bool:
 
 
 def create_attribute_field_info(handler: Handler, param: inspect.Parameter) -> ParamFieldInfo:
-    annotation_origin = get_origin(param.annotation)
-
-    if annotation_origin is Annotated:
+    if annotation_is_annotated(param.annotation):
         annotated_args = get_args(param.annotation)
         if len(annotated_args) < 2:
             raise NotRapidyParameterError

@@ -9,6 +9,7 @@ from aiohttp import StreamReader
 from pydantic import ValidationError
 from typing_extensions import Annotated
 
+from rapidy._annotation_helpers import annotation_is_optional
 from rapidy._base_exceptions import RapidyException
 from rapidy._client_errors import regenerate_error_with_loc
 from rapidy._constants import PYDANTIC_V1, PYDANTIC_V2
@@ -21,7 +22,17 @@ rapidy_inner_fake_annotations = {
 }
 
 
-class ModelFieldCreationError(RapidyException):
+class RequestModelFieldCreationError(RapidyException):
+    message = """
+    Invalid args for request field!
+    Hint: check that `{type_info}` is a valid Pydantic field.
+    """
+
+    def __init__(self, message: Optional[str] = None, *, type_: Type[Any], **format_fields: str) -> None:
+        super().__init__(message, **format_fields, type_info=f'{type_}')  # noqa: WPS221
+
+
+class ResponseModelFieldCreationError(RapidyException):
     message = """
     Invalid args for response field!
     Hint: check that `{type_info}` is a valid Pydantic field (e.g. Union[Response, dict, None]).
@@ -30,7 +41,7 @@ class ModelFieldCreationError(RapidyException):
     Any way of creating `aiohttp` handler paths supports disabling generating the response model.
 
     Examples:
-        >>> InvalidPydanticType = ...  # <- obj will raise ModelFieldCreationError
+        >>> InvalidPydanticType = ...  # <- obj will raise ResponseModelFieldCreationError
         >>> app = web.Application()
 
         >>> def handler() -> InvalidPydanticType:
@@ -53,7 +64,7 @@ class ModelFieldCreationError(RapidyException):
     """
 
     def __init__(self, message: Optional[str] = None, *, type_: Type[Any], **format_fields: str) -> None:
-        super().__init__(message, **format_fields, type_info=f'{type_.__module__}.{type_.__name__}')  # noqa: WPS221
+        super().__init__(message, **format_fields, type_info=f'{type_}')  # noqa: WPS221
 
 
 @dataclass
@@ -208,7 +219,8 @@ if PYDANTIC_V1:  # noqa: C901
             type_: Type[Any],
             field_info: ParamFieldInfo,
     ) -> BaseRequestModelField:
-        required = field_info.default in (Required, Undefined) and field_info.default_factory is None
+        not_default = field_info.default in (Required, Undefined) and field_info.default_factory is None
+        required = not_default and not annotation_is_optional(field_info.annotation)
 
         kwargs: Dict[str, Any] = {
             'name': name,
@@ -231,7 +243,7 @@ if PYDANTIC_V1:  # noqa: C901
                     field_info=field_info,
                     http_request_param_type=field_info.http_request_param_type,
                 )
-            raise ModelFieldCreationError(type_=type_) from exc
+            raise RequestModelFieldCreationError(type_=type_) from exc
 
     def create_response_field(
             name: str,
@@ -250,7 +262,7 @@ if PYDANTIC_V1:  # noqa: C901
         try:
             return ModelField(**kwargs)  # type: ignore[arg-type, unused-ignore]
         except Exception as exc:
-            raise ModelFieldCreationError(type_=type_) from exc
+            raise ResponseModelFieldCreationError(type_=type_) from exc
 
 elif PYDANTIC_V2:
     from pydantic import TypeAdapter  # noqa: WPS433
@@ -271,7 +283,7 @@ elif PYDANTIC_V2:
 
         @property
         def required(self) -> bool:
-            return self.field_info.is_required()
+            return self.field_info.is_required() and not (annotation_is_optional(self.field_info.annotation))
 
         @property
         def default(self) -> Any:
@@ -330,7 +342,7 @@ elif PYDANTIC_V2:
                     field_info=field_info,
                     http_request_param_type=field_info.http_request_param_type,
                 )
-            raise ModelFieldCreationError(type_=type_) from exc
+            raise RequestModelFieldCreationError(type_=type_) from exc
 
     def create_response_field(
             name: str,
@@ -340,7 +352,7 @@ elif PYDANTIC_V2:
         try:
             return ModelField(name=name, field_info=field_info)  # type: ignore[call-arg, unused-ignore]
         except Exception as exc:
-            raise ModelFieldCreationError(type_=type_) from exc
+            raise ResponseModelFieldCreationError(type_=type_) from exc
 
 else:
     raise ValueError
