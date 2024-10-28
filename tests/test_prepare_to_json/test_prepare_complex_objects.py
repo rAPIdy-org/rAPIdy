@@ -6,7 +6,7 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
-from rapidy.encoders import simplify_data
+from rapidy.encoders import jsonify
 
 test_str = 'test'
 test_int = 1
@@ -100,7 +100,7 @@ expected_prepared_obj = {
 
 
 def test_complex() -> None:
-    prepared_obj = simplify_data(obj_to_prepare)
+    prepared_obj = jsonify(obj_to_prepare)
 
     prepared_list = prepared_obj.pop('test_list')
     prepared_set = prepared_obj.pop('test_set')

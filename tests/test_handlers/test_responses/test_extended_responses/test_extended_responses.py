@@ -21,6 +21,7 @@ from tests.test_handlers.test_responses.test_extended_responses.helpers import (
 async def test_validation_success(aiohttp_client: AiohttpClient) -> None:
     await check_all_handlers_with_all_response_model_flows(
         aiohttp_client=aiohttp_client,
+        aiohttp_client_response_body_attr_name='text',
         # handler fabric attrs
         handler_return_type=str,
         handler_return_value=DEFAULT_RETURN_VALUE,
@@ -31,6 +32,7 @@ async def test_validation_success(aiohttp_client: AiohttpClient) -> None:
 async def test_validation_flag(aiohttp_client: AiohttpClient, response_validate: bool) -> None:
     await check_all_handlers_with_all_response_model_flows(
         aiohttp_client=aiohttp_client,
+        aiohttp_client_response_body_attr_name='text',
         # handler fabric attrs
         handler_return_type=int,
         handler_return_value=DEFAULT_RETURN_VALUE,
@@ -177,7 +179,7 @@ async def test_injected_response(aiohttp_client: AiohttpClient) -> None:
 
 async def test_update_data_for_injected_response(aiohttp_client: AiohttpClient) -> None:
     async def handler(response: web.Response) -> None:
-        response.text = DEFAULT_RETURN_VALUE
+        response.body = DEFAULT_RETURN_VALUE
 
     app = web.Application()
     app.router.add_get(PATH, handler, response_content_type=ContentType.json)

@@ -40,7 +40,7 @@ else:
 
 
 __all__ = (
-    'simplify_data',
+    'jsonify',
 )
 
 _IncludeOrExclude: TypeAlias = Union[Set[int], Set[str], Dict[int, Any], Dict[str, Any]]  # noqa: WPS221
@@ -159,7 +159,7 @@ encoders_by_class_tuples = get_encoders_by_class_tuples()
 
 
 @overload
-def simplify_data(
+def jsonify(
         obj: Any,
         *,
         include: Optional[Include] = ...,
@@ -177,7 +177,7 @@ def simplify_data(
 
 
 @overload
-def simplify_data(
+def jsonify(
         obj: Any,
         *,
         include: Optional[Include] = ...,
@@ -195,7 +195,7 @@ def simplify_data(
 
 
 @overload
-def simplify_data(
+def jsonify(
         obj: Any,
         *,
         include: Optional[Include] = ...,
@@ -212,7 +212,7 @@ def simplify_data(
     ...
 
 
-def simplify_data(
+def jsonify(
         obj: Any,
         *,
         include: Optional[Include] = None,
@@ -265,7 +265,7 @@ def simplify_data(
             Arg that determines whether to make a string from the created object.
         dumps_encoder:
             Any callable that accepts an object and returns a JSON string.
-            Will be used if prepare_to_json(dumps=True, ...).
+            Will be used if jsonify(dumps=True, ...).
 
     Note:
         This code and doc is taken almost unchanged from the https://fastapi.tiangolo.com/ project.

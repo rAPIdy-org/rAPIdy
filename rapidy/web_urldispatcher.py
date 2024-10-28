@@ -171,7 +171,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             allow_head: bool = True,
             response_validate: bool = True,
             response_type: Union[Type[Any], None] = sentinel,
-            response_content_type: Union[str, ContentType] = ContentType.json,
+            response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
             response_zlib_executor_size: Optional[int] = None,
@@ -239,7 +239,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
                 Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
-                Will be used if prepare_to_json(dumps=True, ...).
+                Will be used if dumps=True
         """
         resource = self.add_resource(path, name=name)
         if allow_head:
@@ -272,7 +272,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             name: Optional[str] = None,
             response_validate: bool = True,
             response_type: Union[Type[Any], None] = sentinel,
-            response_content_type: Union[str, ContentType] = ContentType.json,
+            response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
             response_zlib_executor_size: Optional[int] = None,
@@ -333,7 +333,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
                 Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
-                Will be used if prepare_to_json(dumps=True, ...).
+                Will be used if dumps=True
         """
         return self.add_route(
             # aiohttp attrs
@@ -367,7 +367,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             name: Optional[str] = None,
             response_validate: bool = True,
             response_type: Union[Type[Any], None] = sentinel,
-            response_content_type: Union[str, ContentType] = ContentType.json,
+            response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
             response_zlib_executor_size: Optional[int] = None,
@@ -428,7 +428,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
                 Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
-                Will be used if prepare_to_json(dumps=True, ...).
+                Will be used if dumps=True
         """
         return self.add_route(
             # aiohttp attrs
@@ -462,7 +462,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             name: Optional[str] = None,
             response_validate: bool = True,
             response_type: Union[Type[Any], None] = sentinel,
-            response_content_type: Union[str, ContentType] = ContentType.json,
+            response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
             response_zlib_executor_size: Optional[int] = None,
@@ -523,7 +523,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
                 Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
-                Will be used if prepare_to_json(dumps=True, ...).
+                Will be used if dumps=True
         """
         return self.add_route(
             # aiohttp attrs
@@ -557,7 +557,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             name: Optional[str] = None,
             response_validate: bool = True,
             response_type: Union[Type[Any], None] = sentinel,
-            response_content_type: Union[str, ContentType] = ContentType.json,
+            response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
             response_zlib_executor_size: Optional[int] = None,
@@ -618,7 +618,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
                 Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
-                Will be used if prepare_to_json(dumps=True, ...).
+                Will be used if dumps=True
         """
         return self.add_route(
             # aiohttp attrs
@@ -652,7 +652,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             name: Optional[str] = None,
             response_validate: bool = True,
             response_type: Union[Type[Any], None] = sentinel,
-            response_content_type: Union[str, ContentType] = ContentType.json,
+            response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
             response_zlib_executor_size: Optional[int] = None,
@@ -713,7 +713,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
                 Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
-                Will be used if prepare_to_json(dumps=True, ...).
+                Will be used if dumps=True
         """
         return self.add_route(
             # aiohttp attrs

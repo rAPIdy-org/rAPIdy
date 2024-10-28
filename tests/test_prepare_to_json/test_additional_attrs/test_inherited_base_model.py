@@ -5,7 +5,7 @@ from typing import Any, Final
 import pytest
 from pydantic import BaseModel, Field
 
-from rapidy.encoders import simplify_data
+from rapidy.encoders import jsonify
 from rapidy.typedefs import DictStrAny
 
 DEFAULT: Final[str] = 'test'
@@ -76,19 +76,19 @@ obj_to_prepare = {
 @pytest.mark.skip(reason='Encoder partially does not support nested BaseModel (fastapi legacy).')
 def test_dict_include_nested_model() -> None:
     expected_obj = {'test_model': {EXCLUDED_FIELD_NAME}}
-    assert simplify_data(obj_to_prepare, include={'test_model': {EXCLUDED_FIELD_NAME}}) == expected_obj
+    assert jsonify(obj_to_prepare, include={'test_model': {EXCLUDED_FIELD_NAME}}) == expected_obj
 
 
 @pytest.mark.skip(reason='Encoder partially does not support nested BaseModel (fastapi legacy).')
 def test_dict_exclude_nested_model() -> None:
     expected_obj = create_expected_base_model_obj(exclude=True)
-    assert simplify_data(obj_to_prepare, exclude={'test_model': {EXCLUDED_FIELD_NAME}}) == expected_obj
+    assert jsonify(obj_to_prepare, exclude={'test_model': {EXCLUDED_FIELD_NAME}}) == expected_obj
 
 
 @pytest.mark.skip(reason='Encoder partially does not support nested BaseModel (fastapi legacy).')
 def test_dict_dataclass_include_nested_model() -> None:
     expected_obj = {'test_dataclass': {'test_model': {EXCLUDED_FIELD_NAME: DEFAULT}}}
-    assert simplify_data(obj_to_prepare, include={'test_model': {EXCLUDED_FIELD_NAME}}) == expected_obj
+    assert jsonify(obj_to_prepare, include={'test_model': {EXCLUDED_FIELD_NAME}}) == expected_obj
 
 
 @pytest.mark.skip(reason='Encoder partially does not support nested BaseModel (fastapi legacy).')
@@ -101,7 +101,7 @@ def test_dict_dataclass_exclude_nested_model() -> None:
         },
         'test_model': expected_base_model_obj,
     },
-    assert simplify_data(
+    assert jsonify(
         obj_to_prepare,
         exclude={'test_dataclass': {'test_model': {EXCLUDED_FIELD_NAME}}},
     ) == expected_obj
@@ -109,7 +109,7 @@ def test_dict_dataclass_exclude_nested_model() -> None:
 
 @pytest.mark.parametrize('by_alias', [True, False])
 def test_nested_by_alias(by_alias: bool) -> None:
-    prepared_obj = simplify_data(obj_to_prepare, by_alias=by_alias)
+    prepared_obj = jsonify(obj_to_prepare, by_alias=by_alias)
 
     dict_dataclass_test_model = prepared_obj['test_dataclass']['test_model']
     dict_test_model = prepared_obj['test_model']
@@ -131,7 +131,7 @@ def test_nested_exclude_default() -> None:
         },
         'test_model': expected_base_model_obj,
     }
-    assert simplify_data(obj_to_prepare, exclude_defaults=True) == expected_obj
+    assert jsonify(obj_to_prepare, exclude_defaults=True) == expected_obj
 
 
 def test_nested_model_exclude_none() -> None:
@@ -144,4 +144,4 @@ def test_nested_model_exclude_none() -> None:
         },
         'test_model': expected_base_model_obj,
     }
-    assert simplify_data(obj_to_prepare, exclude_none=True) == expected_obj
+    assert jsonify(obj_to_prepare, exclude_none=True) == expected_obj
