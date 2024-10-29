@@ -9,7 +9,7 @@ from aiohttp import helpers
 from aiohttp.abc import Request
 from aiohttp.streams import StreamReader
 from aiohttp.web_request import FileField
-from multidict import MultiDict, MultiDictProxy, MultiMapping
+from multidict import MultiDictProxy, MultiMapping
 
 from rapidy import hdrs
 from rapidy._annotation_helpers import lenient_issubclass
@@ -55,7 +55,7 @@ async def extract_cookies(request: Request) -> Mapping[str, str]:
     return request.cookies
 
 
-async def extract_query(request: Request) -> MultiDict[str]:
+async def extract_query(request: Request) -> MultiDictProxy[str]:
     return request.rel_url.query
 
 
@@ -180,8 +180,8 @@ def create_checked_type_extractor(
         request_ctype = get_mimetype(request)
 
         if (
-            request_ctype.type in (expected_ctype.type, '*')
-            and request_ctype.subtype in (expected_ctype.subtype, '*')
+            (request_ctype.type == expected_ctype.type or expected_ctype.type == '*')
+            and (request_ctype.subtype == expected_ctype.subtype or expected_ctype.subtype == '*')
         ):
             return await extractor(request, body_field_info)
 
