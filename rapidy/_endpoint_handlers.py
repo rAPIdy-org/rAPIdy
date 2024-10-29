@@ -6,7 +6,7 @@ from pprint import pformat
 from types import FunctionType
 from typing import Any, cast, Dict, List, Mapping, Optional, Sequence, Tuple, Type, Union
 
-from aiohttp.helpers import parse_mimetype, sentinel
+from aiohttp.helpers import sentinel
 from aiohttp.typedefs import JSONEncoder
 from aiohttp.web_request import Request
 from aiohttp.web_response import Response, StreamResponse
@@ -26,8 +26,8 @@ from rapidy._endpoint_model_field import (
 )
 from rapidy._request_extractors import ExtractError, get_extractor
 from rapidy._request_param_field_info import ParamFieldInfo
-from rapidy.encoders import CustomEncoder, Exclude, Include, simplify_data
-from rapidy.enums import ContentType, HeaderName, HTTPRequestParamType
+from rapidy.encoders import CustomEncoder, Exclude, Include
+from rapidy.enums import ContentType, HTTPRequestParamType
 from rapidy.typedefs import DictStrAny, ErrorWrapper, Middleware, ResultValidate, ValidateReturn, ValidationErrorList
 from rapidy.web_exceptions import HTTPValidationFailure
 
@@ -64,10 +64,6 @@ class ResponseValidationError(RapidyHandlerException):
         return ResponseValidationError.create_with_handler_info(
             handler, errors=pformat(normalize_errors(errors)), **format_fields,
         )
-
-
-class ResponseEncodeError(RapidyHandlerException):
-    message = 'Encoding errors: \n {errors}'
 
 
 class MissingContentTypeHeader(RapidyHandlerException):
@@ -192,7 +188,7 @@ class HTTPResponseHandler:
             *,
             validate: bool,
             response_type: Union[Type[Any], None],  # must be - aiohttp.helpers.sentinel by default
-            response_content_type: Union[str, ContentType],
+            response_content_type: Union[str, ContentType, None],
             charset: str,
             zlib_executor: Optional[Executor],
             zlib_executor_size: Optional[int],
@@ -263,7 +259,7 @@ class HTTPResponseHandler:
                 Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
             json_encoder:
                 Any callable that accepts an object and returns a JSON string.
-                Will be used if prepare_to_json(dumps=True, ...).
+                Will be used if dumps=True
         """
         self._handler = endpoint_handler
         self._model_field = None
@@ -304,15 +300,21 @@ class HTTPResponseHandler:
                 charset=self._charset,
                 zlib_executor=self._zlib_executor,
                 zlib_executor_size=self._zlib_executor_size,
+                include=self._include_fields,
+                exclude=self._exclude_fields,
+                by_alias=self._by_alias,
+                exclude_unset=self._exclude_unset,
+                exclude_defaults=self._exclude_defaults,
+                exclude_none=self._exclude_none,
+                custom_encoder=self._custom_encoder,
+                json_encoder=self._json_encoder,
             )
 
         if handler_result is None:
-            if current_response.body is None:
-                return current_response
+            return current_response
 
-            handler_result = current_response.body.decode(current_response.charset)
-
-        return self._process_body(handler_result=handler_result, current_response=current_response)
+        current_response.body = handler_result
+        return current_response
 
     def _validate(self, handler_result: Any, model_field: ModelField) -> Any:
         handler_result, validated_errors = model_field.validate(
@@ -323,62 +325,6 @@ class HTTPResponseHandler:
                 handler=self._handler, errors=validated_errors,
             )
         return handler_result
-
-    def _process_body(self, handler_result: Any, current_response: TResponse) -> TResponse:
-        try:
-            current_content_type = current_response.headers[HeaderName.content_type]
-        except KeyError as key_error:
-            raise MissingContentTypeHeader.create_with_handler_info(self._handler) from key_error
-
-        ctype_obj = parse_mimetype(current_content_type)
-        charset = ctype_obj.parameters.get('charset') or self._charset
-
-        if current_content_type.startswith(ContentType.json):
-            return self._process_json_body(handler_result, response=current_response, charset=charset)
-
-        if current_content_type.startswith('text'):
-            return self._process_text_body(handler_result, response=current_response, charset=charset)
-
-        return self._process_bytes_body(handler_result, response=current_response, charset=charset)
-
-    def _process_json_body(self, handler_result: Any, response: TResponse, charset: str) -> TResponse:
-        response.text = self._prepare_handler_result(handler_result, charset=charset)
-        return response
-
-    def _process_text_body(self, handler_result: Any, response: TResponse, charset: str) -> TResponse:
-        if not isinstance(handler_result, str):
-            handler_result = self._prepare_handler_result(handler_result, charset=charset)
-
-        response.text = handler_result
-        return response
-
-    def _process_bytes_body(self, handler_result: Any, response: TResponse, charset: str) -> TResponse:
-        if not isinstance(handler_result, bytes):
-            if not isinstance(handler_result, str):
-                handler_result = self._prepare_handler_result(handler_result, charset=charset)
-
-            handler_result = handler_result.encode(charset)
-
-        response.body = handler_result
-        return response
-
-    def _prepare_handler_result(self, obj: Any, *, charset: str) -> Any:
-        try:
-            return simplify_data(
-                obj,
-                include=self._include_fields,
-                exclude=self._exclude_fields,
-                by_alias=self._by_alias,
-                exclude_unset=self._exclude_unset,
-                exclude_defaults=self._exclude_defaults,
-                exclude_none=self._exclude_none,
-                custom_encoder=self._custom_encoder,
-                charset=charset,
-                dumps_encoder=self._json_encoder,
-                dumps=True,
-            )
-        except Exception as encode_exc:
-            raise ResponseEncodeError(errors=str(encode_exc)) from encode_exc
 
 
 class EndpointHandler:
@@ -450,7 +396,7 @@ def endpoint_handler_builder(
         # response
         response_validate: bool,
         response_type: Union[Type[Any], None],
-        response_content_type: Union[str, ContentType],
+        response_content_type: Union[str, ContentType, None],
         response_charset: str,
         response_zlib_executor: Optional[Executor],
         response_zlib_executor_size: Optional[int],

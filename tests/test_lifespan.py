@@ -17,16 +17,14 @@ if TYPE_CHECKING:
         RapidyContextManager = AsyncContextManager[None]  # type: ignore[assignment, misc]
 
 
-if PY_VERSION_TUPLE == (3, 10, 14):
-    class HookMock:
-        def __init__(self) -> None:
-            self.call_count = 0
+# note: not using `unittest.mock.AsyncMock` because in some versions of python there is an error:
+# TypeError: 'Mock' object is not subscriptable.
+class HookMock:
+    def __init__(self) -> None:
+        self.call_count = 0
 
-        async def __call__(self, *args: Any, **kwargs: Any) -> None:
-            self.call_count += 1
-else:
-    from unittest.mock import AsyncMock as HookMock
-
+    async def __call__(self, *args: Any, **kwargs: Any) -> None:
+        self.call_count += 1
 
 
 class SomeException(Exception):

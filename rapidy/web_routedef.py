@@ -51,7 +51,7 @@ def get(
         allow_head: bool = True,
         response_validate: bool = True,
         response_type: Union[Type[Any], None] = sentinel,
-        response_content_type: Union[str, ContentType] = ContentType.json,
+        response_content_type: Union[str, ContentType, None] = None,
         response_charset: Union[str, Charset] = Charset.utf8,
         response_zlib_executor: Optional[Executor] = None,
         response_zlib_executor_size: Optional[int] = None,
@@ -119,7 +119,7 @@ def get(
             Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
         response_json_encoder:
             Any callable that accepts an object and returns a JSON string.
-            Will be used if prepare_to_json(dumps=True, ...).
+            Will be used if dumps=True
     """
     return route(
         # aiohttp attrs
@@ -154,7 +154,7 @@ def post(
         name: Optional[str] = None,
         response_validate: bool = True,
         response_type: Union[Type[Any], None] = sentinel,
-        response_content_type: Union[str, ContentType] = ContentType.json,
+        response_content_type: Union[str, ContentType, None] = None,
         response_charset: Union[str, Charset] = Charset.utf8,
         response_zlib_executor: Optional[Executor] = None,
         response_zlib_executor_size: Optional[int] = None,
@@ -215,7 +215,7 @@ def post(
             Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
         response_json_encoder:
             Any callable that accepts an object and returns a JSON string.
-            Will be used if prepare_to_json(dumps=True, ...).
+            Will be used if dumps=True
     """
     return route(
         # aiohttp attrs
@@ -249,7 +249,7 @@ def put(
         name: Optional[str] = None,
         response_validate: bool = True,
         response_type: Union[Type[Any], None] = sentinel,
-        response_content_type: Union[str, ContentType] = ContentType.json,
+        response_content_type: Union[str, ContentType, None] = None,
         response_charset: Union[str, Charset] = Charset.utf8,
         response_zlib_executor: Optional[Executor] = None,
         response_zlib_executor_size: Optional[int] = None,
@@ -310,7 +310,7 @@ def put(
             Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
         response_json_encoder:
             Any callable that accepts an object and returns a JSON string.
-            Will be used if prepare_to_json(dumps=True, ...).
+            Will be used if dumps=True
     """
     return route(
         # aiohttp attrs
@@ -344,7 +344,7 @@ def patch(
         name: Optional[str] = None,
         response_validate: bool = True,
         response_type: Union[Type[Any], None] = sentinel,
-        response_content_type: Union[str, ContentType] = ContentType.json,
+        response_content_type: Union[str, ContentType, None] = None,
         response_charset: Union[str, Charset] = Charset.utf8,
         response_zlib_executor: Optional[Executor] = None,
         response_zlib_executor_size: Optional[int] = None,
@@ -405,7 +405,7 @@ def patch(
             Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
         response_json_encoder:
             Any callable that accepts an object and returns a JSON string.
-            Will be used if prepare_to_json(dumps=True, ...).
+            Will be used if dumps=True
     """
     return route(
         # aiohttp attrs
@@ -439,7 +439,7 @@ def delete(
         name: Optional[str] = None,
         response_validate: bool = True,
         response_type: Union[Type[Any], None] = sentinel,
-        response_content_type: Union[str, ContentType] = ContentType.json,
+        response_content_type: Union[str, ContentType, None] = None,
         response_charset: Union[str, Charset] = Charset.utf8,
         response_zlib_executor: Optional[Executor] = None,
         response_zlib_executor_size: Optional[int] = None,
@@ -500,7 +500,7 @@ def delete(
             Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
         response_json_encoder:
             Any callable that accepts an object and returns a JSON string.
-            Will be used if prepare_to_json(dumps=True, ...).
+            Will be used if dumps=True
     """
     return route(
         # aiohttp attrs
@@ -534,7 +534,7 @@ def view(
         name: Optional[str] = None,
         response_validate: bool = True,
         response_type: Union[Type[Any], None] = sentinel,
-        response_content_type: Union[str, ContentType] = ContentType.json,
+        response_content_type: Union[str, ContentType, None] = None,
         response_charset: Union[str, Charset] = Charset.utf8,
         response_zlib_executor: Optional[Executor] = None,
         response_zlib_executor_size: Optional[int] = None,
@@ -595,7 +595,7 @@ def view(
             Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
         response_json_encoder:
             Any callable that accepts an object and returns a JSON string.
-            Will be used if prepare_to_json(dumps=True, ...).
+            Will be used if dumps=True
     """
     return route(
         # aiohttp attrs
@@ -646,7 +646,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             allow_head: bool = True,
             response_validate: bool = True,
             response_type: Union[Type[Any], None] = sentinel,
-            response_content_type: Union[str, ContentType] = ContentType.json,
+            response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
             response_zlib_executor_size: Optional[int] = None,
@@ -712,7 +712,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
                 Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
-                Will be used if prepare_to_json(dumps=True, ...).
+                Will be used if dumps=True
         """
         return self.route(
             # aiohttp attrs
@@ -745,7 +745,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             name: Optional[str] = None,
             response_validate: bool = True,
             response_type: Union[Type[Any], None] = sentinel,
-            response_content_type: Union[str, ContentType] = ContentType.json,
+            response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
             response_zlib_executor_size: Optional[int] = None,
@@ -804,7 +804,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
                 Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
-                Will be used if prepare_to_json(dumps=True, ...).
+                Will be used if dumps=True
         """
         return self.route(
             # aiohttp attrs
@@ -836,7 +836,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             name: Optional[str] = None,
             response_validate: bool = True,
             response_type: Union[Type[Any], None] = sentinel,
-            response_content_type: Union[str, ContentType] = ContentType.json,
+            response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
             response_zlib_executor_size: Optional[int] = None,
@@ -895,7 +895,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
                 Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
-                Will be used if prepare_to_json(dumps=True, ...).
+                Will be used if dumps=True
         """
         return self.route(
             # aiohttp attrs
@@ -927,7 +927,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             name: Optional[str] = None,
             response_validate: bool = True,
             response_type: Union[Type[Any], None] = sentinel,
-            response_content_type: Union[str, ContentType] = ContentType.json,
+            response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
             response_zlib_executor_size: Optional[int] = None,
@@ -986,7 +986,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
                 Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
-                Will be used if prepare_to_json(dumps=True, ...).
+                Will be used if dumps=True
         """
         return self.route(
             # aiohttp attrs
@@ -1018,7 +1018,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             name: Optional[str] = None,
             response_validate: bool = True,
             response_type: Union[Type[Any], None] = sentinel,
-            response_content_type: Union[str, ContentType] = ContentType.json,
+            response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
             response_zlib_executor_size: Optional[int] = None,
@@ -1077,7 +1077,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
                 Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
-                Will be used if prepare_to_json(dumps=True, ...).
+                Will be used if dumps=True
         """
         return self.route(
             # aiohttp attrs
@@ -1118,7 +1118,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             name: Optional[str] = None,
             response_validate: bool = True,
             response_type: Union[Type[Any], None] = sentinel,
-            response_content_type: Union[str, ContentType] = ContentType.json,
+            response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
             response_zlib_executor_size: Optional[int] = None,
@@ -1177,7 +1177,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
                 Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
-                Will be used if prepare_to_json(dumps=True, ...).
+                Will be used if dumps=True
         """
         return self.route(
             # aiohttp attrs

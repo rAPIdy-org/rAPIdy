@@ -23,7 +23,7 @@ def handler_validation_wrapper(
         *,
         response_validate: bool,
         response_type: Union[Type[Any], None],
-        response_content_type: Union[str, ContentType],
+        response_content_type: Union[str, ContentType, None],
         response_charset: Union[str, Charset],
         response_zlib_executor: Optional[Executor],
         response_zlib_executor_size: Optional[int],
@@ -71,6 +71,14 @@ def handler_validation_wrapper(
                 charset=response_charset,
                 zlib_executor=response_zlib_executor,
                 zlib_executor_size=response_zlib_executor_size,
+                include=response_include_fields,
+                exclude=response_exclude_fields,
+                by_alias=response_by_alias,
+                exclude_unset=response_exclude_unset,
+                exclude_defaults=response_exclude_defaults,
+                exclude_none=response_exclude_none,
+                custom_encoder=response_custom_encoder,
+                json_encoder=response_json_encoder,
             )
             validated_data[endpoint_handler.response_attribute_name] = pre_response
 
@@ -86,7 +94,7 @@ def view_validation_wrapper(
         *,
         response_validate: bool,
         response_type: Union[Type[Any], None],
-        response_content_type: Union[str, ContentType],
+        response_content_type: Union[str, ContentType, None],
         response_charset: Union[str, Charset],
         response_zlib_executor: Optional[Executor],
         response_zlib_executor_size: Optional[int],
@@ -153,6 +161,14 @@ def view_validation_wrapper(
                 charset=response_charset,
                 zlib_executor=response_zlib_executor,
                 zlib_executor_size=response_zlib_executor_size,
+                include=response_include_fields,
+                exclude=response_exclude_fields,
+                by_alias=response_by_alias,
+                exclude_unset=response_exclude_unset,
+                exclude_defaults=response_exclude_defaults,
+                exclude_none=response_exclude_none,
+                custom_encoder=response_custom_encoder,
+                json_encoder=response_json_encoder,
             )
             validated_data[endpoint_handler.response_attribute_name] = pre_response
 
@@ -172,7 +188,7 @@ def middleware_validation_wrapper(
         *,
         response_validate: bool,
         response_type: Union[Type[Any], None],
-        response_content_type: Union[str, ContentType],
+        response_content_type: Union[str, ContentType, None],
         response_charset: Union[str, Charset],
         response_zlib_executor: Optional[Executor],
         response_zlib_executor_size: Optional[int],
@@ -215,6 +231,14 @@ def middleware_validation_wrapper(
                 charset=response_charset,
                 zlib_executor=response_zlib_executor,
                 zlib_executor_size=response_zlib_executor_size,
+                include=response_include_fields,
+                exclude=response_exclude_fields,
+                by_alias=response_by_alias,
+                exclude_unset=response_exclude_unset,
+                exclude_defaults=response_exclude_defaults,
+                exclude_none=response_exclude_none,
+                custom_encoder=response_custom_encoder,
+                json_encoder=response_json_encoder,
             )
             validated_data[endpoint_handler.response_attribute_name] = pre_response
 

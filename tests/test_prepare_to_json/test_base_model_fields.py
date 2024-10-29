@@ -3,7 +3,7 @@ from typing import Any
 import pytest
 from pydantic import BaseModel, Field
 
-from rapidy.encoders import simplify_data
+from rapidy.encoders import jsonify
 
 
 class InnerData(BaseModel):
@@ -28,7 +28,7 @@ class Data(BaseModel):
     ],
 )
 def test_include_by_alias(include_fields: Any, expected_data: Any) -> None:
-    assert simplify_data(Data(), include=include_fields) == expected_data
+    assert jsonify(Data(), include=include_fields) == expected_data
 
 
 @pytest.mark.parametrize(
@@ -41,4 +41,4 @@ def test_include_by_alias(include_fields: Any, expected_data: Any) -> None:
     ],
 )
 def test_exclude_by_alias(exclude_fields: Any, expected_data: Any) -> None:
-    assert simplify_data(Data(), exclude=exclude_fields) == expected_data
+    assert jsonify(Data(), exclude=exclude_fields) == expected_data

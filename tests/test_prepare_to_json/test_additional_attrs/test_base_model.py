@@ -3,7 +3,7 @@ from typing import Any, Final
 import pytest
 from pydantic import BaseModel, Field
 
-from rapidy.encoders import simplify_data
+from rapidy.encoders import jsonify
 from rapidy.typedefs import DictStrAny
 
 DEFAULT: Final[str] = 'test'
@@ -59,12 +59,12 @@ def create_expected_base_model_obj(
 
 def test_model_include() -> None:
     expected_obj = create_expected_base_model_obj(include=True)
-    assert simplify_data(base_model_obj, include={EXCLUDED_FIELD_NAME}) == expected_obj
+    assert jsonify(base_model_obj, include={EXCLUDED_FIELD_NAME}) == expected_obj
 
 
 def test_model_exclude() -> None:
     expected_obj = create_expected_base_model_obj(exclude=True)
-    assert simplify_data(base_model_obj, exclude={EXCLUDED_FIELD_NAME}) == expected_obj
+    assert jsonify(base_model_obj, exclude={EXCLUDED_FIELD_NAME}) == expected_obj
 
 
 @pytest.mark.parametrize('override_default', [True, False])
@@ -78,20 +78,20 @@ def test_model_exclude_unset(override_default: bool) -> None:
             test_default=DEFAULT,
         )
     expected_obj = create_expected_base_model_obj(exclude_unset_field=not override_default)
-    assert simplify_data(model, exclude_unset=True) == expected_obj
+    assert jsonify(model, exclude_unset=True) == expected_obj
 
 
 @pytest.mark.parametrize('by_alias', [True, False])
 def test_model_by_alias(by_alias: bool) -> None:
     expected_obj = create_expected_base_model_obj(by_alias=by_alias)
-    assert simplify_data(base_model_obj, by_alias=by_alias) == expected_obj
+    assert jsonify(base_model_obj, by_alias=by_alias) == expected_obj
 
 
 def test_model_exclude_defaults() -> None:
     expected_obj = create_expected_base_model_obj(exclude_default_field=True)
-    assert simplify_data(base_model_obj, exclude_defaults=True) == expected_obj
+    assert jsonify(base_model_obj, exclude_defaults=True) == expected_obj
 
 
 def test_model_exclude_none() -> None:
     expected_obj = create_expected_base_model_obj(exclude_none_field=True)
-    assert simplify_data(base_model_obj, exclude_none=True) == expected_obj
+    assert jsonify(base_model_obj, exclude_none=True) == expected_obj
