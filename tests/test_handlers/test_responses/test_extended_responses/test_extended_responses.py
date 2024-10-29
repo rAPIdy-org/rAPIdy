@@ -149,7 +149,7 @@ async def test_direct_response_ignore_pre_added_data(aiohttp_client: AiohttpClie
     async def handler(response: web.Response) -> web.Response:
         response.text = DEFAULT_RETURN_VALUE
         return web.Response(
-            text=another_text_return_value,
+            body=another_text_return_value,
             headers={HeaderName.content_type: another_response_content_type},
         )
 
