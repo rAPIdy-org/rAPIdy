@@ -425,10 +425,10 @@ def prepare_base_model(
 
     return _prepare_to_json(
         obj_dict,
-        include=include,
-        exclude=exclude,
-        by_alias=by_alias,
-        exclude_unset=exclude_unset,
+        include=None,
+        exclude=None,
+        by_alias=True,
+        exclude_unset=False,
         exclude_none=exclude_none,
         exclude_defaults=exclude_defaults,
         custom_encoder=encoders,  # NOTE: only for p1
