@@ -10,9 +10,9 @@ from aiohttp.typedefs import DEFAULT_JSON_ENCODER, JSONEncoder, LooseHeaders
 from aiohttp.web_response import ContentCoding, Response as AioHTTPResponse, StreamResponse
 from pydantic import BaseModel
 
-from rapidy._base_exceptions import RapidyException, RapidyHandlerException
+from rapidy._base_exceptions import RapidyException
 from rapidy.encoders import CustomEncoder, Exclude, Include, jsonify
-from rapidy.enums import Charset, ContentType, HeaderName
+from rapidy.enums import Charset, ContentType
 
 __all__ = (
     'ContentCoding',
@@ -21,22 +21,20 @@ __all__ = (
 )
 
 
-class ResponseEncodeError(RapidyHandlerException):
+class ResponseDuplicateBodyError(RapidyException):
+    message = '`body` and `text` are not allowed together'
+
+
+class ResponseEncodeError(RapidyException):
     message = 'Encoding errors: \n {errors}'
-
-
-class ResponseDataNotStrError(RapidyException):
-    message = 'Json response data is not str. Use (dumps=True, ...) attribute to convert obj to str.'
 
 
 class Response(AioHTTPResponse):
     def __init__(
             self,
+            body: Optional[Any] = None,
             *,
-            body: Any = None,
             status: int = 200,
-            reason: Optional[str] = None,
-            text: Optional[str] = None,
             headers: Optional[LooseHeaders] = None,
             content_type: Union[str, ContentType, None] = None,
             charset: Optional[Union[str, Charset]] = None,
@@ -51,15 +49,66 @@ class Response(AioHTTPResponse):
             exclude_none: bool = False,
             custom_encoder: Optional[CustomEncoder] = None,
             json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+            # backwards compatibility
+            text: Optional[Any] = None,
+            reason: Optional[str] = None,
     ) -> None:
+        """Low-level response factory.
+
+        Args:
+            body:
+                Response body.
+            text:
+                Response text body.
+                This attribute is not necessary, it is left for backwards compatibility with `aiohttp`.
+                Please use the `body` attribute.
+            reason:
+                Response reason.
+                This attribute is not necessary, it is left for backwards compatibility with `aiohttp`.
+            status:
+                Response http status code.
+            headers:
+                Additional response headers.
+            content_type:
+                Expected value of the `Content-Type` of the header.
+            charset:
+                The `charset` that will be used to encode and decode body data.
+            zlib_executor:
+                Executor to use for zlib compression
+            zlib_executor_size:
+                Length in bytes which will trigger zlib compression of body to happen in an executor
+            include:
+                Pydantic's `include` parameter, passed to Pydantic models to set the fields to include.
+            exclude:
+                Pydantic's `exclude` parameter, passed to Pydantic models to set the fields to exclude.
+            by_alias:
+                Pydantic's `by_alias` parameter, passed to Pydantic models to define
+                if the output should use the alias names (when provided) or the Python
+                attribute names. In an API, if you set an alias, it's probably because you
+                want to use it in the result, so you probably want to leave this set to `True`.
+            exclude_unset:
+                Pydantic's `exclude_unset` parameter, passed to Pydantic models to define
+                if it should exclude from the output the fields that were not explicitly
+                set (and that only had their default values).
+            exclude_defaults:
+                Pydantic's `exclude_defaults` parameter, passed to Pydantic models to define
+                if it should exclude from the output the fields that had the same default
+                value, even when they were explicitly set.
+            exclude_none:
+                Pydantic's `exclude_none` parameter, passed to Pydantic models to define
+                if it should exclude from the output any fields that have a `None` value.
+            custom_encoder:
+                Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
+            json_encoder:
+                Any callable that accepts an object and returns a JSON string.
+                Will be used if dumps=True.
+        """
+
         if isinstance(charset, Enum):
             charset = charset.value
 
         if isinstance(content_type, Enum):
             content_type = content_type.value
-
-        self._rapidy_charset = charset or Charset.utf8.value
-        self._rapidy_content_type = content_type
 
         self._json_encoder = json_encoder
 
@@ -72,10 +121,8 @@ class Response(AioHTTPResponse):
         self._custom_encoder = custom_encoder
 
         super().__init__(
-            body=body,
             status=status,
             reason=reason,
-            text=text,
             headers=headers,
             content_type=content_type,
             charset=charset,
@@ -83,21 +130,48 @@ class Response(AioHTTPResponse):
             zlib_executor_size=zlib_executor_size,
         )
 
+        body_exists = body is not None
+        text_exists = text is not None
+
+        if body_exists and text_exists:
+            raise ResponseDuplicateBodyError
+
+        if body_exists:
+            self.body = body
+
+        if text_exists:
+            self.text = text
+
     @property
     def body(self) -> Optional[Union[bytes, Payload]]:
-        return super(self.__class__, self.__class__).body  # noqa: WPS608
+        return self._super.body  # noqa: WPS608
 
     @body.setter
     def body(self, body: Optional[Any]) -> None:
         if body is None or isinstance(body, bytes):
-            super(self.__class__, self.__class__).body.fset(self, body)  # noqa: WPS608
+            self._super.body.fset(self, body)  # noqa: WPS608
             return
 
-        current_content_type = self._rapidy_content_type
-        if current_content_type is None:
-            current_content_type = self._get_content_type_by_data(body).value
+        self._set_body(body)
 
-        ctype_obj = parse_mimetype(current_content_type)
+    @property
+    def text(self) -> Optional[Union[bytes, Payload]]:
+        return self._super.text
+
+    @text.setter
+    def text(self, text: Optional[Any]) -> None:
+        if text is None or isinstance(text, str):
+            self._set_text(text)
+            return
+
+        self._set_body(text)
+
+    def _set_body(self, body: Optional[Any]) -> None:
+        current_ctype = self.content_type if self.content_type != ContentType.stream.value else None  # noqa: WPS504
+        if current_ctype is None:
+            current_ctype = self._get_and_set_ctype_by_data(body).value
+
+        ctype_obj = parse_mimetype(current_ctype)
 
         if ctype_obj.type == 'application' and ctype_obj.subtype == 'json':
             self._process_json_body(body)
@@ -108,26 +182,27 @@ class Response(AioHTTPResponse):
         else:
             self._process_bytes_body(body)
 
-        self.headers[HeaderName.content_type.value] = f'{current_content_type}; charset={self._rapidy_charset}'
+    def _set_text(self, text: Optional[str]) -> None:
+        self._super.text.fset(self, text)
 
     def _process_json_body(self, body: Any) -> None:
-        self.text = self._prepare_body_data(body, charset=self._rapidy_charset)
+        self._set_text(self._simplify_body(body, charset=self.charset))
 
     def _process_text_body(self, body: Any) -> None:
         if not isinstance(body, str):
-            body = self._prepare_body_data(body, charset=self._rapidy_charset, dumps=False)
+            body = self._simplify_body(body, charset=self.charset, dumps=False)
             if not isinstance(body, str):
                 body = self._json_encoder(body)
 
-        self.text = body
+        self._set_text(body)
 
     def _process_bytes_body(self, body: Any) -> None:
         if not isinstance(body, str):
-            body = self._prepare_body_data(body, charset=self._rapidy_charset)
+            body = self._simplify_body(body, charset=self.charset)
 
-        self.body = body.encode(self._rapidy_charset)
+        self.body = body.encode(self.charset)
 
-    def _prepare_body_data(self, obj: Any, *, charset: str, dumps: bool = True) -> str:
+    def _simplify_body(self, obj: Any, *, charset: str, dumps: bool = True) -> str:
         try:
             return jsonify(
                 obj,
@@ -145,11 +220,16 @@ class Response(AioHTTPResponse):
         except Exception as encode_exc:
             raise ResponseEncodeError(errors=str(encode_exc)) from encode_exc
 
-    def _get_content_type_by_data(self, data: Any) -> ContentType:
+    def _get_and_set_ctype_by_data(self, data: Any) -> ContentType:
         if isinstance(data, (BaseModel, dict)) or dataclasses.is_dataclass(data):
+            self.content_type = ContentType.json.value
             return ContentType.json
 
         if isinstance(data, (str, Enum, int, float, Decimal, bool)):
             return ContentType.text_plain
 
         return ContentType.stream
+
+    @property
+    def _super(self) -> Any:
+        return super(self.__class__, self.__class__)  # noqa: WPS608

@@ -11,6 +11,7 @@ from rapidy import web
 from rapidy._constants import PYDANTIC_V1, PYDANTIC_V2
 from rapidy.encoders import Exclude, Include
 from rapidy.enums import ContentType, HeaderName
+from rapidy.web_response import ResponseDuplicateBodyError
 
 PATH: Final[str] = '/'
 
@@ -45,6 +46,11 @@ class ExtractMethod(str, Enum):
     json = 'json'
 
 
+class BodySetterName(str, Enum):
+    body = 'body'
+    text = 'text'
+
+
 @dataclass
 class TestCase:
     id: str
@@ -53,6 +59,8 @@ class TestCase:
     expected_data: Any = 'test'
     extract_method: ExtractMethod = ExtractMethod.text
     expected_content_type: str = 'text/plain; charset=utf-8'
+
+    setter: BodySetterName = BodySetterName.body
 
     include: Optional[Include] = None
     exclude: Optional[Exclude] = None
@@ -263,14 +271,30 @@ test_cases = (
         response_body=BaseModelTest(),
         expected_data={'Test': 'test'},
     ),
+
+    # setters
+    TestCaseTextPlain(
+        id='text-setter-str',
+        setter=BodySetterName.text,
+    ),
+    TestCaseJson(
+        id='text-setter-base-model',
+        setter=BodySetterName.text,
+        response_body=BaseModelTest(),
+        expected_data={'Test': 'test', 'test_none': None},
+    ),
 )
 
 
 @pytest.mark.parametrize('test_case', [pytest.param(test_case, id=test_case.id) for test_case in test_cases])
 async def test_response(aiohttp_client: AiohttpClient, test_case: TestCase) -> None:
     async def handler() -> web.Response:
+        response_kw = {
+            test_case.setter.value: test_case.response_body,
+        }
+
         return web.Response(
-            body=test_case.response_body,
+            **response_kw,
             content_type=test_case.response_content_type,
             include=test_case.include,
             exclude=test_case.exclude,
@@ -290,3 +314,8 @@ async def test_response(aiohttp_client: AiohttpClient, test_case: TestCase) -> N
     assert data == test_case.expected_data
 
     assert resp.headers.get(HeaderName.content_type) == test_case.expected_content_type
+
+
+def test_init_body_and_text():
+    with pytest.raises(ResponseDuplicateBodyError):
+        web.Response(body='test', text='test')
