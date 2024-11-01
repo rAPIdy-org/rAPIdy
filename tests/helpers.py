@@ -41,10 +41,10 @@ def create_multipart_headers(
 
 
 type_tuple_params = (
-    (PathParam, PathParams),
-    (Header, Headers),
-    (Cookie, Cookies),
-    (QueryParam, QueryParams),
+    (PathParam(), PathParams()),
+    (Header(), Headers()),
+    (Cookie(), Cookies()),
+    (QueryParam(), QueryParams()),
     (Body(body_type=ContentType.json), Body(body_type=ContentType.x_www_form)),
 )
 

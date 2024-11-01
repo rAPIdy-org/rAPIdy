@@ -12,20 +12,20 @@ from rapidy.web import Application
 
 
 async def post_without_request(
-        username: Annotated[Any, Body],
+        username: Annotated[Any, Body()],
 ) -> web.Response:
     return web.Response()
 
 
 async def post_with_request_fst(
         request: web.Request,
-        username: Annotated[Any, Body],
+        username: Annotated[Any, Body()],
 ) -> web.Response:
     return web.Response()
 
 
 async def post_with_request_snd(
-        username: Annotated[Any, Body],
+        username: Annotated[Any, Body()],
         request: web.Request,
 ) -> web.Response:
     return web.Response()
@@ -33,7 +33,7 @@ async def post_with_request_snd(
 
 async def post_with_request_different_name(
         any_req: web.Request,
-        username: Annotated[Any, Body],
+        username: Annotated[Any, Body()],
 ) -> web.Response:
     return web.Response()
 

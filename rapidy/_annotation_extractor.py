@@ -1,6 +1,6 @@
 import inspect
 from copy import deepcopy
-from typing import Any, cast, List, NamedTuple, Optional, Type, Union
+from typing import Any, List, NamedTuple, Optional, Type
 
 from aiohttp.web_request import Request
 from aiohttp.web_response import StreamResponse
@@ -13,6 +13,7 @@ from rapidy._annotation_helpers import (
     lenient_issubclass,
 )
 from rapidy._base_exceptions import RapidyHandlerException
+from rapidy._constants import PYDANTIC_V1, PYDANTIC_V2
 from rapidy.request_parameters import ParamFieldInfo
 from rapidy.typedefs import Handler, Required, Undefined
 
@@ -23,6 +24,10 @@ class NotRapidyParameterError(Exception):
 
 class ParameterCannotUseDefaultError(RapidyHandlerException):
     message = 'Handler attribute with Type `{class_name}` cannot have a default value.'
+
+
+class ParameterNotInstanceError(RapidyHandlerException):
+    message = 'Rapidy parameter must be an instance.'
 
 
 class ParameterCannotUseDefaultFactoryError(RapidyHandlerException):
@@ -60,22 +65,32 @@ class RequestFieldAlreadyExistsError(RapidyHandlerException):
     )
 
 
+if PYDANTIC_V1:
+    def copy_field_info(*, field_info: ParamFieldInfo, annotation: Any) -> ParamFieldInfo:
+        return deepcopy(field_info)
+
+elif PYDANTIC_V2:
+    def copy_field_info(*, field_info: ParamFieldInfo, annotation: Any) -> ParamFieldInfo:  # noqa: F811 WPS440
+        merged_field_info = type(field_info).from_annotation(annotation)
+        copied_param_field_info = deepcopy(field_info)
+        copied_param_field_info.metadata = merged_field_info.metadata
+        copied_param_field_info.annotation = merged_field_info.annotation
+        return copied_param_field_info
+else:
+    raise Exception
+
+
 def prepare_field_info(
         attr_annotation: Any,
+        attr_type_annotation: Any,
         attr_name: str,
-        raw_field_info: Union[ParamFieldInfo, Type[ParamFieldInfo]],
+        field_info: ParamFieldInfo,
 ) -> ParamFieldInfo:
-    if not isinstance(raw_field_info, ParamFieldInfo):
-        if isinstance(raw_field_info, type) and issubclass(raw_field_info, ParamFieldInfo):
-            raw_field_info = raw_field_info()
-        else:
-            raise NotRapidyParameterError
+    if attr_type_annotation is inspect.Signature.empty:
+        attr_type_annotation = Any
 
-    if attr_annotation is inspect.Signature.empty:
-        attr_annotation = Any
-
-    prepared_field_info = cast(ParamFieldInfo, deepcopy(raw_field_info))
-    prepared_field_info.set_annotation(attr_annotation)
+    prepared_field_info = copy_field_info(field_info=field_info, annotation=attr_annotation)
+    prepared_field_info.set_annotation(attr_type_annotation)
     prepared_field_info.set_attribute_name(attr_name)
 
     return prepared_field_info
@@ -207,36 +222,65 @@ def check_default_value_for_field_exists(field_info: ParamFieldInfo) -> bool:
     return not (field_info.default is Undefined or field_info.default is Required)
 
 
+def is_rapidy_param(type_: Any) -> bool:
+    try:
+        return isinstance(type_, ParamFieldInfo) and issubclass(type_.__class__, ParamFieldInfo)
+    except Exception:
+        return False
+
+
+def is_rapidy_type(type_: Any) -> bool:
+    try:
+        return isinstance(type_, type) and issubclass(type_, ParamFieldInfo)
+    except Exception:
+        return False
+
+
 def create_attribute_field_info(handler: Handler, param: inspect.Parameter) -> ParamFieldInfo:
-    if annotation_is_annotated(param.annotation):
+    attr_annotation = param.annotation
+    attr_default = param.default
+    attr_name = param.name
+
+    if attr_default is not inspect.Signature.empty:
+        if is_rapidy_param(attr_default):
+            prepared_field_info = prepare_field_info(
+                attr_annotation=attr_annotation,
+                attr_type_annotation=attr_annotation,
+                attr_name=attr_name,
+                field_info=attr_default,
+            )
+            prepared_field_info.default = get_default_definition_attr_default(
+                param=param, handler=handler, type_=attr_annotation, field_info=prepared_field_info,
+            )
+            return prepared_field_info
+
+        elif is_rapidy_type(attr_default):
+            raise ParameterNotInstanceError.create_with_handler_and_attr_info(handler=handler, attr_name=param.name)
+
+    if annotation_is_annotated(attr_annotation):
         annotated_args = get_args(param.annotation)
-        if len(annotated_args) < 2:
+        type_annotation = annotated_args[0]
+        last_attr = annotated_args[-1]
+
+        if not is_rapidy_param(last_attr):
+            if is_rapidy_type(last_attr):
+                raise ParameterNotInstanceError
+
             raise NotRapidyParameterError
 
-        attr_annotation, attr_param_field_info, *_ = annotated_args
-
-        prepared_param_field_info = prepare_field_info(attr_annotation, param.name, attr_param_field_info)
-        default = get_annotated_definition_attr_default(
-            param=param, handler=handler, type_=attr_annotation, field_info=prepared_param_field_info,
+        prepared_field_info = prepare_field_info(
+            attr_annotation=attr_annotation,
+            attr_type_annotation=type_annotation,
+            attr_name=attr_name,
+            field_info=last_attr,
+        )
+        prepared_field_info.default = get_annotated_definition_attr_default(
+            param=param, handler=handler, type_=type_annotation, field_info=prepared_field_info,
         )
 
-    else:
-        if param.default is inspect.Signature.empty:
-            raise NotRapidyParameterError
+        return prepared_field_info
 
-        attr_annotation, attr_param_field_info = param.annotation, param.default
-
-        prepared_param_field_info = prepare_field_info(attr_annotation, param.name, attr_param_field_info)
-        default = get_default_definition_attr_default(
-            param=param, handler=handler, type_=param.annotation, field_info=prepared_param_field_info,
-        )
-
-    if not isinstance(prepared_param_field_info, ParamFieldInfo):  # pragma: no cover
-        raise
-
-    prepared_param_field_info.default = default
-
-    return prepared_param_field_info
+    raise NotRapidyParameterError
 
 
 class EndpointHandlerInfo(NamedTuple):
@@ -259,7 +303,7 @@ class EndpointHandlerInfo(NamedTuple):
     return_annotation: Type[Any]
 
 
-def get_endpoint_handler_info(
+def get_endpoint_handler_info(  # noqa: C901
         endpoint_handler: Handler,
         request_attr_can_declare: bool = False,
 ) -> EndpointHandlerInfo:
@@ -358,9 +402,14 @@ def get_endpoint_handler_info(
 
             base_annotation = base_annotations[0]
             if request_attr_can_declare:  # Need to inject `web.Request` in a functional handler
+                try:   # noqa: WPS505
+                    type_is_request_subclass = issubclass(Request, base_annotation)
+                except TypeError:
+                    type_is_request_subclass = False
+
                 if (
-                    base_annotation is inspect.Signature.empty and signature_index == 0
-                    or issubclass(Request, base_annotation)
+                    type_is_request_subclass
+                    or base_annotation is inspect.Signature.empty and signature_index == 0
                 ):  # If the first handler attribute is empty or the attribute contains the `web.Request` annotation
                     if request_attr_name is not None:  # protection against double injection of `web.Request`
                         raise RequestFieldAlreadyExistsError.create_with_handler_info(handler=endpoint_handler)
