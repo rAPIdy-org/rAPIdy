@@ -54,6 +54,7 @@ __all__ = (
     'CallableAsyncCTX',
     'LifespanHook',
     'LifespanCTX',
+    'ValidationErrorList',
 )
 
 DictStrAny: TypeAlias = Dict[str, Any]

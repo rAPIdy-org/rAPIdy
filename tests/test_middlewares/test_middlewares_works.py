@@ -166,7 +166,7 @@ async def test_multiple_new_style_middlewares_in_subapp_validation(
 
 
 async def test_unsupported_old_style_middleware(aiohttp_client: AiohttpClient) -> None:
-    async def handler(body: Annotated[str, Body]) -> web.Response:
+    async def handler(body: Annotated[str, Body()]) -> web.Response:
         assert body == BODY_DATA
         return web.Response()
 

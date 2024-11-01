@@ -9,38 +9,47 @@ from rapidy import web
 from rapidy.request_parameters import Body
 
 
-def _create_annotated_def_handler(param: Any) -> Any:
-    async def handler(attr: Annotated[Any, param]) -> Any: return web.Response()
-    return handler
+async def annotated_def_handler(attr: Annotated[Any, Body()]) -> None:
+    pass
 
 
-def _create_default_def_handler(param: Any) -> Any:
-    async def handler(attr: Any = param) -> Any: return web.Response()
-    return handler
+async def default_def_handler(attr: Any = Body()) -> None:
+    pass
+
+
+async def annotated_def_handler_param_not_instance(attr: Annotated[Any, Body]) -> None:
+    pass
+
+
+async def default_def_handler_param_not_instance(attr: Any = Body) -> None:
+    pass
 
 
 @pytest.mark.parametrize(
-    'param', [
-        pytest.param(Body(), id='define-as-instance'),
-        pytest.param(Body, id='define-as-class'),
-    ],
-)
-@pytest.mark.parametrize(
-    'create_handler_func', [
-        pytest.param(_create_annotated_def_handler, id='annotated-def'),
-        pytest.param(_create_default_def_handler, id='default-def'),
+    'handler', [
+        pytest.param(annotated_def_handler, id='annotated-def'),
+        pytest.param(default_def_handler, id='default-def'),
     ],
 )
 async def test_check_annotation(
         aiohttp_client: AiohttpClient,
-        param: Any,
-        create_handler_func: Any,
+        handler: Any,
 ) -> None:
-    handler = create_handler_func(param)
-
     app = web.Application()
     app.add_routes([web.post('/', handler)])
     client = await aiohttp_client(app)
     resp = await client.post('/', json={'attr': ''})
 
     assert resp.status == HTTPStatus.OK
+
+
+@pytest.mark.parametrize(
+    'handler', [
+        pytest.param(annotated_def_handler_param_not_instance, id='annotated-def'),
+        pytest.param(default_def_handler_param_not_instance, id='default-def'),
+    ],
+)
+def test_annotation_must_be_instance(handler: Any) -> None:
+    app = web.Application()
+    with pytest.raises(Exception):
+        app.add_routes([web.post('/', handler)])
