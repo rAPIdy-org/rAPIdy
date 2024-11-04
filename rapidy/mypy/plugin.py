@@ -9,7 +9,7 @@ from rapidy.mypy._api_errors import (
     error_default_and_default_factory_specified,
     error_default_or_default_factory_specified,
 )
-from rapidy.mypy._type_helpers import _name_is_rapidy_param_name, _param_can_default
+from rapidy.mypy._type_helpers import _name_is_rapidy_param_name, _param_can_default, AnyTypeExplicit
 
 
 class RapidyPlugin(Plugin):
@@ -21,7 +21,7 @@ class RapidyPlugin(Plugin):
 
     def _rapidy_param_callback(self, ctx: FunctionContext) -> Type:  # noqa: C901
         # ty pydantic for this code <3 https://github.com/pydantic/pydantic/blob/main/pydantic/mypy.py
-        default_any_type = ctx.default_return_type
+        default_any_type = AnyTypeExplicit
 
         assert ctx.callee_arg_names[0] == 'default', '`default` is no longer first argument in ParamFieldInfo()'
         assert ctx.callee_arg_names[1] == 'default_factory', (
