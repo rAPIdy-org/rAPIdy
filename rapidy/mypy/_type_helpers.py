@@ -1,6 +1,10 @@
 from typing import Set
 
+from mypy.types import AnyType, TypeOfAny
+
 from rapidy import request_parameters
+
+AnyTypeExplicit = AnyType(TypeOfAny.explicit)
 
 RAPIDY_PARAM_BASE = 'rapidy.request_parameters.'
 
