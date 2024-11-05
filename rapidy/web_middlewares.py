@@ -20,7 +20,7 @@ TMiddleware = TypeVar('TMiddleware')
 
 class MiddlewareAttrData(NamedTuple):
     response_validate: bool
-    response_type: Union[Type[Any], None]
+    response_type: Optional[Type[Any]]
     response_content_type: Union[str, ContentType, None]
     response_charset: Union[str, Charset]
     response_zlib_executor: Optional[Executor]
@@ -44,7 +44,7 @@ def middleware(middleware: TMiddleware) -> TMiddleware:  # noqa: WPS442
 def middleware(
         *,
         response_validate: bool = True,
-        response_type: Union[Type[Any], None] = sentinel,
+        response_type: Optional[Type[Any]] = sentinel,
         response_content_type: Union[str, ContentType, None] = None,
         response_charset: Union[str, Charset] = Charset.utf8,
         response_zlib_executor: Optional[Executor] = None,
@@ -65,7 +65,7 @@ def middleware(
         middleware: Optional[TMiddleware] = None,  # noqa: WPS442
         *,
         response_validate: bool = True,
-        response_type: Union[Type[Any], None] = sentinel,
+        response_type: Optional[Type[Any]] = sentinel,
         response_content_type: Union[str, ContentType, None] = None,
         response_charset: Union[str, Charset] = Charset.utf8,
         response_zlib_executor: Optional[Executor] = None,

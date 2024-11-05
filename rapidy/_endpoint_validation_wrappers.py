@@ -9,7 +9,7 @@ from rapidy._endpoint_handlers import endpoint_handler_builder
 from rapidy._endpoint_helpers import create_response
 from rapidy.encoders import CustomEncoder, Exclude, Include
 from rapidy.enums import Charset, ContentType
-from rapidy.typedefs import Handler, HandlerType, MethodHandler, Middleware
+from rapidy.typedefs import Handler, HandlerType, Middleware
 from rapidy.web_middlewares import middleware as middleware_deco
 from rapidy.web_response import Response, StreamResponse
 
@@ -22,7 +22,7 @@ def handler_validation_wrapper(
         handler: Handler,
         *,
         response_validate: bool,
-        response_type: Union[Type[Any], None],
+        response_type: Optional[Type[Any]],
         response_content_type: Union[str, ContentType, None],
         response_charset: Union[str, Charset],
         response_zlib_executor: Optional[Executor],
@@ -93,7 +93,7 @@ def view_validation_wrapper(
         view: Type['View'],
         *,
         response_validate: bool,
-        response_type: Union[Type[Any], None],
+        response_type: Optional[Type[Any]],
         response_content_type: Union[str, ContentType, None],
         response_charset: Union[str, Charset],
         response_zlib_executor: Optional[Executor],
@@ -115,7 +115,7 @@ def view_validation_wrapper(
         for handler_attr in dir(view)
         if handler_attr.upper() in hdrs.METH_ALL
     ):
-        method_handler: MethodHandler = getattr(view, method)
+        method_handler: Handler = getattr(view, method)
         request_handlers[method.lower()] = endpoint_handler_builder(
             method_handler,
             response_validate=response_validate,
@@ -187,7 +187,7 @@ def middleware_validation_wrapper(
         middleware: Middleware,
         *,
         response_validate: bool,
-        response_type: Union[Type[Any], None],
+        response_type: Optional[Type[Any]],
         response_content_type: Union[str, ContentType, None],
         response_charset: Union[str, Charset],
         response_zlib_executor: Optional[Executor],

@@ -27,7 +27,7 @@ from rapidy import hdrs
 from rapidy._endpoint_validation_wrappers import handler_validation_wrapper, view_validation_wrapper
 from rapidy.encoders import CustomEncoder, Exclude, Include
 from rapidy.enums import Charset, ContentType
-from rapidy.typedefs import Handler, HandlerType
+from rapidy.typedefs import HandlerType
 
 __all__ = [
     'UrlDispatcher',
@@ -101,7 +101,7 @@ class Resource(AioHTTPResource, ABC):
     def add_route(
             self,
             method: str,
-            handler: Handler,
+            handler: HandlerType,
             *,
             expect_handler: Optional[_ExpectHandler] = None,
             **kwargs: Any,
@@ -153,7 +153,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             self,
             method: str,
             path: str,
-            handler: Union[Handler, Type[AbstractView]],
+            handler: HandlerType,
             *,
             name: Optional[str] = None,
             expect_handler: Optional[_ExpectHandler] = None,
@@ -165,12 +165,12 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
     def add_get(
             self,
             path: str,
-            handler: Handler,
+            handler: HandlerType,
             *,
             name: Optional[str] = None,
             allow_head: bool = True,
             response_validate: bool = True,
-            response_type: Union[Type[Any], None] = sentinel,
+            response_type: Optional[Type[Any]] = sentinel,
             response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
@@ -267,11 +267,11 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
     def add_post(
             self,
             path: str,
-            handler: Handler,
+            handler: HandlerType,
             *,
             name: Optional[str] = None,
             response_validate: bool = True,
-            response_type: Union[Type[Any], None] = sentinel,
+            response_type: Optional[Type[Any]] = sentinel,
             response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
@@ -362,11 +362,11 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
     def add_put(
             self,
             path: str,
-            handler: Handler,
+            handler: HandlerType,
             *,
             name: Optional[str] = None,
             response_validate: bool = True,
-            response_type: Union[Type[Any], None] = sentinel,
+            response_type: Optional[Type[Any]] = sentinel,
             response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
@@ -457,11 +457,11 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
     def add_patch(
             self,
             path: str,
-            handler: Handler,
+            handler: HandlerType,
             *,
             name: Optional[str] = None,
             response_validate: bool = True,
-            response_type: Union[Type[Any], None] = sentinel,
+            response_type: Optional[Type[Any]] = sentinel,
             response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
@@ -552,11 +552,11 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
     def add_delete(
             self,
             path: str,
-            handler: Handler,
+            handler: HandlerType,
             *,
             name: Optional[str] = None,
             response_validate: bool = True,
-            response_type: Union[Type[Any], None] = sentinel,
+            response_type: Optional[Type[Any]] = sentinel,
             response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
@@ -651,7 +651,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             *,
             name: Optional[str] = None,
             response_validate: bool = True,
-            response_type: Union[Type[Any], None] = sentinel,
+            response_type: Optional[Type[Any]] = sentinel,
             response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,

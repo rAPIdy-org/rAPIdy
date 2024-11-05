@@ -300,7 +300,7 @@ class EndpointHandlerInfo(NamedTuple):
     request_attr_name: Optional[str]
     response_attr_name: Optional[str]
     attr_fields_info: List[ParamFieldInfo]
-    return_annotation: Type[Any]
+    return_annotation: Optional[Type[Any]]
 
 
 def get_endpoint_handler_info(  # noqa: C901

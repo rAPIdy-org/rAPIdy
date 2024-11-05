@@ -11,10 +11,10 @@ from aiohttp.typedefs import JSONEncoder
 from aiohttp.web_request import Request
 from aiohttp.web_response import Response, StreamResponse
 from multidict import MultiDict, MultiDictProxy
-from typing_extensions import TypeAlias, TypeVar
+from typing_extensions import get_args, TypeAlias, TypeVar
 
 from rapidy._annotation_extractor import get_endpoint_handler_info
-from rapidy._annotation_helpers import lenient_issubclass
+from rapidy._annotation_helpers import annotation_is_union, lenient_issubclass
 from rapidy._base_exceptions import RapidyHandlerException
 from rapidy._client_errors import normalize_errors, regenerate_error_with_loc, RequiredFieldIsMissing
 from rapidy._endpoint_helpers import create_response
@@ -184,10 +184,10 @@ class HTTPResponseHandler:
     def __init__(
             self,
             endpoint_handler: _Handler,
-            return_annotation: Type[Any],
+            return_annotation: Optional[Type[Any]],
             *,
             validate: bool,
-            response_type: Union[Type[Any], None],  # must be - aiohttp.helpers.sentinel by default
+            response_type: Optional[Type[Any]],  # must be - aiohttp.helpers.sentinel by default
             response_content_type: Union[str, ContentType, None],
             charset: str,
             zlib_executor: Optional[Executor],
@@ -266,12 +266,21 @@ class HTTPResponseHandler:
 
         if validate:
             if response_type is not sentinel:
-                self._model_field = create_response_model_field(type_=response_type)
-            elif (
-                return_annotation is not inspect.Signature.empty
-                and not lenient_issubclass(return_annotation, StreamResponse)
-            ):
-                self._model_field = create_response_model_field(type_=return_annotation)
+                return_annotation = response_type
+
+            if return_annotation is not inspect.Signature.empty:
+                if annotation_is_union(return_annotation):
+                    union_annotations = get_args(return_annotation)
+                    return_annotation = Union[  # type: ignore[assignment]
+                        tuple(
+                            annotation for annotation in union_annotations  # noqa: WPS361
+                            if not lenient_issubclass(annotation, StreamResponse)
+                        )
+                    ]
+                    self._model_field = create_response_model_field(type_=return_annotation)
+
+                elif not lenient_issubclass(return_annotation, StreamResponse):
+                    self._model_field = create_response_model_field(type_=return_annotation)
 
         self._response_content_type = response_content_type
         self._charset = charset
@@ -395,7 +404,7 @@ def endpoint_handler_builder(
         request_attr_can_declare: bool = False,
         # response
         response_validate: bool,
-        response_type: Union[Type[Any], None],
+        response_type: Optional[Type[Any]],
         response_content_type: Union[str, ContentType, None],
         response_charset: str,
         response_zlib_executor: Optional[Executor],

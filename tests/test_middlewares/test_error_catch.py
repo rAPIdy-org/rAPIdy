@@ -5,7 +5,7 @@ from aiohttp import web as aiohttp_web
 from aiohttp.pytest_plugin import AiohttpClient
 
 from rapidy import web as rapidy_web
-from rapidy.typedefs import Handler, HandlerType
+from rapidy.typedefs import CallNext, Handler
 
 TEXT_SUCCESS_CATCH_OK: Final[str] = 'ok'
 TEXT_SUCCESS_CATCH_UNPROCESSABLE_ENTITY: Final[str] = 'unprocessable_entity'
@@ -67,7 +67,7 @@ async def test_backward_compatibility_middleware(
     @middleware_web_module.middleware
     async def middleware_manually_raise_error(
             request: rapidy_web.Request,
-            handler: HandlerType,
+            handler: CallNext,
     ) -> middleware_web_module.StreamResponse:
         raise middleware_web_module.HTTPOk(text=TEXT_SUCCESS_CATCH_OK)
 
@@ -85,7 +85,7 @@ async def test_success_catch_unprocessable_entity_with_rapidy_middleware_validat
     @rapidy_web.middleware
     async def middleware_validation_failure(
             request: rapidy_web.Request,
-            handler: HandlerType,
+            handler: CallNext,
             body: str = rapidy_web.Body(),  # raises HTTPValidationFailure
     ) -> rapidy_web.StreamResponse:
         raise rapidy_web.HTTPInternalServerError(text=TEXT_NOT_CATCH)
@@ -113,7 +113,7 @@ async def test_success_rapidy_catch_middleware_validation_failure(aiohttp_client
     @rapidy_web.middleware
     async def middleware_validation_failure(
             request: rapidy_web.Request,
-            handler: HandlerType,
+            handler: CallNext,
             body: str = rapidy_web.Body(),  # raises HTTPValidationFailure
     ) -> rapidy_web.StreamResponse:
         raise rapidy_web.HTTPInternalServerError(text=TEXT_NOT_CATCH)

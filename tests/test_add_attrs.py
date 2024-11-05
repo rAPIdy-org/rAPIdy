@@ -5,7 +5,7 @@ import pytest
 from pytest_aiohttp.plugin import AiohttpClient
 
 from rapidy import web
-from rapidy.typedefs import Handler, HandlerType
+from rapidy.typedefs import CallNext, Handler, HandlerType
 
 THandler = TypeVar('THandler')
 
@@ -20,7 +20,7 @@ def some_attr_exist(handler: Handler) -> bool:
 
 
 @web.middleware
-async def some_attr_middleware(request: web.Request, handler: Handler) -> web.StreamResponse:
+async def some_attr_middleware(request: web.Request, handler: CallNext) -> web.StreamResponse:
     true_handler = request.match_info.handler
     if some_attr_exist(true_handler):
         return await handler(request)
