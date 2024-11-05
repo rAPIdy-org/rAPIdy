@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 from concurrent.futures import Executor
 from dataclasses import is_dataclass
 from pprint import pformat
-from types import FunctionType
 from typing import Any, cast, Dict, List, Mapping, Optional, Sequence, Tuple, Type, Union
 
 from aiohttp.helpers import sentinel
@@ -28,15 +27,13 @@ from rapidy._request_extractors import ExtractError, get_extractor
 from rapidy._request_param_field_info import ParamFieldInfo
 from rapidy.encoders import CustomEncoder, Exclude, Include
 from rapidy.enums import ContentType, HTTPRequestParamType
-from rapidy.typedefs import DictStrAny, ErrorWrapper, Middleware, ResultValidate, ValidateReturn, ValidationErrorList
+from rapidy.typedefs import DictStrAny, ErrorWrapper, Handler, ResultValidate, ValidateReturn, ValidationErrorList
 from rapidy.web_exceptions import HTTPValidationFailure
 
 TResponse = TypeVar('TResponse', bound=StreamResponse)
 
 AttributeName: TypeAlias = str
 AttributeValue: TypeAlias = Any
-
-_Handler = Union[FunctionType, Middleware]
 
 
 class AnotherDataExtractionTypeAlreadyExistsError(RapidyHandlerException):
@@ -76,7 +73,7 @@ class HTTPRequestParameterHandler(ABC):
         self._http_request_param_type = http_request_param_type
         self._map_model_fields_by_alias: Dict[str, BaseRequestModelField] = {}
 
-    def add_field(self, field_info: ParamFieldInfo, handler: _Handler) -> None:
+    def add_field(self, field_info: ParamFieldInfo, handler: Handler) -> None:
         model_field = create_param_model_field(field_info=field_info)
         extraction_name = model_field.alias or model_field.name
 
@@ -183,7 +180,7 @@ class AllDataHandler(HTTPRequestParameterHandler):
 class HTTPResponseHandler:
     def __init__(
             self,
-            endpoint_handler: _Handler,
+            endpoint_handler: Handler,
             return_annotation: Optional[Type[Any]],
             *,
             validate: bool,
@@ -399,7 +396,7 @@ class EndpointHandler:
 
 
 def endpoint_handler_builder(
-        endpoint_handler: _Handler,
+        endpoint_handler: Handler,
         *,
         request_attr_can_declare: bool = False,
         # response
@@ -455,7 +452,7 @@ def endpoint_handler_builder(
 
 
 def create_http_request_parameter_handlers(
-        endpoint_handler: _Handler,
+        endpoint_handler: Handler,
         attr_fields_info: List[ParamFieldInfo],
 ) -> List[HTTPRequestParameterHandler]:
     parameter_extract_all: Dict[HTTPRequestParamType, bool] = {}

@@ -1,11 +1,11 @@
 from http import HTTPStatus
 from pathlib import Path
-from typing import Final
+from typing import Any, Final
 
 from aiohttp.pytest_plugin import AiohttpClient
 
 from rapidy import web
-from rapidy.typedefs import Handler
+from rapidy.typedefs import CallNext
 
 TEST_DIR: Final[Path] = Path(__file__).parent
 FILE_DIR: Final[Path] = TEST_DIR / 'test.txt'
@@ -31,11 +31,8 @@ async def test_success_static_response(aiohttp_client: AiohttpClient) -> None:
 
 async def test_success_static_response_with_middleware(aiohttp_client: AiohttpClient) -> None:
     @web.middleware
-    async def middleware(
-            request: web.Request,
-            handler: Handler,
-    ) -> web.StreamResponse:
-        return await handler(request)
+    async def middleware(request: web.Request, call_next: CallNext) -> web.StreamResponse:
+        return await call_next(request)
 
     app = web.Application(middlewares=[middleware])
     await _test_success_static_response(app=app, aiohttp_client=aiohttp_client)

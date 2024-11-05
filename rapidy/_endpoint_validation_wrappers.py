@@ -9,7 +9,7 @@ from rapidy._endpoint_handlers import endpoint_handler_builder
 from rapidy._endpoint_helpers import create_response
 from rapidy.encoders import CustomEncoder, Exclude, Include
 from rapidy.enums import Charset, ContentType
-from rapidy.typedefs import Handler, HandlerType, Middleware
+from rapidy.typedefs import CallNext, Handler, Middleware
 from rapidy.web_middlewares import middleware as middleware_deco
 from rapidy.web_response import Response, StreamResponse
 
@@ -221,7 +221,7 @@ def middleware_validation_wrapper(
     )
 
     @middleware_deco
-    async def inner(request: 'Request', handler: HandlerType) -> StreamResponse:
+    async def inner(request: 'Request', call_next: CallNext) -> StreamResponse:
         pre_response: Optional[Response] = None
 
         validated_data = await endpoint_handler.validate_request(request=request)
@@ -242,7 +242,7 @@ def middleware_validation_wrapper(
             )
             validated_data[endpoint_handler.response_attribute_name] = pre_response
 
-        handler_result = await middleware(request, handler, **validated_data)
+        handler_result = await middleware(request, call_next, **validated_data)
         return endpoint_handler.validate_response(handler_result, pre_response)
 
     return inner
