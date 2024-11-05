@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from rapidy import web
 from rapidy.enums import ContentType, HeaderName
+from rapidy.typedefs import CallNext
 from tests.test_handlers.test_responses.test_extended_responses.helpers import (
     check_all_handlers,
     check_all_handlers_with_all_response_model_flows,
@@ -188,3 +189,32 @@ async def test_update_data_for_injected_response(aiohttp_client: AiohttpClient) 
     resp = await client.get(PATH)
 
     assert await resp.json() == DEFAULT_RETURN_VALUE
+
+
+@pytest.mark.parametrize('create_web_response', [True, False])
+@pytest.mark.parametrize('return_middleware', [True, False])
+async def test_union_stream_response(
+        aiohttp_client: AiohttpClient,
+        create_web_response: bool,
+        return_middleware: bool,
+) -> None:
+    async def handler() -> Union[web.Response, str]:
+        if create_web_response:
+            return web.Response(DEFAULT_RETURN_VALUE)
+        return DEFAULT_RETURN_VALUE
+
+    @web.middleware
+    async def middleware(request: web.Request, handler: CallNext) -> Union[web.StreamResponse, str]:
+        if return_middleware:
+            if create_web_response:
+                return web.Response(DEFAULT_RETURN_VALUE)
+            return DEFAULT_RETURN_VALUE
+        return await handler(request)
+
+    app = web.Application(middlewares=[middleware])
+    app.router.add_get(PATH, handler)
+
+    client = await aiohttp_client(app)
+    resp = await client.get(PATH)
+
+    assert await resp.text() == DEFAULT_RETURN_VALUE

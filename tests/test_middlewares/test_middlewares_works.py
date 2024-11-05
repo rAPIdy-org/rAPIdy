@@ -9,7 +9,7 @@ from typing_extensions import Annotated, Final
 from rapidy import web
 from rapidy.enums import ContentType
 from rapidy.request_parameters import Body, Header
-from rapidy.typedefs import HandlerType, Middleware
+from rapidy.typedefs import CallNext, Middleware
 from rapidy.web import middleware
 
 BEARER_TOKEN: Final[str] = 'Bearer <SomeToken>'
@@ -20,14 +20,14 @@ BODY_DATA: Final[str] = '<SomeBodyTextData>'
 @middleware
 async def new_style_auth_middleware(
         request: web.Request,
-        handler: HandlerType,
+        handler: CallNext,
         bearer_token: Annotated[str, Header(alias='Authorization')],
 ) -> web.StreamResponse:
     assert bearer_token == BEARER_TOKEN
     return await handler(request)
 
 
-async def old_style_auth_middleware(app: web.Application, handler: HandlerType) -> Any:
+async def old_style_auth_middleware(app: web.Application, handler: CallNext) -> Any:
     async def middleware_handler(request: web.Request) -> web.StreamResponse:
         assert request.headers.get('Authorization') == BEARER_TOKEN
         return await handler(request)
@@ -38,14 +38,17 @@ async def old_style_auth_middleware(app: web.Application, handler: HandlerType) 
 @middleware
 async def new_style_request_id_middleware(
         request: web.Request,
-        handler: HandlerType,
+        handler: CallNext,
         request_id: Annotated[str, Header(alias='Request-ID')],
 ) -> web.StreamResponse:
     assert request_id == REQUEST_ID
     return await handler(request)
 
 
-async def old_style_request_id_middleware(app: web.Application, handler: HandlerType) -> HandlerType:
+async def old_style_request_id_middleware(
+        app: web.Application,
+        handler: CallNext,
+) -> Middleware:
     async def middleware_handler(request: web.Request) -> web.StreamResponse:
         assert request.headers.get('Request-ID') == REQUEST_ID
         return await handler(request)
@@ -53,8 +56,14 @@ async def old_style_request_id_middleware(app: web.Application, handler: Handler
     return middleware_handler
 
 
-async def unsupported_old_style_request_id_middleware(app: web.Application, handler: HandlerType) -> HandlerType:
-    async def middleware_handler(request: web.Request, request_id: Annotated[str, Header(alias='Request-ID')]) -> web.StreamResponse:
+async def unsupported_old_style_request_id_middleware(
+        app: web.Application,
+        handler: CallNext,
+) -> Middleware:
+    async def middleware_handler(
+            request: web.Request,
+            request_id: Annotated[str, Header(alias='Request-ID')],
+    ) -> web.StreamResponse:
         assert request_id == REQUEST_ID
         return await handler(request)
 
@@ -63,7 +72,7 @@ async def unsupported_old_style_request_id_middleware(app: web.Application, hand
 
 async def test_success(aiohttp_client: AiohttpClient) -> None:
     @middleware
-    async def simple_middleware(request: web.Request, handler: HandlerType) -> web.StreamResponse:
+    async def simple_middleware(request: web.Request, handler: CallNext) -> web.StreamResponse:
         return await handler(request)
 
     async def handler() -> web.Response:
@@ -81,10 +90,7 @@ async def test_success_parametrized_middleware(aiohttp_client: AiohttpClient) ->
 
     def parametrized_middleware(parameter: str) -> Middleware:
         @middleware
-        async def inner_middleware(
-                request: web.Request,
-                handler: HandlerType,
-        ) -> web.StreamResponse:
+        async def inner_middleware(request: web.Request, handler: CallNext) -> web.StreamResponse:
             request['parameter'] = parameter
             return await handler(request)
 
