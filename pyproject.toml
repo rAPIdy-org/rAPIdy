@@ -3,8 +3,7 @@ name = "rAPIdy"
 version = "0.2.2"
 description = "rAPIdy - write quickly - write beautifully"
 authors = [
-    "Daniil Grois <daniil.grois@gmail.com>",
-    "Lev Zaplatin <lev@zaplatin.dev>",
+    "Daniil Grois <daniil.grois@gmail.com>"
 ]
 keywords = [
     "rAPIdy",
@@ -14,7 +13,6 @@ keywords = [
     "fast",
     "http server",
     "Daniil Grois",
-    "Lev Zaplatin",
 ]
 license = "MIT License"
 readme = "README.md"
