@@ -1,5 +1,7 @@
 from concurrent.futures import Executor
-from typing import Any, Callable, NamedTuple, Optional, overload, Type, TypeVar, Union
+from functools import wraps
+from typing import Any, Callable, cast, NamedTuple, Optional, overload, Type, TypeVar, Union
+from urllib.request import Request
 
 from aiohttp.helpers import sentinel
 from aiohttp.typedefs import DEFAULT_JSON_ENCODER, JSONEncoder
@@ -7,7 +9,7 @@ from aiohttp.web_middlewares import middleware as aiohttp_middleware, normalize_
 
 from rapidy.encoders import CustomEncoder, Exclude, Include
 from rapidy.enums import Charset, ContentType
-from rapidy.typedefs import Middleware
+from rapidy.typedefs import CallNext, Middleware
 
 __all__ = (
     'middleware',
@@ -15,7 +17,7 @@ __all__ = (
 )
 
 
-TMiddleware = TypeVar('TMiddleware')
+TMiddleware = TypeVar('TMiddleware', bound=Middleware)
 
 
 class MiddlewareAttrData(NamedTuple):
@@ -155,8 +157,13 @@ def _create_rapidy_middleware(
 ) -> TMiddleware:
     aiohttp_middleware(middleware)
     middleware.__rapidy_middleware__ = True  # type: ignore[attr-defined]
-    middleware.__attr_data__ = middleware_attr_data  # type: ignore[arg-type, attr-defined, unused-ignore]
-    return middleware
+    middleware.__attr_data__ = middleware_attr_data  # type: ignore[attr-defined]
+
+    @wraps(middleware)
+    async def impl(request: Request, handler: CallNext, **kw: Any) -> Any:
+        return await middleware(request, handler, **kw)
+
+    return cast(TMiddleware, impl)
 
 
 def get_middleware_attr_data(middleware: TMiddleware) -> MiddlewareAttrData:  # noqa: WPS442

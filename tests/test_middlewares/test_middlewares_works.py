@@ -1,8 +1,10 @@
 from http import HTTPStatus
-from typing import Any
+from typing import Any, Awaitable, Callable, Coroutine
 
 import pytest
 from aiohttp.web_middlewares import normalize_path_middleware
+from aiohttp.web_request import Request
+from aiohttp.web_response import StreamResponse
 from pytest_aiohttp.plugin import AiohttpClient
 from typing_extensions import Annotated, Final
 
@@ -20,11 +22,11 @@ BODY_DATA: Final[str] = '<SomeBodyTextData>'
 @middleware
 async def new_style_auth_middleware(
         request: web.Request,
-        handler: CallNext,
+        call_next: CallNext,
         bearer_token: Annotated[str, Header(alias='Authorization')],
 ) -> web.StreamResponse:
     assert bearer_token == BEARER_TOKEN
-    return await handler(request)
+    return await call_next(request)
 
 
 async def old_style_auth_middleware(app: web.Application, handler: CallNext) -> Any:
@@ -47,11 +49,11 @@ async def new_style_request_id_middleware(
 
 async def old_style_request_id_middleware(
         app: web.Application,
-        handler: CallNext,
-) -> Middleware:
+        call_next: CallNext,
+) -> Callable[[web.Request], Awaitable[web.StreamResponse]]:
     async def middleware_handler(request: web.Request) -> web.StreamResponse:
         assert request.headers.get('Request-ID') == REQUEST_ID
-        return await handler(request)
+        return await call_next(request)
 
     return middleware_handler
 
@@ -59,7 +61,7 @@ async def old_style_request_id_middleware(
 async def unsupported_old_style_request_id_middleware(
         app: web.Application,
         handler: CallNext,
-) -> Middleware:
+) -> Callable[[Request, str], Coroutine[Any, Any, StreamResponse]]:
     async def middleware_handler(
             request: web.Request,
             request_id: Annotated[str, Header(alias='Request-ID')],
@@ -72,8 +74,8 @@ async def unsupported_old_style_request_id_middleware(
 
 async def test_success(aiohttp_client: AiohttpClient) -> None:
     @middleware
-    async def simple_middleware(request: web.Request, handler: CallNext) -> web.StreamResponse:
-        return await handler(request)
+    async def simple_middleware(request: web.Request, call_next: CallNext) -> web.StreamResponse:
+        return await call_next(request)
 
     async def handler() -> web.Response:
         return web.Response()
@@ -186,3 +188,17 @@ async def test_unsupported_old_style_middleware(aiohttp_client: AiohttpClient) -
         data=BODY_DATA,
     )
     assert resp.status == HTTPStatus.INTERNAL_SERVER_ERROR
+
+
+async def test_rename_snd_attr(aiohttp_client: AiohttpClient) -> None:
+    @middleware
+    async def simple_middleware(request: web.Request, call_next: CallNext) -> web.StreamResponse:
+        return await call_next(request)
+
+    async def handler() -> Any: pass
+
+    app = web.Application(middlewares=[simple_middleware])
+    app.add_routes([web.post('/', handler)])
+    client = await aiohttp_client(app)
+    resp = await client.post('/')
+    assert resp.status == HTTPStatus.OK

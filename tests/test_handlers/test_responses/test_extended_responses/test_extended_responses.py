@@ -204,12 +204,12 @@ async def test_union_stream_response(
         return DEFAULT_RETURN_VALUE
 
     @web.middleware
-    async def middleware(request: web.Request, handler: CallNext) -> Union[web.StreamResponse, str]:
+    async def middleware(request: web.Request, call_next: CallNext) -> Union[web.StreamResponse, str]:
         if return_middleware:
             if create_web_response:
                 return web.Response(DEFAULT_RETURN_VALUE)
             return DEFAULT_RETURN_VALUE
-        return await handler(request)
+        return await call_next(request)
 
     app = web.Application(middlewares=[middleware])
     app.router.add_get(PATH, handler)

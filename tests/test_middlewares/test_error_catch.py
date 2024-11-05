@@ -17,7 +17,7 @@ TEXT_NOT_CATCH: Final[str] = 'not_catch'
 
 def errors_catch_middleware_by_web_module(web_module: Any) -> Any:
     @web_module.middleware
-    async def inner(request: web_module.Request, handler: Any) -> web_module.StreamResponse:
+    async def inner(request: web_module.Request, handler: CallNext) -> web_module.StreamResponse:
         try:
             return await handler(request)
         except web_module.HTTPOk:
@@ -33,10 +33,10 @@ def errors_catch_middleware_by_web_module(web_module: Any) -> Any:
 @rapidy_web.middleware
 async def rapidy_validation_errors_catch_middleware(
         request: rapidy_web.Request,
-        handler: Any,
+        call_next: CallNext,
 ) -> rapidy_web.StreamResponse:
     try:
-        return await handler(request)
+        return await call_next(request)
     except rapidy_web.HTTPNotFound:
         return rapidy_web.Response(body=TEXT_SUCCESS_CATCH_NOT_FOUND_ERROR)
     except rapidy_web.HTTPMethodNotAllowed:
@@ -113,7 +113,7 @@ async def test_success_rapidy_catch_middleware_validation_failure(aiohttp_client
     @rapidy_web.middleware
     async def middleware_validation_failure(
             request: rapidy_web.Request,
-            handler: CallNext,
+            call_next: CallNext,
             body: str = rapidy_web.Body(),  # raises HTTPValidationFailure
     ) -> rapidy_web.StreamResponse:
         raise rapidy_web.HTTPInternalServerError(text=TEXT_NOT_CATCH)
