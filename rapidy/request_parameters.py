@@ -6,7 +6,7 @@ from aiohttp import StreamReader
 from aiohttp.typedefs import DEFAULT_JSON_DECODER, JSONDecoder
 
 from rapidy._annotation_helpers import get_base_annotations
-from rapidy._endpoint_model_field import ParamFieldInfo
+from rapidy._field_info import RapidyFieldInfo
 from rapidy.enums import ContentType, HTTPRequestParamType
 from rapidy.typedefs import NoArgAnyCallable, Undefined
 
@@ -21,6 +21,14 @@ __all__ = (
     'QueryParams',
     'Body',
 )
+
+
+class ParamFieldInfo(RapidyFieldInfo, ABC):
+    http_request_param_type: HTTPRequestParamType
+    extract_all: bool
+
+    def set_attribute_name(self, attribute_name: str) -> None:  # noqa: WPS615
+        self.attribute_name = attribute_name
 
 
 # PATH

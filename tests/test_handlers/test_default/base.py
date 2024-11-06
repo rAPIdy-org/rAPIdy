@@ -3,9 +3,9 @@ from typing import Any, Dict, Type
 
 from aiohttp import MultipartWriter, StreamReader
 
-from rapidy._request_param_field_info import ParamFieldInfo
 from rapidy.enums import ContentType
-from rapidy.request_parameters import Body, Cookie, Cookies, Header, PathParam, PathParams, QueryParam, QueryParams
+from rapidy.request_parameters import Body, Cookie, Cookies, Header, PathParam, PathParams, QueryParam, QueryParams, \
+    ParamFieldInfo
 from tests.helpers import BOUNDARY
 
 multipart_writer = MultipartWriter(boundary=BOUNDARY)

@@ -13,7 +13,7 @@ from rapidy._annotation_helpers import annotation_is_optional
 from rapidy._base_exceptions import RapidyException
 from rapidy._client_errors import regenerate_error_with_loc
 from rapidy._constants import PYDANTIC_V1, PYDANTIC_V2
-from rapidy._request_param_field_info import FieldInfo, ParamFieldInfo
+from rapidy._field_info import RapidyFieldInfo
 from rapidy.enums import HTTPRequestParamType
 from rapidy.typedefs import NoArgAnyCallable, Required, Undefined, ValidateReturn
 
@@ -70,7 +70,7 @@ class ResponseModelFieldCreationError(RapidyException):
 @dataclass
 class BaseModelField(ABC):
     name: str
-    field_info: FieldInfo
+    field_info: RapidyFieldInfo
 
     @cached_property
     def default_exists(self) -> bool:
@@ -115,7 +115,7 @@ class BaseModelField(ABC):
 @dataclass
 class BaseRequestModelField(BaseModelField, ABC):
     http_request_param_type: HTTPRequestParamType
-    field_info: ParamFieldInfo
+    field_info: RapidyFieldInfo
 
 
 @dataclass
@@ -157,7 +157,7 @@ if PYDANTIC_V1:  # noqa: C901
                 required: 'BoolUndefined' = Undefined,
                 final: bool = False,
                 alias: Optional[str] = None,
-                field_info: Optional[ParamFieldInfo] = None,
+                field_info: Optional[RapidyFieldInfo] = None,
                 **kw: Any,
         ) -> None:
             super().__init__(
@@ -173,7 +173,7 @@ if PYDANTIC_V1:  # noqa: C901
                 field_info=field_info,
                 **kw,
             )
-            self.field_info: ParamFieldInfo
+            self.field_info: RapidyFieldInfo
 
             field_info_default_exist = self.field_info.default is not Undefined and self.default is not ...
             self.default_exists = field_info_default_exist or self.field_info.default_factory is not None
@@ -190,7 +190,7 @@ if PYDANTIC_V1:  # noqa: C901
                 required: 'BoolUndefined' = Undefined,
                 final: bool = False,
                 alias: Optional[str] = None,
-                field_info: Optional[ParamFieldInfo] = None,
+                field_info: Optional[RapidyFieldInfo] = None,
                 **kw: Any,
         ) -> None:
             super().__init__(
@@ -217,7 +217,7 @@ if PYDANTIC_V1:  # noqa: C901
     def create_request_field(
             name: str,
             type_: Type[Any],
-            field_info: ParamFieldInfo,
+            field_info: RapidyFieldInfo,
     ) -> BaseRequestModelField:
         not_default = field_info.default in (Required, Undefined) and field_info.default_factory is None
         required = not_default and not annotation_is_optional(field_info.annotation)
@@ -248,7 +248,7 @@ if PYDANTIC_V1:  # noqa: C901
     def create_response_field(
             name: str,
             type_: Type[Any],
-            field_info: FieldInfo,
+            field_info: RapidyFieldInfo,
     ) -> ModelField:
         kwargs: Dict[str, Any] = {
             'name': name,
@@ -269,7 +269,7 @@ elif PYDANTIC_V2:
 
     def get_annotation_from_field_info(
             annotation: Any,
-            field_info: FieldInfo,
+            field_info: RapidyFieldInfo,
             field_name: str,
     ) -> Any:  # noqa: WPS440
         return annotation
@@ -321,13 +321,13 @@ elif PYDANTIC_V2:
 
     @dataclass
     class RequestModelField(ModelField):  # type: ignore[no-redef]
-        field_info: ParamFieldInfo
+        field_info: RapidyFieldInfo
         http_request_param_type: HTTPRequestParamType
 
     def create_request_field(  # noqa: WPS440
             name: str,
             type_: Type[Any],
-            field_info: ParamFieldInfo,
+            field_info: RapidyFieldInfo,
     ) -> BaseRequestModelField:
         try:
             return RequestModelField(  # type: ignore[call-arg]
@@ -347,7 +347,7 @@ elif PYDANTIC_V2:
     def create_response_field(
             name: str,
             type_: Type[Any],
-            field_info: FieldInfo,
+            field_info: RapidyFieldInfo,
     ) -> ModelField:
         try:
             return ModelField(name=name, field_info=field_info)  # type: ignore[call-arg, unused-ignore]
@@ -358,7 +358,7 @@ else:
     raise ValueError
 
 
-def create_param_model_field(field_info: ParamFieldInfo) -> BaseRequestModelField:
+def create_param_model_field(field_info: RapidyFieldInfo) -> BaseRequestModelField:
     copied_field_info = deepcopy(field_info)
 
     copied_field_info.default = field_info.default if field_info.default is not inspect.Signature.empty else Required
@@ -376,7 +376,7 @@ def create_param_model_field(field_info: ParamFieldInfo) -> BaseRequestModelFiel
 def create_response_model_field(type_: Union[Type[Any], None]) -> ModelField:
     attribute_name = 'body'
 
-    field_info = FieldInfo(validate=True)
+    field_info = RapidyFieldInfo(validate=True)
     field_info.set_annotation(type_)
 
     inner_attribute_type = get_annotation_from_field_info(

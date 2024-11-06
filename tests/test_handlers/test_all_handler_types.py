@@ -10,7 +10,6 @@ from pytest_aiohttp.plugin import AiohttpClient
 from typing_extensions import Annotated
 
 from rapidy import web
-from rapidy._request_param_field_info import ParamFieldInfo
 from rapidy.enums import ContentType
 from rapidy.request_parameters import (
     Body,
@@ -21,7 +20,7 @@ from rapidy.request_parameters import (
     PathParam,
     PathParams,
     QueryParam,
-    QueryParams,
+    QueryParams, ParamFieldInfo,
 )
 from rapidy.web import Application
 from rapidy.web_routedef import RouteTableDef

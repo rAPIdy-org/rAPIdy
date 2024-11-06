@@ -3,12 +3,13 @@ from abc import ABC, abstractmethod
 from concurrent.futures import Executor
 from dataclasses import is_dataclass
 from pprint import pformat
-from typing import Any, cast, Dict, List, Mapping, Optional, Sequence, Tuple, Type, Union
+from typing import Any, cast, Dict, List, Mapping, Optional, Sequence, Tuple, Type, Union, Iterable
 
 from aiohttp.helpers import sentinel
 from aiohttp.typedefs import JSONEncoder
 from aiohttp.web_request import Request
 from aiohttp.web_response import Response, StreamResponse
+from aiohttp.web_ws import WebSocketResponse
 from multidict import MultiDict, MultiDictProxy
 from typing_extensions import get_args, TypeAlias, TypeVar
 
@@ -16,7 +17,7 @@ from rapidy._annotation_extractor import get_endpoint_handler_info
 from rapidy._annotation_helpers import annotation_is_union, lenient_issubclass
 from rapidy._base_exceptions import RapidyHandlerException
 from rapidy._client_errors import normalize_errors, regenerate_error_with_loc, RequiredFieldIsMissing
-from rapidy._endpoint_helpers import create_response
+from rapidy._endpoint_helpers import create_response, create_ws_response
 from rapidy._endpoint_model_field import (
     BaseRequestModelField,
     create_param_model_field,
@@ -24,9 +25,9 @@ from rapidy._endpoint_model_field import (
     ModelField,
 )
 from rapidy._request_extractors import ExtractError, get_extractor
-from rapidy._request_param_field_info import ParamFieldInfo
 from rapidy.encoders import CustomEncoder, Exclude, Include
 from rapidy.enums import ContentType, HTTPRequestParamType
+from rapidy.request_parameters import ParamFieldInfo
 from rapidy.typedefs import DictStrAny, ErrorWrapper, Handler, ResultValidate, ValidateReturn, ValidationErrorList
 from rapidy.web_exceptions import HTTPValidationFailure
 
@@ -333,6 +334,138 @@ class HTTPResponseHandler:
         return handler_result
 
 
+class WSResponseHandler:
+    def __init__(
+            self,
+            endpoint_handler: Handler,
+            return_annotation: Optional[Type[Any]],
+            *,
+            timeout: float,
+            receive_timeout: Optional[float],
+            autoclose: bool,
+            autoping: bool,
+            heartbeat: Optional[float],
+            protocols: Iterable[str],
+            compress: bool,
+            max_msg_size: int,
+            validate: bool,
+            response_type: Optional[Type[Any]],  # must be - aiohttp.helpers.sentinel by default
+            charset: str,
+            # json preparer
+            include_fields: Optional[Include],
+            exclude_fields: Optional[Exclude],
+            by_alias: bool,
+            exclude_unset: bool,
+            exclude_defaults: bool,
+            exclude_none: bool,
+            custom_encoder: Optional[CustomEncoder],
+            json_encoder: JSONEncoder,
+            ##
+            request_attribute_name: str,
+            response_attribute_name: str,
+    ) -> None:
+        self.request_attribute_name = request_attribute_name
+        self.response_attribute_name = response_attribute_name
+        self.ws_message_attribute_name = 'message'  # WSMessage
+
+        self._handler = endpoint_handler
+        self._model_field = None
+
+        if validate:
+            if response_type is not sentinel:
+                return_annotation = response_type
+
+            if return_annotation is not inspect.Signature.empty:
+                if annotation_is_union(return_annotation):
+                    union_annotations = get_args(return_annotation)
+                    return_annotation = Union[  # type: ignore[assignment]
+                        tuple(
+                            annotation for annotation in union_annotations  # noqa: WPS361
+                            if not lenient_issubclass(annotation, StreamResponse)
+                        )
+                    ]
+                    self._model_field = create_response_model_field(type_=return_annotation)
+
+                elif not lenient_issubclass(return_annotation, StreamResponse):
+                    self._model_field = create_response_model_field(type_=return_annotation)
+
+        self._charset = charset
+        self._json_encoder = json_encoder
+
+        self._include_fields = include_fields
+        self._exclude_fields = exclude_fields
+        self._by_alias = by_alias
+        self._exclude_unset = exclude_unset
+        self._exclude_defaults = exclude_defaults
+        self._exclude_none = exclude_none
+        self._custom_encoder = custom_encoder
+
+        self._timeout = timeout
+        self._receive_timeout = receive_timeout
+        self._autoclose = autoclose
+        self._autoping = autoping
+        self._heartbeat = heartbeat
+        self._protocols = protocols
+        self._compress = compress
+        self._max_msg_size = max_msg_size
+
+    async def validate(self, request: Request, handler: Any, handler_data: dict[str, Any]) -> StreamResponse:
+        ws_response = create_ws_response(
+            timeout=self._timeout,
+            receive_timeout=self._receive_timeout,
+            autoclose=self._autoclose,
+            autoping=self._autoping,
+            heartbeat=self._heartbeat,
+            protocols=self._protocols,
+            compress=self._compress,
+            max_msg_size=self._max_msg_size,
+        )
+
+        if self.request_attribute_name:
+            handler_data[self.request_attribute_name] = request
+
+        if self.response_attribute_name:
+            handler_data[self.response_attribute_name] = ws_response
+
+        await ws_response.prepare(request=request)
+
+        try:
+             await self._process_ws(handler=handler, handler_data=handler_data, ws_response=ws_response)
+        finally:
+            await ws_response.close()
+
+        return ws_response
+
+    async def _process_ws(
+            self,
+            handler: Handler,
+            handler_data: dict[str, Any],
+            ws_response: WebSocketResponse,
+    ) -> StreamResponse:
+        async for msg in ws_response:
+            if self.ws_message_attribute_name:
+                handler_data[self.ws_message_attribute_name] = msg
+
+            handler_result = await handler(**handler_data)
+            if lenient_issubclass(type(handler_result), StreamResponse):
+                return handler_result  # TODO: вернуть его выше
+
+            if self._model_field:
+                handler_result = self._validate(handler_result, model_field=self._model_field)  # TODO: try/except
+                # TODO: проверять тип в зависимости от него по разному отправлять
+                await ws_response.send_str(handler_result)  # TODO: try/except
+
+    def _validate(self, handler_result: Any, model_field: ModelField) -> Any:
+        handler_result, validated_errors = model_field.validate(
+            handler_result, {}, loc=(model_field.name,),
+        )
+        if validated_errors:
+            raise ResponseValidationError.create_with_handler_validation_errors(
+                handler=self._handler, errors=validated_errors,
+            )
+        return handler_result
+
+
 class EndpointHandler:
     """The endpoint handler.
 
@@ -395,7 +528,45 @@ class EndpointHandler:
         return self.response_handler.validate(response, current_response)
 
 
-def endpoint_handler_builder(
+class WSEndpointHandler:
+    def __init__(
+            self,
+            request_attribute_name: Optional[str],
+            response_attribute_name: Optional[str],
+            request_parameter_handlers: Sequence[HTTPRequestParameterHandler],
+            response_handler: WSResponseHandler,
+    ) -> None:
+        self.request_attribute_name = request_attribute_name
+        self.response_attribute_name = response_attribute_name
+        self.request_parameter_handlers = request_parameter_handlers
+        self.response_handler = response_handler
+
+    async def validate_request(self, request: Request) -> Dict[AttributeName, AttributeValue]:
+        """Check the incoming request for errors.
+
+        Raises:
+             HTTPValidationFailure: If the request is invalid.
+        """
+        values: Dict[str, Any] = {}
+        errors: List[Dict[str, Any]] = []
+
+        for param_handler in self.request_parameter_handlers:
+            param_values, param_errors = await param_handler.validate_parameter_data(request)
+            if param_errors:
+                errors += param_errors
+            else:
+                values.update(cast(ResultValidate, param_values))  # if there's no error, there's a result
+
+        if errors:
+            raise HTTPValidationFailure(errors=errors)
+
+        return values
+
+    async def validate_response(self, request: Request, handler: Any, handler_data: dict[str, Any]) -> StreamResponse:
+        return await self.response_handler.validate(request=request, handler=handler, handler_data=handler_data)
+
+
+def http_endpoint_handler_builder(
         endpoint_handler: Handler,
         *,
         request_attr_can_declare: bool = False,
@@ -444,6 +615,76 @@ def endpoint_handler_builder(
     )
 
     return EndpointHandler(
+        request_attribute_name=request_attr_name,
+        response_attribute_name=response_attr_name,
+        request_parameter_handlers=request_parameter_handlers,
+        response_handler=response_handler,
+    )
+
+
+def ws_endpoint_handler_builder(
+        endpoint_handler: Handler,
+        *,
+        request_attr_can_declare: bool = False,
+        # ws
+        ws_timeout: float,
+        ws_receive_timeout: Optional[float],
+        ws_autoclose: bool,
+        ws_autoping: bool,
+        ws_heartbeat: Optional[float],
+        ws_protocols: Iterable[str],
+        ws_compress: bool,
+        ws_max_msg_size: int,
+        # msg
+        msg_response_validate: bool,
+        msg_response_type: Optional[Type[Any]],
+        msg_response_charset: str,
+        # response json preparer
+        response_include_fields: Optional[Include],
+        response_exclude_fields: Optional[Exclude],
+        response_by_alias: bool,
+        response_exclude_unset: bool,
+        response_exclude_defaults: bool,
+        response_exclude_none: bool,
+        response_custom_encoder: Optional[CustomEncoder],
+        response_json_encoder: JSONEncoder,
+) -> WSEndpointHandler:
+    request_attr_name, response_attr_name, attr_fields_info, return_annotation = get_endpoint_handler_info(
+        endpoint_handler=endpoint_handler, request_attr_can_declare=request_attr_can_declare,
+    )
+
+    request_parameter_handlers = create_http_request_parameter_handlers(
+        endpoint_handler=endpoint_handler, attr_fields_info=attr_fields_info,
+    )
+
+    response_handler = WSResponseHandler(
+        request_attribute_name=request_attr_name,
+        response_attribute_name=response_attr_name,
+
+        timeout=ws_timeout,
+        receive_timeout=ws_receive_timeout,
+        autoclose=ws_autoclose,
+        autoping=ws_autoping,
+        heartbeat=ws_heartbeat,
+        protocols=ws_protocols,
+        compress=ws_compress,
+        max_msg_size=ws_max_msg_size,
+        json_encoder=response_json_encoder,
+        custom_encoder=response_custom_encoder,
+        endpoint_handler=endpoint_handler,
+        return_annotation=return_annotation,
+        include_fields=response_include_fields,
+        exclude_fields=response_exclude_fields,
+        by_alias=response_by_alias,
+        exclude_unset=response_exclude_unset,
+        exclude_defaults=response_exclude_defaults,
+        exclude_none=response_exclude_none,
+        validate=msg_response_validate,
+        response_type=msg_response_type,
+        charset=msg_response_charset,
+    )
+
+    return WSEndpointHandler(
         request_attribute_name=request_attr_name,
         response_attribute_name=response_attr_name,
         request_parameter_handlers=request_parameter_handlers,

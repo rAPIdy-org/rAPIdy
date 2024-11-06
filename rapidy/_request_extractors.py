@@ -14,9 +14,9 @@ from multidict import MultiDictProxy, MultiMapping
 from rapidy import hdrs
 from rapidy._annotation_helpers import lenient_issubclass
 from rapidy._client_errors import ClientError
-from rapidy._request_param_field_info import ParamFieldInfo
+from rapidy._field_info import RapidyFieldInfo
 from rapidy.enums import ContentType, HTTPRequestParamType
-from rapidy.request_parameters import Body
+from rapidy.request_parameters import Body, ParamFieldInfo
 from rapidy.typedefs import DictStrAny, DictStrStr
 
 ExtractFunction = Callable[[Request], Awaitable[Any]]

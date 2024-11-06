@@ -1,7 +1,7 @@
 from abc import ABC
 from concurrent.futures import Executor
 from types import FunctionType
-from typing import Any, cast, Final, Optional, Type, Union
+from typing import Any, cast, Final, Optional, Type, Union, Iterable, Callable
 
 from aiohttp.abc import AbstractView
 from aiohttp.helpers import sentinel
@@ -24,7 +24,9 @@ from aiohttp.web_urldispatcher import (
 )
 
 from rapidy import hdrs
-from rapidy._endpoint_validation_wrappers import handler_validation_wrapper, view_validation_wrapper
+from rapidy._endpoint_validation_wrappers import handler_validation_wrapper, view_validation_wrapper, \
+    ws_handler_validation_wrapper
+# ws_handler_validation_wrapper
 from rapidy.encoders import CustomEncoder, Exclude, Include
 from rapidy.enums import Charset, ContentType
 from rapidy.typedefs import HandlerType
@@ -56,43 +58,15 @@ class ResourceRoute(AioHTTPResourceRoute, ABC):
             expect_handler: Optional[_ExpectHandler] = None,
             **kwargs: Any,
     ) -> None:
-        if method.lower() != HEAD_METHOD_NAME:
+        is_ws_handler = kwargs.pop('ws', False)
+        if is_ws_handler:
+            handler = ws_handler_validation_wrapper(handler, **kwargs)
+
+        elif method.lower() != HEAD_METHOD_NAME:
             if isinstance(handler, FunctionType):
-                handler = handler_validation_wrapper(
-                    handler,
-                    response_validate=kwargs['response_validate'],
-                    response_type=kwargs['response_type'],
-                    response_content_type=kwargs['response_content_type'],
-                    response_charset=kwargs['response_charset'],
-                    response_zlib_executor=kwargs['response_zlib_executor'],
-                    response_zlib_executor_size=kwargs['response_zlib_executor_size'],
-                    response_include_fields=kwargs['response_include_fields'],
-                    response_exclude_fields=kwargs['response_exclude_fields'],
-                    response_by_alias=kwargs['response_by_alias'],
-                    response_exclude_unset=kwargs['response_exclude_unset'],
-                    response_exclude_defaults=kwargs['response_exclude_defaults'],
-                    response_exclude_none=kwargs['response_exclude_none'],
-                    response_custom_encoder=kwargs['response_custom_encoder'],
-                    response_json_encoder=kwargs['response_json_encoder'],
-                )
+                handler = handler_validation_wrapper(handler, **kwargs)
             elif issubclass(handler, View):  # type: ignore[arg-type]
-                handler = view_validation_wrapper(
-                    handler,  # type: ignore[arg-type]
-                    response_validate=kwargs['response_validate'],
-                    response_type=kwargs['response_type'],
-                    response_content_type=kwargs['response_content_type'],
-                    response_charset=kwargs['response_charset'],
-                    response_zlib_executor=kwargs['response_zlib_executor'],
-                    response_zlib_executor_size=kwargs['response_zlib_executor_size'],
-                    response_include_fields=kwargs['response_include_fields'],
-                    response_exclude_fields=kwargs['response_exclude_fields'],
-                    response_by_alias=kwargs['response_by_alias'],
-                    response_exclude_unset=kwargs['response_exclude_unset'],
-                    response_exclude_defaults=kwargs['response_exclude_defaults'],
-                    response_exclude_none=kwargs['response_exclude_none'],
-                    response_custom_encoder=kwargs['response_custom_encoder'],
-                    response_json_encoder=kwargs['response_json_encoder'],
-                )
+                handler = view_validation_wrapper(handler, **kwargs)
 
         super().__init__(method=method, handler=handler, expect_handler=expect_handler, resource=resource)
 
@@ -262,6 +236,63 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_custom_encoder=response_custom_encoder,
             response_json_encoder=response_json_encoder,
             **kwargs,
+        )
+
+    def add_ws(
+            self,
+            path: str,
+            handler: HandlerType,
+            *,
+            name: Optional[str] = None,
+            timeout: float = 10.0,
+            receive_timeout: Optional[float] = None,
+            autoclose: bool = True,
+            autoping: bool = True,
+            heartbeat: Optional[float] = None,
+            protocols: Iterable[str] = (),
+            compress: bool = True,
+            max_msg_size: int = 4 * 1024 * 1024,
+            response_validate: bool = True,
+            response_type: Optional[Type[Any]] = sentinel,
+            response_charset: Union[str, Charset] = Charset.utf8,
+            response_include_fields: Optional[Include] = None,
+            response_exclude_fields: Optional[Exclude] = None,
+            response_by_alias: bool = True,
+            response_exclude_unset: bool = False,
+            response_exclude_defaults: bool = False,
+            response_exclude_none: bool = False,
+            response_custom_encoder: Optional[CustomEncoder] = None,
+            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+            **kwargs,
+    ) -> AbstractRoute:
+        return self.add_route(
+            # aiohttp attrs
+            hdrs.METH_GET,
+            path,
+            handler,
+            name=name,
+            ws_timeout=timeout,
+            ws_receive_timeout=receive_timeout,
+            ws_autoclose=autoclose,
+            ws_autoping=autoping,
+            ws_heartbeat=heartbeat,
+            ws_protocols=protocols,
+            ws_compress=compress,
+            ws_max_msg_size=max_msg_size,
+            **kwargs,
+            # rapidy attrs
+            response_validate=response_validate,
+            response_type=response_type,
+            response_charset=response_charset,
+            response_include_fields=response_include_fields,
+            response_exclude_fields=response_exclude_fields,
+            response_by_alias=response_by_alias,
+            response_exclude_unset=response_exclude_unset,
+            response_exclude_defaults=response_exclude_defaults,
+            response_exclude_none=response_exclude_none,
+            response_custom_encoder=response_custom_encoder,
+            response_json_encoder=response_json_encoder,
+            ws=True,
         )
 
     def add_post(

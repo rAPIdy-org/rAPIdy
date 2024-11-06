@@ -14,6 +14,7 @@ from rapidy._annotation_helpers import (
 )
 from rapidy._base_exceptions import RapidyHandlerException
 from rapidy._constants import PYDANTIC_V1, PYDANTIC_V2
+from rapidy._field_info import RapidyFieldInfo
 from rapidy.request_parameters import ParamFieldInfo
 from rapidy.typedefs import Handler, Required, Undefined
 
@@ -224,19 +225,19 @@ def check_default_value_for_field_exists(field_info: ParamFieldInfo) -> bool:
 
 def is_rapidy_param(type_: Any) -> bool:
     try:
-        return isinstance(type_, ParamFieldInfo) and issubclass(type_.__class__, ParamFieldInfo)
+        return isinstance(type_, ParamFieldInfo) and issubclass(type_.__class__, RapidyFieldInfo)
     except Exception:
         return False
 
 
 def is_rapidy_type(type_: Any) -> bool:
     try:
-        return isinstance(type_, type) and issubclass(type_, ParamFieldInfo)
+        return isinstance(type_, type) and issubclass(type_, RapidyFieldInfo)
     except Exception:
         return False
 
 
-def create_attribute_field_info(handler: Handler, param: inspect.Parameter) -> ParamFieldInfo:
+def create_attribute_field_info(handler: Handler, param: inspect.Parameter) -> RapidyFieldInfo:
     attr_annotation = param.annotation
     attr_default = param.default
     attr_name = param.name

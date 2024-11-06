@@ -13,7 +13,7 @@ from rapidy._annotation_extractor import (
     SpecifyBothDefaultAndDefaultFactoryError,
 )
 from rapidy._base_exceptions import RapidyHandlerException
-from rapidy._request_param_field_info import ParamFieldInfo
+from rapidy.request_parameters import ParamFieldInfo
 from rapidy.typedefs import Handler
 
 DEFAULT_VALUE: Final[str] = 'DEFAULT'

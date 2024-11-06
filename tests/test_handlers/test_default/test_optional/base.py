@@ -8,7 +8,7 @@ from typing_extensions import Annotated
 
 from rapidy import web
 from rapidy._annotation_extractor import ParameterCannotBeOptionalError
-from rapidy._request_param_field_info import ParamFieldInfo
+from rapidy.request_parameters import ParamFieldInfo
 from rapidy.version import PY_VERSION_TUPLE
 
 

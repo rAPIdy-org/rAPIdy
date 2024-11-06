@@ -1,4 +1,5 @@
 from rapidy.version import AIOHTTP_VERSION_TUPLE
+from rapidy.web_ws import WSData
 
 if AIOHTTP_VERSION_TUPLE >= (3, 9, 0):
     from aiohttp.web import AppKey as AppKey
@@ -8,10 +9,11 @@ if AIOHTTP_VERSION_TUPLE >= (3, 9, 0):
 from aiohttp.web import run_app as run_app
 from aiohttp.web_fileresponse import FileResponse as FileResponse
 from aiohttp.web_server import Server as Server
-from aiohttp.web_ws import (
+from rapidy.web_ws import (
     WebSocketReady as WebSocketReady,
     WebSocketResponse as WebSocketResponse,
     WSMsgType as WSMsgType,
+    WSData as WSData,
 )
 
 from rapidy.enums import Charset as Charset, ContentType as ContentType, HeaderName as HeaderName
@@ -253,6 +255,8 @@ __all = [
     'WebSocketReady',
     'WebSocketResponse',
     'WSMsgType',
+    'WSData',
+    # run_app
     'run_app',
     # request_params
     'BodyType',
