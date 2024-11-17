@@ -1,61 +1,36 @@
-from contextlib import AbstractAsyncContextManager
+import enum
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Type, TYPE_CHECKING, Union
 
 from aiohttp.abc import AbstractView
-from aiohttp.typedefs import (
-    Byteish,
-    DEFAULT_JSON_DECODER,
-    DEFAULT_JSON_ENCODER,
-    JSONDecoder,
-    JSONEncoder,
-    LooseCookies,
-    LooseCookiesIterables,
-    LooseCookiesMappings,
-    LooseHeaders,
-    PathLike,
-    RawHeaders,
-    StrOrURL,
-)
+from pydantic import BaseModel
 from typing_extensions import TypeAlias
 
-from rapidy._constants import PYDANTIC_V1, PYDANTIC_V2
-from rapidy.version import PY_VERSION_TUPLE
-from rapidy.web_request import Request
-from rapidy.web_response import StreamResponse
+from rapidy.constants import PYDANTIC_IS_V1
+from rapidy.lifespan import LifespanCTX, LifespanHook
 
 if TYPE_CHECKING:
-    from web_app import Application
+    from rapidy.web_request import Request
+    from rapidy.web_response import StreamResponse
 
-    if PY_VERSION_TUPLE < (1, 9, 0):
-        AbstractAsyncContextManagerNone = AbstractAsyncContextManager
-    else:
-        AbstractAsyncContextManagerNone = AbstractAsyncContextManager[None]  # type: ignore[assignment, misc]
+    if PYDANTIC_IS_V1:
+        from pydantic.dataclasses import Dataclass
 
 
 __all__ = (
-    'Byteish',
-    'DEFAULT_JSON_DECODER',
-    'DEFAULT_JSON_ENCODER',
-    'JSONEncoder',
-    'JSONDecoder',
-    'LooseHeaders',
-    'RawHeaders',
-    'StrOrURL',
-    'LooseCookiesMappings',
-    'LooseCookiesIterables',
-    'LooseCookies',
     'Middleware',
     'CallNext',
     'Handler',
-    'PathLike',
     'DictStrAny',
     'DictStrStr',
-    'HandlerType',
-    'SyncOrAsync',
-    'CallableAsyncCTX',
-    'LifespanHook',
+    'NoArgAnyCallable',
+    'HandlerOrView',
     'LifespanCTX',
+    'LifespanHook',
+    'ResultValidate',
     'ValidationErrorList',
+    'ValidateReturn',
+    'JSONEncoder',
+    'JSONDecoder',
 )
 
 # support types
@@ -65,30 +40,22 @@ DictStrStr: TypeAlias = Dict[str, str]
 # rapidy types
 Handler: TypeAlias = Callable[..., Awaitable[Any]]
 Middleware: TypeAlias = Handler
-CallNext: TypeAlias = Callable[[Request], Awaitable[StreamResponse]]
+CallNext: TypeAlias = Callable[['Request'], Awaitable['StreamResponse']]
 
 # inner types
-HandlerType: TypeAlias = Union[Handler, Type[AbstractView]]
-
-# lifespan types
-SyncOrAsync: TypeAlias = Union[Any, Awaitable[Any]]
-LifespanHook: TypeAlias = Union[
-    Callable[['Application'], SyncOrAsync],
-    Callable[[], SyncOrAsync],
-]
-
-CallableAsyncCTX = Callable[['Application'], 'AbstractAsyncContextManagerNone']  # type: ignore[type-arg]  # py3.8
-LifespanCTX = Union[CallableAsyncCTX, 'AbstractAsyncContextManagerNone']  # type: ignore[type-arg]  # py3.8
+HandlerOrView: TypeAlias = Union[Handler, Type[AbstractView]]
 
 # validation types
-ResultValidate: TypeAlias = Dict[str, Any]
-ValidationErrorList: TypeAlias = List[Dict[str, Any]]
+LocStr = Union[Tuple[Union[int, str], ...], str]  # noqa: WPS221
+ModelOrDc = Type[Union[BaseModel, 'Dataclass']]
+ResultValidate = DictStrAny
+ValidationErrorList: TypeAlias = List[DictStrAny]
 ValidateReturn: TypeAlias = Tuple[Optional[ResultValidate], Optional[ValidationErrorList]]
 
 # model types
 NoArgAnyCallable: TypeAlias = Callable[[], Any]
 
-if PYDANTIC_V1:
+if PYDANTIC_IS_V1:
     from pydantic.error_wrappers import ErrorWrapper as ErrorWrapper
     from pydantic.fields import (
         Required as Required,
@@ -96,8 +63,10 @@ if PYDANTIC_V1:
         UndefinedType as UndefinedType,
         Validator as Validator,
     )
+    from typing_extensions import deprecated as Deprecated  # noqa: N812
 
-elif PYDANTIC_V2:
+else:
+    from pydantic.fields import Deprecated  # type: ignore[no-redef]  # noqa: F401
     from pydantic_core import PydanticUndefined, PydanticUndefinedType
 
     Required = PydanticUndefined
@@ -108,5 +77,8 @@ elif PYDANTIC_V2:
     class ErrorWrapper(Exception):  # type: ignore[no-redef]  # noqa: N818 WPS440
         pass
 
-else:
-    raise Exception
+Unset = enum.Enum('Unset', 'unset').unset  # type: ignore[attr-defined]
+
+# json
+JSONEncoder = Callable[[Any], str]
+JSONDecoder = Callable[[str], Any]

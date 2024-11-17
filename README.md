@@ -123,16 +123,18 @@ Processing an Authorization Token in Middleware
 
 ```python
 from rapidy import web
-from rapidy.typedefs import HandlerType
+from rapidy.typedefs import HandlerOrView
+
 
 @web.middleware
 async def hello_middleware(
         request: web.Request,
-        handler: HandlerType,
+        handler: HandlerOrView,
         bearer_token: str = web.Header(alias='Authorization'),
 ) -> web.StreamResponse:
     request['token'] = bearer_token
     return await handler(request)
+
 
 async def handler(
         request: web.Request,
@@ -141,6 +143,7 @@ async def handler(
 ) -> web.Response:
     example_data = {'token': request['token'], 'host': host, 'username': username}
     return web.json_response(example_data)
+
 
 app = web.Application(middlewares=[hello_middleware])
 app.add_routes([web.post('/', handler)])

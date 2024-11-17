@@ -9,18 +9,17 @@ from pathlib import Path, PurePath
 from typing import Any, Callable, Deque, Dict, FrozenSet, List, Optional, overload, Pattern, Set, Tuple, Type, Union
 from uuid import UUID
 
-from aiohttp.typedefs import DEFAULT_JSON_ENCODER
 from pydantic import BaseModel
 from pydantic.color import Color
 from pydantic.networks import AnyUrl, NameEmail
 from pydantic.types import SecretBytes, SecretStr
 from typing_extensions import Literal, TypeAlias
 
-from rapidy._constants import PYDANTIC_V1, PYDANTIC_V2
+from rapidy.constants import DEFAULT_JSON_ENCODER, PYDANTIC_IS_V1
 from rapidy.enums import Charset
 from rapidy.typedefs import JSONEncoder
 
-if PYDANTIC_V1:
+if PYDANTIC_IS_V1:
     from pydantic import AnyUrl as Url  # noqa: WPS433
 
     def pydantic_model_dump(
@@ -28,19 +27,20 @@ if PYDANTIC_V1:
     ) -> Any:
         return model.dict(**kwargs)
 
-elif PYDANTIC_V2:
+else:
     from pydantic_core import Url as Url  # noqa: WPS440 WPS433
 
     def pydantic_model_dump(  # noqa: WPS440
         model: BaseModel, mode: Literal['json', 'python'] = 'json', **kwargs: Any,
     ) -> Any:
         return model.model_dump(mode=mode, **kwargs)
-else:
-    raise ValueError
 
 
 __all__ = (
     'jsonify',
+    'Include',
+    'Exclude',
+    'CustomEncoder',
 )
 
 _IncludeOrExclude: TypeAlias = Union[Set[int], Set[str], Dict[int, Any], Dict[str, Any]]  # noqa: WPS221
@@ -228,7 +228,7 @@ def jsonify(
 ) -> Union[str, Any]:
     """Convert any object to something that can be encoded in JSON.
 
-    This is used internally by rAPIdy to make sure anything you return can be
+    This is used internally by `rapidy` to make sure anything you return can be
     encoded as JSON before it is sent to the client.
 
     You can also use it yourself, for example to convert objects before saving them
@@ -405,7 +405,7 @@ def prepare_base_model(
         byte_preparation_charset: str,
 ) -> Any:
     encoders: Dict[Any, Any] = {}
-    if PYDANTIC_V1:
+    if PYDANTIC_IS_V1:
         encoders = getattr(obj.__config__, 'json_encoders', {})
         if custom_encoder:
             encoders.update(custom_encoder)

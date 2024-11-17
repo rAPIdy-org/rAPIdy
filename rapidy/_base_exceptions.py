@@ -24,34 +24,16 @@ class RapidyException(Exception, ABC):  # noqa: N818
 
 class RapidyHandlerException(RapidyException, ABC):  # noqa: N818
     @classmethod
-    def create_with_handler_info(
+    def create(
             cls,
+            *,
             handler: Any,
+            attr_name: Optional[str] = None,
             **format_fields: str,
     ) -> 'RapidyHandlerException':
-        new_message = cls.message + '\n' + cls._create_handler_info_msg(handler)
-        return cls(new_message, **format_fields)
-
-    @classmethod
-    def create_with_handler_and_attr_info(
-            cls,
-            handler: Any,
-            attr_name: str,
-            **format_fields: str,
-    ) -> 'RapidyHandlerException':
-        new_message = cls.message + '\n' + cls._create_handler_attr_info_msg(handler, attr_name)
-        return cls(new_message, **format_fields)
-
-    @staticmethod
-    def _create_handler_info_msg(handler: Any) -> str:
-        return (
-            f'\nHandler path: `{handler.__code__.co_filename}`'
-            f'\nHandler name: `{handler.__name__}`'
+        msg = (
+            f'{cls.message}\nHandler path: `{handler.__code__.co_filename}`\nHandler name: `{handler.__name__}`'
         )
-
-    @staticmethod
-    def _create_handler_attr_info_msg(handler: Any, attr_name: str) -> str:
-        return (
-            f'{RapidyHandlerException._create_handler_info_msg(handler)}'
-            f'\nAttribute name: `{attr_name}`'
-        )
+        if attr_name:
+            msg = f'{msg}\nAttribute name: `{attr_name}`'
+        return cls(msg, **format_fields)

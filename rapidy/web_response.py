@@ -2,22 +2,30 @@ import dataclasses
 from concurrent.futures import Executor
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Optional, Union
+from typing import Any, Counter, DefaultDict, Optional, Tuple, Type, Union
 
 from aiohttp import Payload
 from aiohttp.helpers import parse_mimetype
-from aiohttp.typedefs import DEFAULT_JSON_ENCODER, JSONEncoder, LooseHeaders
-from aiohttp.web_response import ContentCoding, Response as AioHTTPResponse, StreamResponse
+from aiohttp.typedefs import LooseHeaders
+from aiohttp.web_response import Response as AioHTTPResponse, StreamResponse
 from pydantic import BaseModel
 
 from rapidy._base_exceptions import RapidyException
+from rapidy.constants import DEFAULT_JSON_ENCODER
 from rapidy.encoders import CustomEncoder, Exclude, Include, jsonify
 from rapidy.enums import Charset, ContentType
+from rapidy.typedefs import JSONEncoder
 
 __all__ = (
-    'ContentCoding',
     'StreamResponse',
     'Response',
+)
+
+DEFAULT_JSON_TYPES: Tuple[Type[Any], ...] = (
+    BaseModel, dict, list, tuple, set, frozenset, DefaultDict, Counter,
+)
+DEFAULT_TEXT_PLAIN_TYPES: Tuple[Type[Any], ...] = (
+    str, Enum, int, float, Decimal, bool,
 )
 
 
@@ -221,11 +229,11 @@ class Response(AioHTTPResponse):
             raise ResponseEncodeError(errors=str(encode_exc)) from encode_exc
 
     def _get_and_set_ctype_by_data(self, data: Any) -> ContentType:
-        if isinstance(data, (BaseModel, dict)) or dataclasses.is_dataclass(data):
+        if isinstance(data, DEFAULT_JSON_TYPES) or dataclasses.is_dataclass(data):
             self.content_type = ContentType.json.value
             return ContentType.json
 
-        if isinstance(data, (str, Enum, int, float, Decimal, bool)):
+        if isinstance(data, DEFAULT_TEXT_PLAIN_TYPES):
             return ContentType.text_plain
 
         return ContentType.stream

@@ -1,4 +1,4 @@
-from rapidy.request_parameters import Header, Headers
+from rapidy.parameters.http import Header, Headers
 from rapidy.web import View
 
 

@@ -49,8 +49,8 @@ check_default_dirs = [  # FIXME: os.walk
 @pytest.mark.parametrize('default_dir', check_default_dirs)
 @pytest.mark.parametrize(
     'config_dir, config_name, out_file', [
-        (DEFAULT_CONFIG_DIR, DEFAULT_CONFIG_NAME, DEFAULT_MYPY_OUT_FILENAME),
-        (STRICT_CONFIG_DIR, STRICT_CONFIG_NAME, STRICT_MYPY_OUT_FILENAME),
+        pytest.param(DEFAULT_CONFIG_DIR, DEFAULT_CONFIG_NAME, DEFAULT_MYPY_OUT_FILENAME, id='default'),
+        pytest.param(STRICT_CONFIG_DIR, STRICT_CONFIG_NAME, STRICT_MYPY_OUT_FILENAME, id='strict'),
     ],
 )
 def test_default(

@@ -1,3 +1,7 @@
-cases/default/cookie/module.py:5: error: "default" and "default_factory" cannot be specified together for a requests parameter.  [rapidy-param]
-cases/default/cookie/module.py:9: error: "default" and "default_factory" cannot be specified together for a requests parameter.  [rapidy-param]
-Found 2 errors in 1 file (checked 1 source file)
+cases/default/cookie/module.py:5: error: Incompatible default for argument "_1" (default has type "str", argument has type "int")  [assignment]
+cases/default/cookie/module.py:6: error: Incompatible default for argument "_2" (default has type "str", argument has type "int")  [assignment]
+cases/default/cookie/module.py:7: error: "default" and "default_factory" cannot be specified together for a requests parameter.  [rapidy-param]
+cases/default/cookie/module.py:8: error: Incompatible default for argument "_4" (default has type "str", argument has type "int")  [assignment]
+cases/default/cookie/module.py:9: error: Incompatible default for argument "_5" (default has type "str", argument has type "int")  [assignment]
+cases/default/cookie/module.py:10: error: "default" and "default_factory" cannot be specified together for a requests parameter.  [rapidy-param]
+Found 6 errors in 1 file (checked 1 source file)

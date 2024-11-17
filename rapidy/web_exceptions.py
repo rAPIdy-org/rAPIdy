@@ -1,4 +1,4 @@
-from aiohttp.typedefs import DEFAULT_JSON_ENCODER
+from aiohttp.typedefs import DEFAULT_JSON_ENCODER, LooseHeaders
 
 from rapidy._client_errors import normalize_errors
 from rapidy.version import AIOHTTP_VERSION_TUPLE
@@ -6,7 +6,6 @@ from rapidy.version import AIOHTTP_VERSION_TUPLE
 if AIOHTTP_VERSION_TUPLE >= (3, 9, 0):
     from aiohttp.web_exceptions import HTTPMove, NotAppKeyWarning
 
-import json
 from typing import Any, Optional
 
 from aiohttp.web_exceptions import (
@@ -69,7 +68,7 @@ from aiohttp.web_exceptions import (
     HTTPVersionNotSupported,
 )
 
-from rapidy.typedefs import LooseHeaders, ValidationErrorList
+from rapidy.typedefs import ValidationErrorList
 
 __all = [
     'HTTPException',

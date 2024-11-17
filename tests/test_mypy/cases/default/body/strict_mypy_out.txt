@@ -1,2 +1,4 @@
-cases/default/body/module.py:5: error: "default" and "default_factory" cannot be specified together for a requests parameter.  [rapidy-param]
-Found 1 error in 1 file (checked 1 source file)
+cases/default/body/module.py:5: error: Incompatible default for argument "_1" (default has type "str", argument has type "int")  [assignment]
+cases/default/body/module.py:6: error: Incompatible default for argument "_2" (default has type "str", argument has type "int")  [assignment]
+cases/default/body/module.py:7: error: "default" and "default_factory" cannot be specified together for a requests parameter.  [rapidy-param]
+Found 3 errors in 1 file (checked 1 source file)
