@@ -4,7 +4,7 @@ from types import FunctionType
 from typing import Any, cast, Final, Optional, Type, Union
 
 from aiohttp.abc import AbstractView
-from aiohttp.helpers import sentinel
+from aiohttp.hdrs import METH_ANY, METH_DELETE, METH_GET, METH_HEAD, METH_PATCH, METH_POST, METH_PUT
 from aiohttp.typedefs import DEFAULT_JSON_ENCODER, JSONEncoder
 from aiohttp.web_urldispatcher import (
     _ExpectHandler,
@@ -23,11 +23,10 @@ from aiohttp.web_urldispatcher import (
     View,
 )
 
-from rapidy import hdrs
-from rapidy._endpoint_validation_wrappers import handler_validation_wrapper, view_validation_wrapper
 from rapidy.encoders import CustomEncoder, Exclude, Include
+from rapidy.endpoint_handlers.http.handlers import handler_validation_wrapper, view_validation_wrapper
 from rapidy.enums import Charset, ContentType
-from rapidy.typedefs import HandlerType
+from rapidy.typedefs import Handler, HandlerOrView, Unset
 
 __all__ = [
     'UrlDispatcher',
@@ -46,11 +45,36 @@ __all__ = [
 HEAD_METHOD_NAME: Final[str] = 'head'
 
 
+def wrap_handler(
+        *,
+        handler: Union[Handler, View],
+        wrapper: Any,
+        **kwargs: Any,
+) -> Union[Handler, View]:
+    return wrapper(
+        handler,
+        response_validate=kwargs['response_validate'],
+        response_type=kwargs['response_type'],
+        response_content_type=kwargs['response_content_type'],
+        response_charset=kwargs['response_charset'],
+        response_zlib_executor=kwargs['response_zlib_executor'],
+        response_zlib_executor_size=kwargs['response_zlib_executor_size'],
+        response_include_fields=kwargs['response_include_fields'],
+        response_exclude_fields=kwargs['response_exclude_fields'],
+        response_by_alias=kwargs['response_by_alias'],
+        response_exclude_unset=kwargs['response_exclude_unset'],
+        response_exclude_defaults=kwargs['response_exclude_defaults'],
+        response_exclude_none=kwargs['response_exclude_none'],
+        response_custom_encoder=kwargs['response_custom_encoder'],
+        response_json_encoder=kwargs['response_json_encoder'],
+    )
+
+
 class ResourceRoute(AioHTTPResourceRoute, ABC):
     def __init__(
             self,
             method: str,
-            handler: HandlerType,
+            handler: HandlerOrView,
             resource: AbstractResource,
             *,
             expect_handler: Optional[_ExpectHandler] = None,
@@ -58,41 +82,9 @@ class ResourceRoute(AioHTTPResourceRoute, ABC):
     ) -> None:
         if method.lower() != HEAD_METHOD_NAME:
             if isinstance(handler, FunctionType):
-                handler = handler_validation_wrapper(
-                    handler,
-                    response_validate=kwargs['response_validate'],
-                    response_type=kwargs['response_type'],
-                    response_content_type=kwargs['response_content_type'],
-                    response_charset=kwargs['response_charset'],
-                    response_zlib_executor=kwargs['response_zlib_executor'],
-                    response_zlib_executor_size=kwargs['response_zlib_executor_size'],
-                    response_include_fields=kwargs['response_include_fields'],
-                    response_exclude_fields=kwargs['response_exclude_fields'],
-                    response_by_alias=kwargs['response_by_alias'],
-                    response_exclude_unset=kwargs['response_exclude_unset'],
-                    response_exclude_defaults=kwargs['response_exclude_defaults'],
-                    response_exclude_none=kwargs['response_exclude_none'],
-                    response_custom_encoder=kwargs['response_custom_encoder'],
-                    response_json_encoder=kwargs['response_json_encoder'],
-                )
+                handler = wrap_handler(handler=handler, wrapper=handler_validation_wrapper, **kwargs)
             elif issubclass(handler, View):  # type: ignore[arg-type]
-                handler = view_validation_wrapper(
-                    handler,  # type: ignore[arg-type]
-                    response_validate=kwargs['response_validate'],
-                    response_type=kwargs['response_type'],
-                    response_content_type=kwargs['response_content_type'],
-                    response_charset=kwargs['response_charset'],
-                    response_zlib_executor=kwargs['response_zlib_executor'],
-                    response_zlib_executor_size=kwargs['response_zlib_executor_size'],
-                    response_include_fields=kwargs['response_include_fields'],
-                    response_exclude_fields=kwargs['response_exclude_fields'],
-                    response_by_alias=kwargs['response_by_alias'],
-                    response_exclude_unset=kwargs['response_exclude_unset'],
-                    response_exclude_defaults=kwargs['response_exclude_defaults'],
-                    response_exclude_none=kwargs['response_exclude_none'],
-                    response_custom_encoder=kwargs['response_custom_encoder'],
-                    response_json_encoder=kwargs['response_json_encoder'],
-                )
+                handler = wrap_handler(handler=handler, wrapper=view_validation_wrapper, **kwargs)
 
         super().__init__(method=method, handler=handler, expect_handler=expect_handler, resource=resource)
 
@@ -101,13 +93,13 @@ class Resource(AioHTTPResource, ABC):
     def add_route(
             self,
             method: str,
-            handler: HandlerType,
+            handler: HandlerOrView,
             *,
             expect_handler: Optional[_ExpectHandler] = None,
             **kwargs: Any,
     ) -> 'ResourceRoute':
         for route_obj in self._routes:
-            if route_obj.method == method or route_obj.method == hdrs.METH_ANY:  # noqa: WPS514
+            if route_obj.method == method or route_obj.method == METH_ANY:  # noqa: WPS514
                 raise RuntimeError(  # aiohttp code  # pragma: no cover
                     'Added route will never be executed, '
                     'method {route.method} is already '
@@ -153,7 +145,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             self,
             method: str,
             path: str,
-            handler: HandlerType,
+            handler: HandlerOrView,
             *,
             name: Optional[str] = None,
             expect_handler: Optional[_ExpectHandler] = None,
@@ -165,12 +157,12 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
     def add_get(
             self,
             path: str,
-            handler: HandlerType,
+            handler: HandlerOrView,
             *,
             name: Optional[str] = None,
             allow_head: bool = True,
             response_validate: bool = True,
-            response_type: Optional[Type[Any]] = sentinel,
+            response_type: Optional[Type[Any]] = Unset,
             response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
@@ -243,9 +235,9 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         """
         resource = self.add_resource(path, name=name)
         if allow_head:
-            resource.add_route(hdrs.METH_HEAD, handler, **kwargs)
+            resource.add_route(METH_HEAD, handler, **kwargs)
         return resource.add_route(
-            hdrs.METH_GET,
+            METH_GET,
             handler,
             response_validate=response_validate,
             response_type=response_type,
@@ -267,11 +259,11 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
     def add_post(
             self,
             path: str,
-            handler: HandlerType,
+            handler: HandlerOrView,
             *,
             name: Optional[str] = None,
             response_validate: bool = True,
-            response_type: Optional[Type[Any]] = sentinel,
+            response_type: Optional[Type[Any]] = Unset,
             response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
@@ -337,7 +329,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         """
         return self.add_route(
             # aiohttp attrs
-            hdrs.METH_POST,
+            METH_POST,
             path,
             handler,
             name=name,
@@ -362,11 +354,11 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
     def add_put(
             self,
             path: str,
-            handler: HandlerType,
+            handler: HandlerOrView,
             *,
             name: Optional[str] = None,
             response_validate: bool = True,
-            response_type: Optional[Type[Any]] = sentinel,
+            response_type: Optional[Type[Any]] = Unset,
             response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
@@ -432,7 +424,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         """
         return self.add_route(
             # aiohttp attrs
-            hdrs.METH_PUT,
+            METH_PUT,
             path,
             handler,
             name=name,
@@ -457,11 +449,11 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
     def add_patch(
             self,
             path: str,
-            handler: HandlerType,
+            handler: HandlerOrView,
             *,
             name: Optional[str] = None,
             response_validate: bool = True,
-            response_type: Optional[Type[Any]] = sentinel,
+            response_type: Optional[Type[Any]] = Unset,
             response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
@@ -527,7 +519,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         """
         return self.add_route(
             # aiohttp attrs
-            hdrs.METH_PATCH,
+            METH_PATCH,
             path,
             handler,
             name=name,
@@ -552,11 +544,11 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
     def add_delete(
             self,
             path: str,
-            handler: HandlerType,
+            handler: HandlerOrView,
             *,
             name: Optional[str] = None,
             response_validate: bool = True,
-            response_type: Optional[Type[Any]] = sentinel,
+            response_type: Optional[Type[Any]] = Unset,
             response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
@@ -622,7 +614,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         """
         return self.add_route(
             # aiohttp attrs
-            hdrs.METH_DELETE,
+            METH_DELETE,
             path,
             handler,
             name=name,
@@ -651,7 +643,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             *,
             name: Optional[str] = None,
             response_validate: bool = True,
-            response_type: Optional[Type[Any]] = sentinel,
+            response_type: Optional[Type[Any]] = Unset,
             response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
@@ -717,7 +709,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         """
         return self.add_route(
             # aiohttp attrs
-            hdrs.METH_ANY,
+            METH_ANY,
             path,
             handler,
             name=name,

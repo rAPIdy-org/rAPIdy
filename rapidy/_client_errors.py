@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Tuple, Type, Union
+from typing import Any, Dict, List, Type, Union
 
 from pydantic import BaseModel, create_model
 
-from rapidy._constants import PYDANTIC_V1, PYDANTIC_V2
-from rapidy.typedefs import DictStrAny, ErrorWrapper, ValidationErrorList
+from rapidy.constants import PYDANTIC_IS_V1
+from rapidy.typedefs import DictStrAny, ErrorWrapper, LocStr, ValidationErrorList
 
 ErrorModel: Type[BaseModel] = create_model('Model')
 RequestErrorModel: Type[BaseModel] = create_model('Request')
@@ -20,18 +20,18 @@ class ClientBaseError(ABC, ValueError):
     @abstractmethod
     def get_error_info(
             self,
-            loc: Tuple[str, ...],
+            loc: LocStr,
     ) -> Dict[str, Any]:  # pragma: no cover
         raise NotImplementedError
 
 
-if PYDANTIC_V1:
+if PYDANTIC_IS_V1:
     from pydantic.error_wrappers import ValidationError
 
     class ClientError(ClientBaseError, ABC):
         def get_error_info(
                 self,
-                loc: Tuple[str, ...],
+                loc: LocStr,
         ) -> Dict[str, Any]:
             return {
                 'loc': loc,
@@ -46,10 +46,10 @@ if PYDANTIC_V1:
     def regenerate_error_with_loc(
             *,
             errors: List[Any],
-            loc_prefix: Tuple[Union[str, int], ...],
+            loc: LocStr,
     ) -> List[Dict[str, Any]]:
         return [
-            {**err, 'loc': loc_prefix + err.get('loc', ())}
+            {**err, 'loc': loc + err.get('loc', ())}
             for err in normalize_errors(errors)
         ]
 
@@ -75,14 +75,14 @@ if PYDANTIC_V1:
             return normalize_error_wrapper(errors)
         return [errors]
 
-elif PYDANTIC_V2:
+else:
     from pydantic import ValidationError
     from pydantic_core import InitErrorDetails, PydanticCustomError
 
     class ClientError(ClientBaseError, ABC):  # type: ignore[no-redef]
         def get_error_info(
                 self,
-                loc: Tuple[str, ...],
+                loc: LocStr,
         ) -> Dict[str, Any]:
             err = PydanticCustomError(self.type, self._err_msg)
             err_details = InitErrorDetails(type=err, loc=loc, input=input)
@@ -99,10 +99,10 @@ elif PYDANTIC_V2:
     def regenerate_error_with_loc(
             *,
             errors: List[Any],
-            loc_prefix: Tuple[Union[str, int], ...],
+            loc: LocStr,
     ) -> List[Dict[str, Any]]:
         return [
-            {**err, 'loc': loc_prefix + err.get('loc', ())}
+            {**err, 'loc': loc + err.get('loc', ())}
             for err in errors
         ]
 
@@ -118,6 +118,3 @@ elif PYDANTIC_V2:
 
         error_dict_pop_useless_keys(errors)
         return [errors]
-
-else:
-    raise Exception

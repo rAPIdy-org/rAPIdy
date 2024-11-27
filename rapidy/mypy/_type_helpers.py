@@ -2,18 +2,18 @@ from typing import Set
 
 from mypy.types import AnyType, TypeOfAny
 
-from rapidy import request_parameters
+from rapidy.parameters import http
 
 AnyTypeExplicit = AnyType(TypeOfAny.explicit)
 
-RAPIDY_PARAM_BASE = 'rapidy.request_parameters.'
+RAPIDY_HTTP_PARAM_MODULE = 'rapidy.parameters.http'
 
-ALL_RAPIDY_PARAMS: Set[str] = {f'{RAPIDY_PARAM_BASE}{param}' for param in request_parameters.__all__}  # noqa: WPS407
+ALL_RAPIDY_PARAMS: Set[str] = {f'{RAPIDY_HTTP_PARAM_MODULE}.{param}' for param in http.__all__}  # noqa: WPS407
 
 PARAMETERS_WITHOUT_DEFAULT_VALUES: Set[str] = {  # noqa: WPS407
     # PATH
-    f'{RAPIDY_PARAM_BASE}PathParam',
-    f'{RAPIDY_PARAM_BASE}PathParams',
+    f'{RAPIDY_HTTP_PARAM_MODULE}.PathParam',
+    f'{RAPIDY_HTTP_PARAM_MODULE}.PathParams',
 }
 
 

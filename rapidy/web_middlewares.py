@@ -3,13 +3,12 @@ from functools import wraps
 from typing import Any, Callable, cast, NamedTuple, Optional, overload, Type, TypeVar, Union
 from urllib.request import Request
 
-from aiohttp.helpers import sentinel
-from aiohttp.typedefs import DEFAULT_JSON_ENCODER, JSONEncoder
 from aiohttp.web_middlewares import middleware as aiohttp_middleware, normalize_path_middleware
 
+from rapidy.constants import DEFAULT_JSON_ENCODER
 from rapidy.encoders import CustomEncoder, Exclude, Include
 from rapidy.enums import Charset, ContentType
-from rapidy.typedefs import CallNext, Middleware
+from rapidy.typedefs import CallNext, JSONEncoder, Middleware, Unset
 
 __all__ = (
     'middleware',
@@ -46,7 +45,7 @@ def middleware(middleware: TMiddleware) -> TMiddleware:  # noqa: WPS442
 def middleware(
         *,
         response_validate: bool = True,
-        response_type: Optional[Type[Any]] = sentinel,
+        response_type: Optional[Type[Any]] = Unset,
         response_content_type: Union[str, ContentType, None] = None,
         response_charset: Union[str, Charset] = Charset.utf8,
         response_zlib_executor: Optional[Executor] = None,
@@ -67,7 +66,7 @@ def middleware(
         middleware: Optional[TMiddleware] = None,  # noqa: WPS442
         *,
         response_validate: bool = True,
-        response_type: Optional[Type[Any]] = sentinel,
+        response_type: Optional[Type[Any]] = Unset,
         response_content_type: Union[str, ContentType, None] = None,
         response_charset: Union[str, Charset] = Charset.utf8,
         response_zlib_executor: Optional[Executor] = None,
@@ -81,7 +80,7 @@ def middleware(
         response_custom_encoder: Optional[CustomEncoder] = None,
         response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
 ) -> Union[TMiddleware, Callable[[Any], TMiddleware]]:
-    """rAPIdy middleware decorator.
+    """`rapidy` middleware decorator.
 
     Args:
         middleware:

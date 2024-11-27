@@ -1,9 +1,11 @@
-from rapidy.request_parameters import PathParam, PathParams
+from rapidy.parameters.http import PathParam, PathParams
 
-PathParam('1')
-PathParam(default_factory=lambda: '1')
-PathParam('1', default_factory=lambda: '1')
 
-PathParams('1')
-PathParams(default_factory=lambda: '1')
-PathParams('1', default_factory=lambda: '1')
+def handler(
+        _1: int = PathParam('1'),
+        _2: int = PathParam(default_factory=lambda: '1'),
+        _3: int = PathParam('1', default_factory=lambda: '1'),
+        _4: int = PathParams('1'),
+        _5: int = PathParams(default_factory=lambda: '1'),
+        _6: int = PathParams('1', default_factory=lambda: '1'),
+) -> None: pass

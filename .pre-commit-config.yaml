@@ -28,7 +28,7 @@ repos:
       - id: isort
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.8.0
+    rev: v1.13.0
     hooks:
       - id: mypy
         types_or:
@@ -36,6 +36,7 @@ repos:
           - pyi
         require_serial: true
         exclude: ^tests/mypy/cases/
+        additional_dependencies: ["attrs==24.2.0"]
 
   - repo: https://github.com/PyCQA/flake8
     rev: 6.1.0

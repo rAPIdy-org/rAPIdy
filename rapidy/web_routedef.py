@@ -2,14 +2,13 @@ from concurrent.futures import Executor
 from typing import Any, Callable, Optional, Type, Union
 
 from aiohttp.abc import AbstractView
-from aiohttp.helpers import sentinel
+from aiohttp.hdrs import METH_ANY, METH_DELETE, METH_GET, METH_HEAD, METH_OPTIONS, METH_PATCH, METH_POST, METH_PUT
 from aiohttp.typedefs import DEFAULT_JSON_ENCODER, JSONEncoder, PathLike
 from aiohttp.web_routedef import AbstractRouteDef, RouteDef, RouteTableDef as AioHTTPRouteTableDef, StaticDef
 
-from rapidy import hdrs
 from rapidy.encoders import CustomEncoder, Exclude, Include
 from rapidy.enums import Charset, ContentType
-from rapidy.typedefs import HandlerType
+from rapidy.typedefs import HandlerOrView, Unset
 
 __all__ = (
     'AbstractRouteDef',
@@ -28,29 +27,29 @@ __all__ = (
     'static',
 )
 
-RouterDeco = Callable[[HandlerType], HandlerType]
+RouterDeco = Callable[[HandlerOrView], HandlerOrView]
 
 
-def route(method: str, path: str, handler: HandlerType, **kwargs: Any) -> RouteDef:
+def route(method: str, path: str, handler: HandlerOrView, **kwargs: Any) -> RouteDef:
     return RouteDef(method=method, path=path, handler=handler, kwargs=kwargs)
 
 
-def head(path: str, handler: HandlerType, **kwargs: Any) -> RouteDef:
-    return route(method=hdrs.METH_HEAD, path=path, handler=handler, **kwargs)
+def head(path: str, handler: HandlerOrView, **kwargs: Any) -> RouteDef:
+    return route(method=METH_HEAD, path=path, handler=handler, **kwargs)
 
 
-def options(path: str, handler: HandlerType, **kwargs: Any) -> RouteDef:
-    return route(method=hdrs.METH_OPTIONS, path=path, handler=handler, **kwargs)
+def options(path: str, handler: HandlerOrView, **kwargs: Any) -> RouteDef:
+    return route(method=METH_OPTIONS, path=path, handler=handler, **kwargs)
 
 
 def get(
         path: str,
-        handler: HandlerType,
+        handler: HandlerOrView,
         *,
         name: Optional[str] = None,
         allow_head: bool = True,
         response_validate: bool = True,
-        response_type: Optional[Type[Any]] = sentinel,
+        response_type: Optional[Type[Any]] = Unset,
         response_content_type: Union[str, ContentType, None] = None,
         response_charset: Union[str, Charset] = Charset.utf8,
         response_zlib_executor: Optional[Executor] = None,
@@ -123,7 +122,7 @@ def get(
     """
     return route(
         # aiohttp attrs
-        method=hdrs.METH_GET,
+        method=METH_GET,
         path=path,
         handler=handler,
         name=name,
@@ -149,11 +148,11 @@ def get(
 
 def post(
         path: str,
-        handler: HandlerType,
+        handler: HandlerOrView,
         *,
         name: Optional[str] = None,
         response_validate: bool = True,
-        response_type: Optional[Type[Any]] = sentinel,
+        response_type: Optional[Type[Any]] = Unset,
         response_content_type: Union[str, ContentType, None] = None,
         response_charset: Union[str, Charset] = Charset.utf8,
         response_zlib_executor: Optional[Executor] = None,
@@ -219,7 +218,7 @@ def post(
     """
     return route(
         # aiohttp attrs
-        method=hdrs.METH_POST,
+        method=METH_POST,
         path=path,
         handler=handler,
         name=name,
@@ -244,11 +243,11 @@ def post(
 
 def put(
         path: str,
-        handler: HandlerType,
+        handler: HandlerOrView,
         *,
         name: Optional[str] = None,
         response_validate: bool = True,
-        response_type: Optional[Type[Any]] = sentinel,
+        response_type: Optional[Type[Any]] = Unset,
         response_content_type: Union[str, ContentType, None] = None,
         response_charset: Union[str, Charset] = Charset.utf8,
         response_zlib_executor: Optional[Executor] = None,
@@ -314,7 +313,7 @@ def put(
     """
     return route(
         # aiohttp attrs
-        method=hdrs.METH_PUT,
+        method=METH_PUT,
         path=path,
         handler=handler,
         name=name,
@@ -339,11 +338,11 @@ def put(
 
 def patch(
         path: str,
-        handler: HandlerType,
+        handler: HandlerOrView,
         *,
         name: Optional[str] = None,
         response_validate: bool = True,
-        response_type: Optional[Type[Any]] = sentinel,
+        response_type: Optional[Type[Any]] = Unset,
         response_content_type: Union[str, ContentType, None] = None,
         response_charset: Union[str, Charset] = Charset.utf8,
         response_zlib_executor: Optional[Executor] = None,
@@ -409,7 +408,7 @@ def patch(
     """
     return route(
         # aiohttp attrs
-        method=hdrs.METH_PATCH,
+        method=METH_PATCH,
         path=path,
         handler=handler,
         name=name,
@@ -434,11 +433,11 @@ def patch(
 
 def delete(
         path: str,
-        handler: HandlerType,
+        handler: HandlerOrView,
         *,
         name: Optional[str] = None,
         response_validate: bool = True,
-        response_type: Optional[Type[Any]] = sentinel,
+        response_type: Optional[Type[Any]] = Unset,
         response_content_type: Union[str, ContentType, None] = None,
         response_charset: Union[str, Charset] = Charset.utf8,
         response_zlib_executor: Optional[Executor] = None,
@@ -504,7 +503,7 @@ def delete(
     """
     return route(
         # aiohttp attrs
-        method=hdrs.METH_DELETE,
+        method=METH_DELETE,
         path=path,
         handler=handler,
         name=name,
@@ -533,7 +532,7 @@ def view(
         *,
         name: Optional[str] = None,
         response_validate: bool = True,
-        response_type: Optional[Type[Any]] = sentinel,
+        response_type: Optional[Type[Any]] = Unset,
         response_content_type: Union[str, ContentType, None] = None,
         response_charset: Union[str, Charset] = Charset.utf8,
         response_zlib_executor: Optional[Executor] = None,
@@ -599,7 +598,7 @@ def view(
     """
     return route(
         # aiohttp attrs
-        method=hdrs.METH_ANY,
+        method=METH_ANY,
         path=path,
         handler=handler,
         name=name,
@@ -628,7 +627,7 @@ def static(prefix: str, path: PathLike, **kwargs: Any) -> StaticDef:
 
 class RouteTableDef(AioHTTPRouteTableDef):
     def route(self, method: str, path: str, **kwargs: Any) -> RouterDeco:
-        def inner(handler: HandlerType) -> HandlerType:
+        def inner(handler: HandlerOrView) -> HandlerOrView:
             self._items.append(RouteDef(method, path, handler, kwargs))
             return handler
 
@@ -636,7 +635,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
 
     def head(self, path: str, **kwargs: Any) -> RouterDeco:
         """Add a new RouteDef item for registering HEAD web-handler."""
-        return self.route(hdrs.METH_HEAD, path, **kwargs)
+        return self.route(METH_HEAD, path, **kwargs)
 
     def get(
             self,
@@ -645,7 +644,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             name: Optional[str] = None,
             allow_head: bool = True,
             response_validate: bool = True,
-            response_type: Optional[Type[Any]] = sentinel,
+            response_type: Optional[Type[Any]] = Unset,
             response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
@@ -716,7 +715,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
         """
         return self.route(
             # aiohttp attrs
-            hdrs.METH_GET,
+            METH_GET,
             path,
             name=name,
             allow_head=allow_head,
@@ -744,7 +743,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             *,
             name: Optional[str] = None,
             response_validate: bool = True,
-            response_type: Optional[Type[Any]] = sentinel,
+            response_type: Optional[Type[Any]] = Unset,
             response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
@@ -808,7 +807,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
         """
         return self.route(
             # aiohttp attrs
-            hdrs.METH_POST,
+            METH_POST,
             path,
             name=name,
             **kwargs,
@@ -835,7 +834,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             *,
             name: Optional[str] = None,
             response_validate: bool = True,
-            response_type: Optional[Type[Any]] = sentinel,
+            response_type: Optional[Type[Any]] = Unset,
             response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
@@ -899,7 +898,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
         """
         return self.route(
             # aiohttp attrs
-            hdrs.METH_PUT,
+            METH_PUT,
             path,
             name=name,
             **kwargs,
@@ -926,7 +925,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             *,
             name: Optional[str] = None,
             response_validate: bool = True,
-            response_type: Optional[Type[Any]] = sentinel,
+            response_type: Optional[Type[Any]] = Unset,
             response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
@@ -990,7 +989,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
         """
         return self.route(
             # aiohttp attrs
-            hdrs.METH_PATCH,
+            METH_PATCH,
             path,
             name=name,
             **kwargs,
@@ -1017,7 +1016,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             *,
             name: Optional[str] = None,
             response_validate: bool = True,
-            response_type: Optional[Type[Any]] = sentinel,
+            response_type: Optional[Type[Any]] = Unset,
             response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
@@ -1081,7 +1080,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
         """
         return self.route(
             # aiohttp attrs
-            hdrs.METH_DELETE,
+            METH_DELETE,
             path,
             name=name,
             **kwargs,
@@ -1109,7 +1108,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             path:
                 Resource path spec.
         """
-        return self.route(hdrs.METH_OPTIONS, path, **kwargs)
+        return self.route(METH_OPTIONS, path, **kwargs)
 
     def view(
             self,
@@ -1117,7 +1116,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             *,
             name: Optional[str] = None,
             response_validate: bool = True,
-            response_type: Optional[Type[Any]] = sentinel,
+            response_type: Optional[Type[Any]] = Unset,
             response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
@@ -1181,7 +1180,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
         """
         return self.route(
             # aiohttp attrs
-            hdrs.METH_ANY,
+            METH_ANY,
             path,
             name=name,
             **kwargs,

@@ -7,9 +7,9 @@ from aiohttp.web_app import Application as AiohttpApplication, CleanupError
 from aiohttp.web_middlewares import _fix_request_current_app
 from aiohttp.web_request import Request
 
-from rapidy import hdrs
-from rapidy._endpoint_validation_wrappers import middleware_validation_wrapper
-from rapidy._lifespan import Lifespan, LifespanCTX, LifespanHook
+from rapidy.endpoint_handlers.http.handlers import middleware_validation_wrapper
+from rapidy.enums import HeaderName
+from rapidy.lifespan import Lifespan, LifespanCTX, LifespanHook
 from rapidy.typedefs import Middleware
 from rapidy.version import SERVER_INFO
 from rapidy.web_middlewares import get_middleware_attr_data, is_aiohttp_new_style_middleware, is_rapidy_middleware
@@ -25,16 +25,16 @@ __all__ = (
 InnerDeco = Callable[[], Coroutine[Any, Any, None]]
 
 
-def hide_server_info_deco(show_server_info_in_response: bool = False) -> Callable[[Any], InnerDeco]:
+def server_info_wrapper(show_server_info_in_response: bool = False) -> Callable[[Any], InnerDeco]:
     def deco(prepare_headers_bound_method: Any) -> InnerDeco:
         response = prepare_headers_bound_method.__self__
 
         async def inner() -> None:
             await prepare_headers_bound_method()
             if show_server_info_in_response:
-                response._headers[hdrs.SERVER] = SERVER_INFO
+                response._headers[HeaderName.server.value] = SERVER_INFO
             else:
-                response._headers.pop(hdrs.SERVER)
+                response._headers.pop(HeaderName.server)
 
         return inner
 
@@ -55,7 +55,7 @@ class Application(AiohttpApplication):
             on_shutdown: Optional[List[LifespanHook]] = None,
             on_cleanup: Optional[List[LifespanHook]] = None,
     ) -> None:
-        """Create an rAPIdy Application instance.
+        """Create an `rapidy` Application instance.
 
         Args:
             logger:
@@ -165,7 +165,7 @@ class Application(AiohttpApplication):
         self._router = UrlDispatcher()
 
         # It is hidden by default, as I believe showing server information is a potential vulnerability.
-        self._hide_server_info_deco = hide_server_info_deco(server_info_in_response)
+        self._hide_server_info_deco = server_info_wrapper(server_info_in_response)
 
     @property
     def router(self) -> UrlDispatcher:
@@ -212,7 +212,7 @@ class Application(AiohttpApplication):
                 yield middleware, True
             else:
                 warnings.warn(
-                    'rAPIdy does not support Old-style middleware - please use @middleware decorator.\n'
+                    '`rapidy` does not support Old-style middleware - please use @middleware decorator.\n'
                     'If you are using middlewares with a nested middlewares wrapped by @middleware -\n'
                     'make sure that in Application(middlewares=[...]) you pass its instance.\n\n'
                     'Example:\n'
