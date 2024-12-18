@@ -15,11 +15,12 @@ concurrency:
 
 jobs:
   pre-commit:
-    runs-on: ["self-hosted", "Ubuntu-latest", "Windows"]
+    runs-on: ["self-hosted", ${{ matrix.os }}]
     strategy:
       fail-fast: false
       max-parallel: 50
       matrix:
+        os: [Windows, Ubuntu-latest]
         pydantic-version:
           - "pydantic-v1"
           - "pydantic-v2"
@@ -54,7 +55,7 @@ jobs:
         uses: pre-commit/action@v3.0.0
 
   test:
-    runs-on: ["self-hosted", "Ubuntu-latest", "Windows"]
+    runs-on: ["self-hosted", "Ubuntu-latest"]
     needs: ["pre-commit"]
     strategy:
       fail-fast: false
@@ -143,7 +144,7 @@ jobs:
           name: coverage
 
   test-mypy:
-    runs-on: [ "self-hosted", "Ubuntu-latest", "Windows"]
+    runs-on: [ "self-hosted", "Ubuntu-latest"]
     needs: [ "pre-commit" ]
     strategy:
       fail-fast: false
@@ -218,7 +219,7 @@ jobs:
 
   coverage-combine:
     needs: [ "test", "test-mypy" ]
-    runs-on: ["self-hosted", "Ubuntu-latest", "Windows"]
+    runs-on: ["self-hosted", "Ubuntu-latest"]
     steps:
       - name: Dump github context
         env:
@@ -255,7 +256,7 @@ jobs:
     if: always()
     needs:
       - coverage-combine
-    runs-on: ["self-hosted", "Ubuntu-latest", "Windows"]
+    runs-on: ["self-hosted", "Ubuntu-latest"]
     steps:
       - name: Dump github context
         env:
