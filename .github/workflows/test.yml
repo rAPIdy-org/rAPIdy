@@ -15,12 +15,12 @@ concurrency:
 
 jobs:
   pre-commit:
-    runs-on: ["self-hosted", ${{ matrix.os }}]
+    runs-on: ["self-hosted", "${{ matrix.os }}"]
     strategy:
       fail-fast: false
       max-parallel: 50
       matrix:
-        os: [Windows, Ubuntu-latest]
+        os: ["Windows", "Ubuntu-latest"]
         pydantic-version:
           - "pydantic-v1"
           - "pydantic-v2"
