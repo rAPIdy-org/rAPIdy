@@ -10,6 +10,9 @@ keywords = [
     "rAPIdy",
     "aiohttp",
     "pydantic",
+    "http",
+    "server",
+    "client",
     "api",
     "fast",
     "http server",
@@ -130,6 +133,7 @@ ignore = [
 ]
 per-file-ignores = [
     'rapidy/__init__.py: N813 WPS412 WPS413 WPS433 WPS442',
+    'rapidy/routing/http/routers.py: N801',
     'rapidy/_base_exceptions.py: WPS336',
     'rapidy/_client_errors.py: C901 WPS433 WPS440',
     'rapidy/web_app.py: WPS404',
@@ -142,7 +146,6 @@ per-file-ignores = [
     'rapidy/mypy/_type_helpers.py: WPS221 WPS602',
     'rapidy/parameters/http.py: WPS612',
 ]
-
 
 [tool.mypy]
 pretty = true

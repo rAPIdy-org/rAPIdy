@@ -26,7 +26,7 @@ __all__ = (
 AppFabric: TypeAlias = Callable[..., Tuple[web.Application, ...]]
 
 PATH: Final[str] = '/'
-WEB_METHOD_NAMES: Tuple[str, ...] = ('get', 'post', 'put', 'patch', 'delete')
+WEB_METHOD_NAMES: Tuple[str, ...] = ('get', 'post', 'put', 'patch', 'delete', 'options')  # aiohttp head -> no return
 
 DEFAULT_RETURN_TYPE: Type[str] = str
 DEFAULT_RETURN_VALUE: Final[str] = 'test'
@@ -87,6 +87,32 @@ def create_app_use_app_router(
     return app
 
 
+def create_app_use_rapidy_router(
+        handler: Any,
+        web_method: str,
+        **handler_kwargs: Any,
+) -> web.Application:
+    from rapidy.routing.http import routers
+
+    method = get_bound_method_by_http_method_name(routers, web_method)
+    route = method(PATH, **handler_kwargs)(handler)
+
+    app = web.Application(http_route_handlers=[route])
+
+    return app
+
+
+def create_app_use_rapidy_router_as_handler(
+        handler: Any,
+        web_method: str,
+        **handler_kwargs: Any,
+) -> web.Application:
+    from rapidy.routing.http import routers
+    method = get_bound_method_by_http_method_name(routers, web_method)
+    app = web.Application(http_route_handlers=[method.handler(PATH, handler, **handler_kwargs)])
+    return app
+
+
 def create_all_type_apps(
         handler: Any,
         web_method: str,
@@ -96,6 +122,8 @@ def create_all_type_apps(
         create_app_use_route_table_def(handler, web_method, **handler_kwargs),
         create_app_use_simple_method_func(handler, web_method, **handler_kwargs),
         create_app_use_app_router(handler, web_method, **handler_kwargs),
+        create_app_use_rapidy_router(handler, web_method, **handler_kwargs),
+        create_app_use_rapidy_router_as_handler(handler, web_method, **handler_kwargs),
     )
 
 
@@ -123,6 +151,7 @@ def create_all_view_handler_apps(
         async def put(self) -> handler_return_type: return return_value
         async def patch(self) -> handler_return_type: return return_value
         async def delete(self) -> handler_return_type: return return_value
+        async def options(self) -> handler_return_type: return return_value
 
     app_with_routes_as_method = create_all_type_apps(Handler, web_method, **handler_kwargs)
     app_with_routes_as_view = create_all_type_apps(Handler, 'view', **handler_kwargs)

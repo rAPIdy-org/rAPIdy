@@ -1,6 +1,6 @@
 from http import HTTPStatus
 from pathlib import Path
-from typing import Any, Final
+from typing import Final
 
 from aiohttp.pytest_plugin import AiohttpClient
 

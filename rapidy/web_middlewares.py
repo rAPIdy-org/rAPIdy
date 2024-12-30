@@ -45,7 +45,7 @@ def middleware(middleware: TMiddleware) -> TMiddleware:  # noqa: WPS442
 def middleware(
         *,
         response_validate: bool = True,
-        response_type: Optional[Type[Any]] = Unset,
+        response_type: Optional[Type[Any]] = Unset,  # type: ignore
         response_content_type: Union[str, ContentType, None] = None,
         response_charset: Union[str, Charset] = Charset.utf8,
         response_zlib_executor: Optional[Executor] = None,
@@ -66,7 +66,7 @@ def middleware(
         middleware: Optional[TMiddleware] = None,  # noqa: WPS442
         *,
         response_validate: bool = True,
-        response_type: Optional[Type[Any]] = Unset,
+        response_type: Optional[Type[Any]] = Unset,  # type: ignore
         response_content_type: Union[str, ContentType, None] = None,
         response_charset: Union[str, Charset] = Charset.utf8,
         response_zlib_executor: Optional[Executor] = None,

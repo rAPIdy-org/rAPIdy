@@ -1,167 +1,61 @@
-from abc import ABC
 from concurrent.futures import Executor
-from types import FunctionType
-from typing import Any, cast, Final, Optional, Type, Union
+from typing import Any, Iterable, List, Optional, Type, Union
 
 from aiohttp.abc import AbstractView
-from aiohttp.hdrs import METH_ANY, METH_DELETE, METH_GET, METH_HEAD, METH_OPTIONS, METH_PATCH, METH_POST, METH_PUT
-from aiohttp.typedefs import DEFAULT_JSON_ENCODER, JSONEncoder
-from aiohttp.web_urldispatcher import (
-    _ExpectHandler,
-    _requote_path,
-    AbstractResource,
-    AbstractRoute,
-    DynamicResource as AioHTTPDynamicResource,
-    PlainResource as AioHTTPPlainResource,
-    PrefixedSubAppResource,
-    Resource as AioHTTPResource,
-    ResourceRoute as AioHTTPResourceRoute,
-    ROUTE_RE,
-    StaticResource,
-    UrlDispatcher as AioHTTPUrlDispatcher,
-    UrlMappingMatchInfo,
-    View,
+from aiohttp.web_routedef import RouteDef
+
+from rapidy._base_exceptions import RapidyException
+from rapidy.constants import CLIENT_MAX_SIZE, DEFAULT_JSON_ENCODER
+from rapidy.encoders import CustomEncoder, Exclude, Include
+from rapidy.enums import Charset, ContentType, MethodName
+from rapidy.lifespan import is_async_callable, LifespanCTX, LifespanHook
+from rapidy.routing.http.base import BaseHTTPRouter
+from rapidy.typedefs import HandlerOrView, HTTPRouterType, JSONEncoder, Middleware, Unset
+from rapidy.web_app import Application
+
+__all__ = (
+    'HTTPRouterType',
+    'get',
+    'post',
+    'put',
+    'patch',
+    'delete',
+    'head',
+    'options',
+    'view',
 )
 
-from rapidy.encoders import CustomEncoder, Exclude, Include
-from rapidy.endpoint_handlers.http.handlers import handler_validation_wrapper, view_validation_wrapper
-from rapidy.enums import Charset, ContentType
-from rapidy.typedefs import Handler, HandlerOrView, Unset
 
-__all__ = [
-    'UrlDispatcher',
-    'UrlMappingMatchInfo',
-    'AbstractResource',
-    'Resource',
-    'PlainResource',
-    'PrefixedSubAppResource',
-    'DynamicResource',
-    'AbstractRoute',
-    'ResourceRoute',
-    'StaticResource',
-    'View',
-]
-
-HEAD_METHOD_NAME: Final[str] = 'head'
+class IncorrectTypeViewError(RapidyException):
+    message = '`handler` must be a subclass of `AbstractView`. Current type: `{type_handler}`'
 
 
-def wrap_handler(
-        *,
-        handler: Union[Handler, View],
-        wrapper: Any,
-        **kwargs: Any,
-) -> Union[Handler, View]:
-    return wrapper(
-        handler,
-        response_validate=kwargs['response_validate'],
-        response_type=kwargs['response_type'],
-        response_content_type=kwargs['response_content_type'],
-        response_charset=kwargs['response_charset'],
-        response_zlib_executor=kwargs['response_zlib_executor'],
-        response_zlib_executor_size=kwargs['response_zlib_executor_size'],
-        response_include_fields=kwargs['response_include_fields'],
-        response_exclude_fields=kwargs['response_exclude_fields'],
-        response_by_alias=kwargs['response_by_alias'],
-        response_exclude_unset=kwargs['response_exclude_unset'],
-        response_exclude_defaults=kwargs['response_exclude_defaults'],
-        response_exclude_none=kwargs['response_exclude_none'],
-        response_custom_encoder=kwargs['response_custom_encoder'],
-        response_json_encoder=kwargs['response_json_encoder'],
+class IncorrectHandlerTypeError(RapidyException):
+    message = '`handler` must be a subclass of `AbstractView` or async function`. Current type: `{type_handler}`'
+
+
+def is_view(handler: Any) -> bool:
+    return isinstance(handler, type) and issubclass(handler, AbstractView)
+
+
+class HTTPRouteHandler(BaseHTTPRouter):
+    _method_name: MethodName
+
+    __slots__ = (
+        '_method_name',
+        '_route_def',
+        '_real_handler',
+        '_fn',
+        'path',
     )
 
-
-class ResourceRoute(AioHTTPResourceRoute, ABC):
     def __init__(
             self,
-            method: str,
-            handler: HandlerOrView,
-            resource: AbstractResource,
-            *,
-            expect_handler: Optional[_ExpectHandler] = None,
-            **kwargs: Any,
-    ) -> None:
-        if isinstance(handler, FunctionType):
-            handler = wrap_handler(handler=handler, wrapper=handler_validation_wrapper, **kwargs)
-        elif issubclass(handler, View):  # type: ignore[arg-type]
-            handler = wrap_handler(handler=handler, wrapper=view_validation_wrapper, **kwargs)
-
-        super().__init__(method=method, handler=handler, expect_handler=expect_handler, resource=resource)
-
-
-class Resource(AioHTTPResource, ABC):
-    def add_route(
-            self,
-            method: str,
-            handler: HandlerOrView,
-            *,
-            expect_handler: Optional[_ExpectHandler] = None,
-            **kwargs: Any,
-    ) -> 'ResourceRoute':
-        for route_obj in self._routes:
-            if route_obj.method == method or route_obj.method == METH_ANY:  # noqa: WPS514
-                raise RuntimeError(  # aiohttp code  # pragma: no cover
-                    'Added route will never be executed, '
-                    'method {route.method} is already '
-                    'registered'.format(route=route_obj),
-                )
-
-        route_obj = ResourceRoute(method, handler, self, expect_handler=expect_handler, **kwargs)  # noqa: WPS440
-        self.register_route(route_obj)  # noqa: WPS441
-
-        return route_obj  # noqa: WPS441
-
-
-class PlainResource(Resource, AioHTTPPlainResource):
-    pass
-
-
-class DynamicResource(Resource, AioHTTPDynamicResource):
-    pass
-
-
-class UrlDispatcher(AioHTTPUrlDispatcher):
-    def add_resource(self, path: str, *, name: Optional[str] = None) -> Resource:
-        if path and not path.startswith('/'):  # aiohttp code  # pragma: no cover
-            raise ValueError('path should be started with / or be empty')
-
-        # Reuse last added resource if path and name are the same
-        if self._resources:
-            resource = self._resources[-1]
-            if resource.name == name and resource.raw_match(path):
-                return cast(Resource, resource)
-
-        if not ('{' in path or '}' in path or ROUTE_RE.search(path)):
-            resource = PlainResource(_requote_path(path), name=name)
-            self.register_resource(resource)
-            return resource
-
-        resource = DynamicResource(path, name=name)
-        self.register_resource(resource)
-
-        return resource
-
-    def add_route(
-            self,
-            method: str,
             path: str,
-            handler: HandlerOrView,
             *,
             name: Optional[str] = None,
-            expect_handler: Optional[_ExpectHandler] = None,
-            **kwargs: Any,
-    ) -> AbstractRoute:
-        resource = self.add_resource(path, name=name)
-        return resource.add_route(method, handler, expect_handler=expect_handler, **kwargs)
-
-    def add_get(
-            self,
-            path: str,
-            handler: HandlerOrView,
-            *,
-            name: Optional[str] = None,
-            allow_head: bool = True,
             response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,  # type: ignore
+            response_type: Optional[Type[Any]] = Unset,
             response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
@@ -175,14 +69,287 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_custom_encoder: Optional[CustomEncoder] = None,
             response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
             **kwargs: Any,
-    ) -> AbstractRoute:
-        """Shortcut for add_route with method GET.
+    ) -> None:
+        super().__init__(path=path)
+
+        self._route_def = None
+        self._real_handler = None
+
+        def inner(handler: HandlerOrView) -> 'HTTPRouteHandler':
+            self._real_handler = handler
+
+            self._route_def = RouteDef(
+                self._method_name.value,
+                path,
+                handler,
+                kwargs={
+                    'name': name,
+                    'response_validate': response_validate,
+                    'response_type': response_type,
+                    'response_content_type': response_content_type,
+                    'response_charset': response_charset,
+                    'response_zlib_executor': response_zlib_executor,
+                    'response_zlib_executor_size': response_zlib_executor_size,
+                    'response_include_fields': response_include_fields,
+                    'response_exclude_fields': response_exclude_fields,
+                    'response_by_alias': response_by_alias,
+                    'response_exclude_unset': response_exclude_unset,
+                    'response_exclude_defaults': response_exclude_defaults,
+                    'response_exclude_none': response_exclude_none,
+                    'response_custom_encoder': response_custom_encoder,
+                    'response_json_encoder': response_json_encoder,
+                    **kwargs,
+                },
+            )
+            return self
+
+        self._fn = inner
+
+    def __call__(self, handler: HandlerOrView) -> 'HTTPRouteHandler':
+        return self._fn(handler)
+
+    @classmethod
+    def handler(
+            cls,
+            path: str,
+            handler: HandlerOrView,
+            *,
+            name: Optional[str] = None,
+            response_validate: bool = True,
+            response_type: Optional[Type[Any]] = Unset,
+            response_content_type: Union[str, ContentType, None] = None,
+            response_charset: Union[str, Charset] = Charset.utf8,
+            response_zlib_executor: Optional[Executor] = None,
+            response_zlib_executor_size: Optional[int] = None,
+            response_include_fields: Optional[Include] = None,
+            response_exclude_fields: Optional[Exclude] = None,
+            response_by_alias: bool = True,
+            response_exclude_unset: bool = False,
+            response_exclude_defaults: bool = False,
+            response_exclude_none: bool = False,
+            response_custom_encoder: Optional[CustomEncoder] = None,
+            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+            **kwargs: Any,
+    ) -> 'HTTPRouteHandler':
+        init = cls(
+            path=path,
+            name=name,
+            response_validate=response_validate,
+            response_type=response_type,
+            response_content_type=response_content_type,
+            response_charset=response_charset,
+            response_zlib_executor=response_zlib_executor,
+            response_zlib_executor_size=response_zlib_executor_size,
+            response_include_fields=response_include_fields,
+            response_exclude_fields=response_exclude_fields,
+            response_by_alias=response_by_alias,
+            response_exclude_unset=response_exclude_unset,
+            response_exclude_defaults=response_exclude_defaults,
+            response_exclude_none=response_exclude_none,
+            response_custom_encoder=response_custom_encoder,
+            response_json_encoder=response_json_encoder,
+            **kwargs,
+        )
+        return init(handler)
+
+    def register(self, application: Application) -> None:
+        assert self._route_def
+        handler = self._route_def.handler
+        if not is_async_callable(handler):
+            if not is_view(handler):
+                raise IncorrectHandlerTypeError(type_handler=str(type(handler)))
+
+            for handler_attr in dir(handler):
+                if not handler_attr.startswith('_'):
+                    h_method = getattr(handler, handler_attr)
+                    if isinstance(h_method, HTTPRouteHandler):
+                        h_method.register(application)
+
+                        assert h_method._real_handler
+
+                        setattr(handler, handler_attr, h_method._real_handler)  # register true handler (remove deco)
+
+        self._route_def.register(application.router)
+
+
+class HTTPRouter(BaseHTTPRouter):
+    __slots__ = (
+        'path',
+        'application',
+    )
+
+    def __init__(
+            self,
+            path: str,
+            route_handlers: Iterable[HTTPRouterType] = (),
+            *,
+            middlewares: Optional[Iterable[Middleware]] = None,
+            client_max_size: int = CLIENT_MAX_SIZE,
+            lifespan: Optional[List[LifespanCTX]] = None,
+            on_startup: Optional[List[LifespanHook]] = None,
+            on_shutdown: Optional[List[LifespanHook]] = None,
+            on_cleanup: Optional[List[LifespanHook]] = None,
+    ) -> None:
+        """Create an `rapidy` HTTPRouter instance.
+
+        Args:
+            path:
+                HTTPRouter base path.
+            route_handlers:
+                A iterable of `rapidy.routing.http.base.BaseHTTPRouter`.
+                All passed handlers will be registered in the application.
+                >>> from rapidy import web
+                >>> from rapidy.http import get, HTTPRouterType
+                >>>
+                >>> @get('/app_path1')
+                >>> async def app_handler1() -> None: pass
+                >>>
+                >>> async def app_handler2() -> None: pass
+                >>>
+                >>> @get('/router_path1')
+                >>> async def router_handler1() -> None: pass
+                >>>
+                >>> async def router_handler2() -> None: pass
+                >>>
+                >>> api_router = HTTPRouterType(
+                >>>     '/api',
+                >>>     route_handlers=[
+                >>>         router_handler1,
+                >>>         get.handler('/router_path2', router_handler2),
+                >>>     ],
+                >>> )
+                >>>
+                >>> app = web.Application(
+                >>>     http_route_handlers=[
+                >>>         api_router,  # add router
+                >>>         app_handler1,
+                >>>         get.handler('/app_path2', app_handler2),
+                >>>     ]
+                >>> )
+            middlewares:
+                List of middleware factories.
+            client_max_size:
+                Client’s maximum size in a request, in bytes.
+                If a POST request exceeds this value, it raises an HTTPRequestEntityTooLarge exception.
+            lifespan:
+                A list of callables returning async context managers,
+                wrapping the lifespan of the application.
+                >>> @asynccontextmanager
+                >>> async def lifespan_ctx(app: web.Application) -> AsyncGenerator[None, None]:
+                >>>     try:
+                >>>         await startup_func()
+                >>>             yield
+                >>>     finally:
+                >>>         await shutdown_func()
+
+                You can set this in two ways:
+                >>> app = web.Application(lifespan=[lifespan_ctx, ...], ...)
+                or
+                >>> app.lifespan.append(lifespan_ctx)
+            on_startup:
+                A sequence of `rapidy.typedefs.LifespanHook` called during application startup.
+                Developers may use this to run background tasks in the event loop
+                along with the application’s request handler just after the application start-up.
+                >>> def on_startup(app):
+                >>>     pass
+
+                >>> def on_startup():
+                >>>     pass
+
+                >>> async def on_startup(app):
+                >>>     pass
+
+                >>> async def on_startup():
+                >>>     pass
+
+                You can set this in two ways:
+                >>> app = web.Application(on_startup=[on_startup, ...], ...)
+                or
+                >>> app.lifespan.on_startup.append(on_startup)
+            on_shutdown:
+                A sequence of `rapidy.types.LifespanHook` called during application shutdown.
+                Developers may use this for gracefully closing long running connections,
+                e.g. websockets and data streaming.
+                >>> def on_shutdown(app):
+                >>>     pass
+
+                >>> def on_shutdown():
+                >>>     pass
+
+                >>> async def on_shutdown(app):
+                >>>     pass
+
+                >>> async def on_shutdown():
+                >>>     pass
+                You can set this in two ways:
+                >>> app = web.Application(on_shutdown=[on_shutdown, ...], ...)
+                or
+                >>> app.lifespan.on_shutdown.append(on_shutdown)
+            on_cleanup:
+                A sequence of `rapidy.types.LifespanHook` called during application cleanup.
+                Developers may use this for gracefully closing connections to database server etc.
+                Signal handlers should have the following signature:
+                >>> def on_cleanup(app):
+                >>>     pass
+
+                >>> def on_cleanup():
+                >>>     pass
+
+                >>> async def on_cleanup(app):
+                >>>     pass
+
+                >>> async def on_cleanup():
+                >>>     pass
+
+                >>> app = web.Application(on_cleanup=[on_cleanup, ...], ...)
+        """
+
+        super().__init__(path=path)
+
+        self.application = Application(
+            middlewares=middlewares,
+            http_route_handlers=route_handlers,
+            client_max_size=client_max_size,
+            lifespan=lifespan,
+            on_startup=on_startup,
+            on_shutdown=on_shutdown,
+            on_cleanup=on_cleanup,
+        )
+
+    def register(self, application: Application) -> None:
+        application.add_subapp(prefix=self.path, subapp=self.application)
+
+
+class get(HTTPRouteHandler):
+    _method_name = MethodName.get
+
+    def __init__(
+            self,
+            path: str,
+            *,
+            name: Optional[str] = None,
+            allow_head: bool = True,
+            response_validate: bool = True,
+            response_type: Optional[Type[Any]] = Unset,
+            response_content_type: Union[str, ContentType, None] = None,
+            response_charset: Union[str, Charset] = Charset.utf8,
+            response_zlib_executor: Optional[Executor] = None,
+            response_zlib_executor_size: Optional[int] = None,
+            response_include_fields: Optional[Include] = None,
+            response_exclude_fields: Optional[Exclude] = None,
+            response_by_alias: bool = True,
+            response_exclude_unset: bool = False,
+            response_exclude_defaults: bool = False,
+            response_exclude_none: bool = False,
+            response_custom_encoder: Optional[CustomEncoder] = None,
+            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+            **kwargs: Any,
+    ) -> None:
+        """Create a new RouteDef item for registering GET web-handler.
 
         Args:
             path:
                 Resource path spec.
-            handler:
-                Route handler.
             name:
                 Optional resource name.
             allow_head:
@@ -232,30 +399,10 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
         """
-        resource = self.add_resource(path, name=name)
-        if allow_head:
-            resource.add_route(
-                METH_HEAD,
-                handler,
-                response_validate=response_validate,
-                response_type=response_type,
-                response_content_type=response_content_type,
-                response_charset=response_charset,
-                response_zlib_executor=response_zlib_executor,
-                response_zlib_executor_size=response_zlib_executor_size,
-                response_include_fields=response_include_fields,
-                response_exclude_fields=response_exclude_fields,
-                response_by_alias=response_by_alias,
-                response_exclude_unset=response_exclude_unset,
-                response_exclude_defaults=response_exclude_defaults,
-                response_exclude_none=response_exclude_none,
-                response_custom_encoder=response_custom_encoder,
-                response_json_encoder=response_json_encoder,
-                **kwargs,
-            )
-        return resource.add_route(
-            METH_GET,
-            handler,
+        super().__init__(
+            path=path,
+            name=name,
+            allow_head=allow_head,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -273,14 +420,17 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             **kwargs,
         )
 
-    def add_post(
+
+class post(HTTPRouteHandler):
+    _method_name = MethodName.post
+
+    def __init__(
             self,
             path: str,
-            handler: HandlerOrView,
             *,
             name: Optional[str] = None,
             response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,  # type: ignore
+            response_type: Optional[Type[Any]] = Unset,
             response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
@@ -294,14 +444,12 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_custom_encoder: Optional[CustomEncoder] = None,
             response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
             **kwargs: Any,
-    ) -> AbstractRoute:
-        """Shortcut for add_route with method POST.
+    ) -> None:
+        """Create a new RouteDef item for registering POST web-handler.
 
         Args:
             path:
                 Resource path spec.
-            handler:
-                Route handler.
             name:
                 Optional resource name.
             response_validate:
@@ -344,14 +492,9 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
         """
-        return self.add_route(
-            # aiohttp attrs
-            METH_POST,
-            path,
-            handler,
+        super().__init__(
+            path=path,
             name=name,
-            **kwargs,
-            # rapidy attrs
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -366,16 +509,20 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_exclude_none=response_exclude_none,
             response_custom_encoder=response_custom_encoder,
             response_json_encoder=response_json_encoder,
+            **kwargs,
         )
 
-    def add_put(
+
+class put(HTTPRouteHandler):
+    _method_name = MethodName.put
+
+    def __init__(
             self,
             path: str,
-            handler: HandlerOrView,
             *,
             name: Optional[str] = None,
             response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,  # type: ignore
+            response_type: Optional[Type[Any]] = Unset,
             response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
@@ -389,14 +536,12 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_custom_encoder: Optional[CustomEncoder] = None,
             response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
             **kwargs: Any,
-    ) -> AbstractRoute:
-        """Shortcut for add_route with method PUT.
+    ) -> None:
+        """Create a new RouteDef item for registering PUT web-handler.
 
         Args:
             path:
                 Resource path spec.
-            handler:
-                Route handler.
             name:
                 Optional resource name.
             response_validate:
@@ -439,14 +584,9 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
         """
-        return self.add_route(
-            # aiohttp attrs
-            METH_PUT,
-            path,
-            handler,
+        super().__init__(
+            path=path,
             name=name,
-            **kwargs,
-            # rapidy attrs
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -461,16 +601,20 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_exclude_none=response_exclude_none,
             response_custom_encoder=response_custom_encoder,
             response_json_encoder=response_json_encoder,
+            **kwargs,
         )
 
-    def add_patch(
+
+class patch(HTTPRouteHandler):
+    _method_name = MethodName.patch
+
+    def __init__(
             self,
             path: str,
-            handler: HandlerOrView,
             *,
             name: Optional[str] = None,
             response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,  # type: ignore
+            response_type: Optional[Type[Any]] = Unset,
             response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
@@ -484,14 +628,12 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_custom_encoder: Optional[CustomEncoder] = None,
             response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
             **kwargs: Any,
-    ) -> AbstractRoute:
-        """Shortcut for add_route with method PATCH.
+    ) -> None:
+        """Create a new RouteDef item for registering PATCH web-handler.
 
         Args:
             path:
                 Resource path spec.
-            handler:
-                Route handler.
             name:
                 Optional resource name.
             response_validate:
@@ -534,14 +676,9 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
         """
-        return self.add_route(
-            # aiohttp attrs
-            METH_PATCH,
-            path,
-            handler,
+        super().__init__(
+            path=path,
             name=name,
-            **kwargs,
-            # rapidy attrs
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -556,16 +693,20 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_exclude_none=response_exclude_none,
             response_custom_encoder=response_custom_encoder,
             response_json_encoder=response_json_encoder,
+            **kwargs,
         )
 
-    def add_delete(
+
+class delete(HTTPRouteHandler):
+    _method_name = MethodName.delete
+
+    def __init__(
             self,
             path: str,
-            handler: HandlerOrView,
             *,
             name: Optional[str] = None,
             response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,  # type: ignore
+            response_type: Optional[Type[Any]] = Unset,
             response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
@@ -579,14 +720,12 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_custom_encoder: Optional[CustomEncoder] = None,
             response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
             **kwargs: Any,
-    ) -> AbstractRoute:
-        """Shortcut for add_route with method DELETE.
+    ) -> None:
+        """Create a new RouteDef item for registering DELETE web-handler.
 
         Args:
             path:
                 Resource path spec.
-            handler:
-                Route handler.
             name:
                 Optional resource name.
             response_validate:
@@ -629,14 +768,9 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
         """
-        return self.add_route(
-            # aiohttp attrs
-            METH_DELETE,
-            path,
-            handler,
+        super().__init__(
+            path=path,
             name=name,
-            **kwargs,
-            # rapidy attrs
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -651,16 +785,20 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_exclude_none=response_exclude_none,
             response_custom_encoder=response_custom_encoder,
             response_json_encoder=response_json_encoder,
+            **kwargs,
         )
 
-    def add_view(
+
+class view(HTTPRouteHandler):
+    _method_name = MethodName.any
+
+    def __init__(
             self,
             path: str,
-            handler: Type[AbstractView],
             *,
             name: Optional[str] = None,
             response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,  # type: ignore
+            response_type: Optional[Type[Any]] = Unset,
             response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
@@ -674,14 +812,12 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_custom_encoder: Optional[CustomEncoder] = None,
             response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
             **kwargs: Any,
-    ) -> AbstractRoute:
-        """Shortcut for add_route with ANY methods for a class-based view.
+    ) -> None:
+        """Create a new RouteDef item for adding class-based view handler.
 
         Args:
             path:
                 Resource path spec.
-            handler:
-                Route handler.
             name:
                 Optional resource name.
             response_validate:
@@ -724,14 +860,9 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
         """
-        return self.add_route(
-            # aiohttp attrs
-            METH_ANY,
-            path,
-            handler,
+        super().__init__(
+            path=path,
             name=name,
-            **kwargs,
-            # rapidy attrs
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -746,16 +877,25 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_exclude_none=response_exclude_none,
             response_custom_encoder=response_custom_encoder,
             response_json_encoder=response_json_encoder,
+            **kwargs,
         )
 
-    def add_head(
+    def __call__(self, handler: HandlerOrView) -> HTTPRouteHandler:
+        if not is_view(handler):
+            raise IncorrectTypeViewError(type_handler=str(type(handler)))
+        return self._fn(handler)
+
+
+class head(HTTPRouteHandler):
+    _method_name = MethodName.head
+
+    def __init__(
             self,
             path: str,
-            handler: HandlerOrView,
             *,
             name: Optional[str] = None,
             response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,  # type: ignore
+            response_type: Optional[Type[Any]] = Unset,
             response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
@@ -769,14 +909,12 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_custom_encoder: Optional[CustomEncoder] = None,
             response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
             **kwargs: Any,
-    ) -> AbstractRoute:
-        """Shortcut for add_route with method HEAD.
+    ) -> None:
+        """Create a new RouteDef item for registering HEAD web-handler.
 
         Args:
             path:
                 Resource path spec.
-            handler:
-                Route handler.
             name:
                 Optional resource name.
             response_validate:
@@ -819,14 +957,9 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
         """
-        return self.add_route(
-            # aiohttp attrs
-            METH_HEAD,
-            path,
-            handler,
+        super().__init__(
+            path=path,
             name=name,
-            **kwargs,
-            # rapidy attrs
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -841,16 +974,20 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_exclude_none=response_exclude_none,
             response_custom_encoder=response_custom_encoder,
             response_json_encoder=response_json_encoder,
+            **kwargs,
         )
 
-    def add_options(
+
+class options(HTTPRouteHandler):
+    _method_name = MethodName.options
+
+    def __init__(
             self,
             path: str,
-            handler: HandlerOrView,
             *,
             name: Optional[str] = None,
             response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,  # type: ignore
+            response_type: Optional[Type[Any]] = Unset,
             response_content_type: Union[str, ContentType, None] = None,
             response_charset: Union[str, Charset] = Charset.utf8,
             response_zlib_executor: Optional[Executor] = None,
@@ -864,14 +1001,12 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_custom_encoder: Optional[CustomEncoder] = None,
             response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
             **kwargs: Any,
-    ) -> AbstractRoute:
-        """Shortcut for add_route with method OPTIONS.
+    ) -> None:
+        """Create a new RouteDef item for registering OPTIONS web-handler.
 
         Args:
             path:
                 Resource path spec.
-            handler:
-                Route handler.
             name:
                 Optional resource name.
             response_validate:
@@ -914,14 +1049,9 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
         """
-        return self.add_route(
-            # aiohttp attrs
-            METH_OPTIONS,
-            path,
-            handler,
+        super().__init__(
+            path=path,
             name=name,
-            **kwargs,
-            # rapidy attrs
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -936,4 +1066,5 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_exclude_none=response_exclude_none,
             response_custom_encoder=response_custom_encoder,
             response_json_encoder=response_json_encoder,
+            **kwargs,
         )

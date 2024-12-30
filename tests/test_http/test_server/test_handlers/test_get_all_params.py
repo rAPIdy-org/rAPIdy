@@ -95,7 +95,7 @@ async def test_all(aiohttp_client: AiohttpClient) -> None:
 
 def _check_sequence_data_type(*params: Any, expected_type: Any) -> None:
     for data in params:
-        assert type(data) == expected_type
+        assert type(data) == expected_type  # noqa: E721
 
 
 async def _test(aiohttp_client: AiohttpClient, handler: HandlerOrView) -> None:

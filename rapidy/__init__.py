@@ -2,6 +2,8 @@ __version__ = '1.0.0'
 
 from typing import Tuple, TYPE_CHECKING
 
+from aiohttp.web import run_app
+
 from rapidy.streams import (
     DataQueue as DataQueue,
     EMPTY_PAYLOAD as EMPTY_PAYLOAD,
@@ -9,6 +11,7 @@ from rapidy.streams import (
     FlowControlDataQueue as FlowControlDataQueue,
     StreamReader as StreamReader,
 )
+from rapidy.web_app import Application as Rapidy
 
 if TYPE_CHECKING:
     # ty aiohttp for this code <3
@@ -18,6 +21,9 @@ if TYPE_CHECKING:
 
 __all__: Tuple[str, ...] = (
     '__version__',
+    # Application
+    'Rapidy',
+    'run_app',
     # streams
     'DataQueue',
     'EMPTY_PAYLOAD',

@@ -197,3 +197,14 @@ class HTTPRequestParamType(StrEnum):
     header = 'header'
     cookie = 'cookie'
     body = 'body'
+
+
+class MethodName(str, Enum):
+    get = 'GET'
+    post = 'POST'
+    put = 'PUT'
+    patch = 'PATCH'
+    delete = 'DELETE'
+    head = 'HEAD'
+    options = 'OPTIONS'
+    any = '*'

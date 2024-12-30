@@ -2,13 +2,15 @@ import enum
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Type, TYPE_CHECKING, Union
 
 from aiohttp.abc import AbstractView
+from aiohttp.web_urldispatcher import View
 from pydantic import BaseModel
 from typing_extensions import TypeAlias
 
 from rapidy.constants import PYDANTIC_IS_V1
-from rapidy.lifespan import LifespanCTX, LifespanHook
+from rapidy.routing.http.base import BaseHTTPRouter
 
 if TYPE_CHECKING:
+    from rapidy.lifespan import LifespanCTX, LifespanHook
     from rapidy.web_request import Request
     from rapidy.web_response import StreamResponse
 
@@ -44,6 +46,11 @@ CallNext: TypeAlias = Callable[['Request'], Awaitable['StreamResponse']]
 
 # inner types
 HandlerOrView: TypeAlias = Union[Handler, Type[AbstractView]]
+RouterDeco = Callable[[HandlerOrView], HandlerOrView]
+HTTPRouterType = Union[
+    BaseHTTPRouter,
+    Type[View],  # mypy is bullshit - class decorators that change type don't work
+]
 
 # validation types
 LocStr = Union[Tuple[Union[int, str], ...], str]  # noqa: WPS221
@@ -77,7 +84,7 @@ else:
     class ErrorWrapper(Exception):  # type: ignore[no-redef]  # noqa: N818 WPS440
         pass
 
-Unset = enum.Enum('Unset', 'unset').unset  # type: ignore[attr-defined]
+Unset = enum.Enum('Unset', 'unset').unset  # type: ignore
 
 # json
 JSONEncoder = Callable[[Any], str]

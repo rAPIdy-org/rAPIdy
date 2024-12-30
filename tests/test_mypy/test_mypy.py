@@ -32,7 +32,7 @@ if MYPY_VERSION_TUPLE < (1, 4, 0) or PY_VERSION_TUPLE < (3, 10, 0):
 
 
 def _get_mypy_expected_out_by_path(path: Path) -> str:
-    with open(path, 'r') as mypy_out_file:
+    with open(path, 'r') as mypy_out_file:  # noqa: UP015
         return mypy_out_file.read()
 
 
