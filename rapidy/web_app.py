@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import warnings
 from typing import Any, AsyncGenerator, Callable, Coroutine, Iterable, Iterator, List, Mapping, Optional, Tuple
@@ -7,10 +8,13 @@ from aiohttp.web_app import Application as AiohttpApplication, CleanupError
 from aiohttp.web_middlewares import _fix_request_current_app
 from aiohttp.web_request import Request
 
+from rapidy._base_exceptions import RapidyException
+from rapidy.constants import CLIENT_MAX_SIZE
 from rapidy.endpoint_handlers.http.handlers import middleware_validation_wrapper
 from rapidy.enums import HeaderName
 from rapidy.lifespan import Lifespan, LifespanCTX, LifespanHook
-from rapidy.typedefs import Middleware
+from rapidy.routing.http.base import BaseHTTPRouter
+from rapidy.typedefs import HTTPRouterType, Middleware
 from rapidy.version import SERVER_INFO
 from rapidy.web_middlewares import get_middleware_attr_data, is_aiohttp_new_style_middleware, is_rapidy_middleware
 from rapidy.web_response import StreamResponse
@@ -20,7 +24,6 @@ __all__ = (
     'Application',
     'CleanupError',
 )
-
 
 InnerDeco = Callable[[], Coroutine[Any, Any, None]]
 
@@ -48,12 +51,14 @@ class Application(AiohttpApplication):
             logger: logging.Logger = web_logger,
             middlewares: Optional[Iterable[Middleware]] = None,
             handler_args: Optional[Mapping[str, Any]] = None,
-            client_max_size: int = 1024**2,
+            client_max_size: int = CLIENT_MAX_SIZE,
             server_info_in_response: bool = False,
             lifespan: Optional[List[LifespanCTX]] = None,
             on_startup: Optional[List[LifespanHook]] = None,
             on_shutdown: Optional[List[LifespanHook]] = None,
             on_cleanup: Optional[List[LifespanHook]] = None,
+            # routes
+            http_route_handlers: Iterable[HTTPRouterType] = (),
     ) -> None:
         """Create an `rapidy` Application instance.
 
@@ -77,11 +82,11 @@ class Application(AiohttpApplication):
                 wrapping the lifespan of the application.
                 >>> @asynccontextmanager
                 >>> async def lifespan_ctx(app: web.Application) -> AsyncGenerator[None, None]:
-                >>> try:
-                >>>     await startup_func()
-                >>>         yield
-                >>> finally:
-                >>>     await shutdown_func()
+                >>>     try:
+                >>>         await startup_func()
+                >>>             yield
+                >>>     finally:
+                >>>         await shutdown_func()
 
                 You can set this in two ways:
                 >>> app = web.Application(lifespan=[lifespan_ctx, ...], ...)
@@ -143,6 +148,37 @@ class Application(AiohttpApplication):
                 >>>     pass
 
                 >>> app = web.Application(on_cleanup=[on_cleanup, ...], ...)
+            http_route_handlers:
+                A iterable of `rapidy.routing.http.base.BaseHTTPRouter`.
+                All passed handlers will be registered in the application.
+                >>> from rapidy import web
+                >>> from rapidy.http import get, HTTPRouterType
+                >>>
+                >>> @get('/app_path1')
+                >>> async def app_handler1() -> None: pass
+                >>>
+                >>> async def app_handler2() -> None: pass
+                >>>
+                >>> @get('/router_path1')
+                >>> async def router_handler1() -> None: pass
+                >>>
+                >>> async def router_handler2() -> None: pass
+                >>>
+                >>> api_router = HTTPRouterType(
+                >>>     '/api',
+                >>>     route_handlers=[
+                >>>         router_handler1,
+                >>>         get.handler('/router_path2', router_handler2),
+                >>>     ],
+                >>> )
+                >>>
+                >>> app = web.Application(
+                >>>     http_route_handlers=[
+                >>>         api_router,  # add router
+                >>>         app_handler1,
+                >>>         get.handler('/app_path2', app_handler2),
+                >>>     ]
+                >>> )
         """
         super().__init__(
             logger=logger,
@@ -167,6 +203,33 @@ class Application(AiohttpApplication):
         # It is hidden by default, as I believe showing server information is a potential vulnerability.
         self._hide_server_info_deco = server_info_wrapper(server_info_in_response)
 
+        self.add_http_route_handlers(http_route_handlers)
+
+    def add_http_route_handler(self, route_handler: HTTPRouterType) -> None:
+        # mypy is bullshit - class decorators that change type don't work
+        # we need to do this check to protect the developers
+        if not isinstance(route_handler, BaseHTTPRouter):
+            raise RapidyException(
+                '`route_handler` must be a subclass of HTTPRouter'
+                '\nIf you are using `web.View` - make sure it is under the `@view` / `@get` / `@post` /... decorator.'
+                '\n>>>'
+                '\n>>> from rapidy.http import get, view'
+                '\n>>>'
+                '\n>>> @view("/")  # <-- view deco'
+                '\n>>> class MyView(web.View):'
+                '\n>>>     async def get(self) -> None: pass'
+                '\n>>>'
+                '\n>>> @get("/")  # <-- get deco'
+                '\n>>> class MyView(web.View):'
+                '\n>>>     async def get(self) -> None: pass',
+            )
+
+        route_handler.register(application=self)
+
+    def add_http_route_handlers(self, route_handlers: Iterable[HTTPRouterType]) -> None:
+        for route_handler in route_handlers:
+            self.add_http_route_handler(route_handler)
+
     @property
     def router(self) -> UrlDispatcher:
         return self._router
@@ -179,10 +242,8 @@ class Application(AiohttpApplication):
 
             yield
 
-            try:
+            with contextlib.suppress(StopAsyncIteration):
                 await lifespan_ctx_generator.__anext__()
-            except StopAsyncIteration:
-                pass
 
         return lifespan_cleanup_ctx
 

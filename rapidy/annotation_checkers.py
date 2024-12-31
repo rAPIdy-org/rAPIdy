@@ -1,5 +1,6 @@
 import inspect
-from typing import Any, Tuple, Union
+from functools import partial
+from typing import Any, Callable, Tuple, Union
 
 from typing_extensions import Annotated, get_args, get_origin
 
@@ -66,3 +67,12 @@ def is_empty(obj: Any) -> bool:
 
 def is_not_none_and_unset(field_value: Any) -> bool:
     return field_value is not None and field_value is not Unset
+
+
+def is_async_callable(func: Callable[..., Any]) -> Any:
+    base_function = func.func if isinstance(func, partial) else func
+
+    return inspect.iscoroutinefunction(func) or (
+        callable(base_function)
+        and inspect.iscoroutinefunction(base_function.__call__)  # type: ignore[operator]  # noqa: WPS609
+    )

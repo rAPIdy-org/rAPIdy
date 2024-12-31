@@ -83,7 +83,7 @@ async def extract_body_json(request: Request, body_field_info: Body) -> Optional
     try:
         return await request.json(loads=body_field_info.json_decoder)
     except JSONDecodeError as json_decode_err:
-        raise ExtractJsonError(json_decode_err_msg=json_decode_err.args[0])
+        raise ExtractJsonError(json_decode_err_msg=json_decode_err.args[0]) from json_decode_err
 
 
 async def extract_post_data(
@@ -99,10 +99,10 @@ async def extract_post_data(
         if extractor_value_error.args:
             msg = extractor_value_error.args[0]
             if 'boundary' in msg:
-                raise ExtractMultipartError(multipart_error=msg)
+                raise ExtractMultipartError(multipart_error=msg) from extractor_value_error
 
         warnings.warn(f'Failed to extract body data: \n{traceback.format_exc()}', stacklevel=2)
-        raise ExtractBodyError(error='extraction error')
+        raise ExtractBodyError(error='extraction error') from extractor_value_error
 
     return data
 

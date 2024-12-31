@@ -6,6 +6,7 @@ from typing import Any, AsyncGenerator, Awaitable, Callable, List, Optional, TYP
 
 from typing_extensions import TypeAlias
 
+from rapidy.annotation_checkers import is_async_callable
 from rapidy.version import PY_VERSION_TUPLE
 
 if TYPE_CHECKING:
@@ -30,15 +31,6 @@ LifespanHook: TypeAlias = Union[
     Callable[['Application'], SyncOrAsync],
     Callable[[], SyncOrAsync],
 ]
-
-
-def is_async_callable(func: Callable[..., Any]) -> Any:
-    base_function = func.func if isinstance(func, partial) else func
-
-    return inspect.iscoroutinefunction(func) or (
-        callable(base_function)
-        and inspect.iscoroutinefunction(base_function.__call__)  # type: ignore[operator]  # noqa: WPS609
-    )
 
 
 class Lifespan:

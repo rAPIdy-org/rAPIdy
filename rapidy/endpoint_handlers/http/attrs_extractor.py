@@ -98,15 +98,17 @@ def get_http_handler_info(
             http_handler_info.response_attribute = additional_attr
 
         # If the first handler attribute is empty or the attribute contains the `web.Request` annotation
-        elif request_attr_can_declare:
-            if (
+        elif (
+            request_attr_can_declare
+            and (
                 annotation_is_request(additional_attr.attribute_annotation)
                 or (is_empty(additional_attr.attribute_annotation) and additional_attr.attribute_idx == 0)
-            ):
-                # protection against double injection of `web.Request`
-                if http_handler_info.request_attribute:
-                    raise RequestFieldAlreadyExistsError.create(handler=handler)
+            )
+        ):
+            # protection against double injection of `web.Request`
+            if http_handler_info.request_attribute:
+                raise RequestFieldAlreadyExistsError.create(handler=handler)
 
-                http_handler_info.request_attribute = additional_attr
+            http_handler_info.request_attribute = additional_attr
 
     return http_handler_info
