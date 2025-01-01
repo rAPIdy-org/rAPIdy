@@ -14,7 +14,7 @@ class HTTPRequestAttr(DataAttr):
 
     @classmethod
     def create_by_data_attr(cls, data_attr: DataAttr) -> 'HTTPRequestAttr':
-        assert isinstance(data_attr.field_info, RequestParamFieldInfo)
+        assert isinstance(data_attr.field_info, RequestParamFieldInfo)  # noqa: S101
 
         return cls(
             attribute_name=data_attr.attribute_name,

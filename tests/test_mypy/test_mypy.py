@@ -2,8 +2,9 @@ import os
 from pathlib import Path
 from typing import Final
 
-import pytest
 from mypy import api as mypy_api
+
+import pytest
 
 from rapidy.mypy._version import MYPY_VERSION_TUPLE
 from rapidy.version import PY_VERSION_TUPLE
@@ -32,11 +33,11 @@ if MYPY_VERSION_TUPLE < (1, 4, 0) or PY_VERSION_TUPLE < (3, 10, 0):
 
 
 def _get_mypy_expected_out_by_path(path: Path) -> str:
-    with open(path, 'r') as mypy_out_file:  # noqa: UP015
+    with open(path) as mypy_out_file:  # noqa: PTH123
         return mypy_out_file.read()
 
 
-check_default_dirs = [  # FIXME: os.walk
+check_default_dirs = [  # FIXME: os.walk  # noqa: FIX001 TD002 TD003
     'path',
     'header',
     'cookie',
@@ -48,16 +49,17 @@ check_default_dirs = [  # FIXME: os.walk
 
 @pytest.mark.parametrize('default_dir', check_default_dirs)
 @pytest.mark.parametrize(
-    'config_dir, config_name, out_file', [
+    'config_dir, config_name, out_file',
+    [
         pytest.param(DEFAULT_CONFIG_DIR, DEFAULT_CONFIG_NAME, DEFAULT_MYPY_OUT_FILENAME, id='default'),
         pytest.param(STRICT_CONFIG_DIR, STRICT_CONFIG_NAME, STRICT_MYPY_OUT_FILENAME, id='strict'),
     ],
 )
 def test_default(
-        default_dir: str,
-        config_dir: Path,
-        config_name: Path,
-        out_file: str,
+    default_dir: str,
+    config_dir: Path,
+    config_name: Path,
+    out_file: str,
 ) -> None:
     default_test_module = 'default'
 
@@ -66,7 +68,7 @@ def test_default(
 
     mypy_expected_out = _get_mypy_expected_out_by_path(mypy_expected_out_path)
 
-    cache_dir = f'.mypy_cache/test-default-{os.path.splitext(config_name)[0]}'
+    cache_dir = f'.mypy_cache/test-default-{os.path.splitext(config_name)[0]}'  # noqa: PTH122
 
     command = [
         str(input_path),
@@ -81,4 +83,4 @@ def test_default(
     mypy_out, mypy_err, mypy_returncode = mypy_api.run(command)
     assert mypy_err == ''
 
-    assert mypy_out.replace('tests/', '').replace('test_mypy/', '') == mypy_expected_out  # FIXME: replace(...)
+    assert mypy_out.replace('tests/', '').replace('test_mypy/', '') == mypy_expected_out

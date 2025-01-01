@@ -32,8 +32,9 @@ class BaseModelTest(BaseModel):
     test_none: None = None
 
     if PYDANTIC_IS_V1:
+
         class Config:
-            allow_population_by_field_name = True,
+            allow_population_by_field_name = True
 
     else:
         model_config: ConfigDict = ConfigDict(populate_by_name=True)
@@ -175,7 +176,6 @@ test_cases = (
         extract_method=ExtractMethod.json,
         expected_content_type=JSON_CHARSET_UTF8,
     ),
-
     # CONTENT-TYPE text/plain
     TestCaseTextPlain(
         id='str-text-plain',
@@ -249,7 +249,6 @@ test_cases = (
         response_body=Counter(('test', 'test')),
         expected_data='{"test": 2}',
     ),
-
     # CONTENT-TYPE application/json
     TestCaseJson(
         id='str-json',
@@ -318,7 +317,6 @@ test_cases = (
         response_body=Counter(('test', 'test')),
         expected_data={'test': 2},
     ),
-
     # include
     TestCaseJson(
         id='base-model-include',
@@ -326,7 +324,6 @@ test_cases = (
         response_body=BaseModelTest(),
         expected_data={'Test': 'test'},
     ),
-
     # exclude
     TestCaseJson(
         id='base-model-exclude',
@@ -334,7 +331,6 @@ test_cases = (
         response_body=BaseModelTest(),
         expected_data={'test_none': None},
     ),
-
     # by alias
     TestCaseJson(
         id='base-model-by-alias-true',
@@ -348,7 +344,6 @@ test_cases = (
         response_body=BaseModelTest(),
         expected_data={'test': 'test', 'test_none': None},
     ),
-
     # exclude_unset
     TestCaseJson(
         id='base-model-exclude-unset',
@@ -356,7 +351,6 @@ test_cases = (
         response_body=BaseModelTest(),
         expected_data={},
     ),
-
     # exclude_defaults
     TestCaseJson(
         id='base-model-exclude-defaults',
@@ -364,7 +358,6 @@ test_cases = (
         response_body=BaseModelTest(),
         expected_data={},
     ),
-
     # exclude_none
     TestCaseJson(
         id='base-model-exclude-none',
@@ -372,7 +365,6 @@ test_cases = (
         response_body=BaseModelTest(),
         expected_data={'Test': 'test'},
     ),
-
     # setters
     TestCaseTextPlain(
         id='text-setter-str',
@@ -417,6 +409,6 @@ async def test_response(aiohttp_client: AiohttpClient, test_case: TestCase) -> N
     assert resp.headers.get(HeaderName.content_type) == test_case.expected_content_type
 
 
-def test_init_body_and_text():
+def test_init_body_and_text() -> None:
     with pytest.raises(ResponseDuplicateBodyError):
         web.Response(body='test', text='test')

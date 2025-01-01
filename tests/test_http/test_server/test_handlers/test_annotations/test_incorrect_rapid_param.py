@@ -1,8 +1,8 @@
 from http import HTTPStatus
+from typing_extensions import Annotated
 
 import pytest
 from aiohttp.pytest_plugin import AiohttpClient
-from typing_extensions import Annotated
 
 from rapidy import web
 from rapidy.fields.model_fields import ModelFieldCreationError
@@ -26,9 +26,11 @@ async def test_unsupported_pydantic_type() -> None:
     class Data:
         pass
 
-    async def handler1(_: Data = Body()) -> None: pass
+    async def handler1(_: Data = Body()) -> None:
+        pass
 
-    async def handler2(_: Annotated[Data, Body()]) -> None: pass
+    async def handler2(_: Annotated[Data, Body()]) -> None:
+        pass
 
     app = web.Application()
 

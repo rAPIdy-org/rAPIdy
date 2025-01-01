@@ -235,10 +235,8 @@ __all__ = [
     'QueryParams',
 ]
 if AIOHTTP_VERSION_TUPLE >= (3, 9, 0):
-    __all__.extend([
-        # web_app
-        'AppKey',
+    __all__ += [
         # web_exceptions
         'HTTPMove',
         'NotAppKeyWarning',
-    ])
+    ]

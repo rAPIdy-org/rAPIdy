@@ -3,6 +3,7 @@ from typing import Callable, cast, Optional
 from mypy.nodes import EllipsisExpr
 from mypy.plugin import FunctionContext, Plugin
 from mypy.types import CallableType, Overloaded, Type, TypeVarType
+
 from pydantic.mypy import MYPY_VERSION_TUPLE
 
 from rapidy.mypy._api_errors import (
@@ -24,15 +25,15 @@ class RapidyPlugin(Plugin):
         default_any_type = AnyTypeExplicit
 
         assert ctx.callee_arg_names[0] == 'default', '`default` is no longer first argument in ParamFieldInfo()'
-        assert ctx.callee_arg_names[1] == 'default_factory', (
-            '`default_factory` is no longer second argument in ParamFieldInfo()'
-        )
+        assert (
+            ctx.callee_arg_names[1] == 'default_factory'
+        ), '`default_factory` is no longer second argument in ParamFieldInfo()'
 
         default_args, default_factory_args = ctx.args[0], ctx.args[1]
 
         param_name = str(ctx.default_return_type)
 
-        if default_args or default_factory_args:
+        if default_args or default_factory_args:  # noqa: SIM102
             if not _param_can_default(param_name):
                 error_default_or_default_factory_specified(ctx.api, ctx.context, param_name)
                 return default_any_type
@@ -66,10 +67,9 @@ class RapidyPlugin(Plugin):
                 # mypy doesn't think `ret_type` has `args`, you'd think mypy should know,
                 # add this check in case it varies by version
                 args = getattr(ret_type, 'args', None)
-                if args:
-                    if all(isinstance(arg, TypeVarType) for arg in args):
-                        # Looks like the default factory is a type like `list` or `dict`, replace all args with `Any`
-                        ret_type.args = tuple(default_any_type for _ in args)  # type: ignore[attr-defined]
+                if args and all(isinstance(arg, TypeVarType) for arg in args):
+                    # Looks like the default factory is a type like `list` or `dict`, replace all args with `Any`
+                    ret_type.args = tuple(default_any_type for _ in args)  # type: ignore[attr-defined]
 
                 return ret_type
 

@@ -16,35 +16,35 @@ class RapidyFieldInfo(FieldInfo):
     can_default: bool = True
 
     def __init__(
-            self,
-            default: Any = Undefined,
-            *,
-            default_factory: Optional[NoArgAnyCallable] = Unset,
-            annotation: Optional[Any] = Unset,
-            alias: Optional[str] = Unset,
-            alias_priority: Optional[int] = Unset,
-            validation_alias: Optional[str] = Unset,
-            serialization_alias: Optional[str] = Unset,
-            title: Optional[str] = Unset,
-            description: Optional[str] = Unset,
-            gt: Optional[float] = Unset,
-            ge: Optional[float] = Unset,
-            lt: Optional[float] = Unset,
-            le: Optional[float] = Unset,
-            min_length: Optional[int] = Unset,
-            max_length: Optional[int] = Unset,
-            pattern: Optional[str] = Unset,
-            discriminator: Optional[str] = Unset,
-            strict: Union[bool, None] = Unset,
-            multiple_of: Union[float, None] = Unset,
-            allow_inf_nan: Union[bool, None] = Unset,
-            max_digits: Union[int, None] = Unset,
-            decimal_places: Union[int, None] = Unset,
-            deprecated: Union[Deprecated, str, bool, None] = Unset,
-            examples: Optional[List[Any]] = Unset,
-            json_schema_extra: Union[Dict[str, Any], None] = Unset,
-            validate: bool = True,
-            **extra: Any,
+        self,
+        default: Any = Undefined,
+        *,
+        default_factory: Optional[NoArgAnyCallable] = Unset,
+        annotation: Optional[Any] = Unset,
+        alias: Optional[str] = Unset,
+        alias_priority: Optional[int] = Unset,
+        validation_alias: Optional[str] = Unset,
+        serialization_alias: Optional[str] = Unset,
+        title: Optional[str] = Unset,
+        description: Optional[str] = Unset,
+        gt: Optional[float] = Unset,
+        ge: Optional[float] = Unset,
+        lt: Optional[float] = Unset,
+        le: Optional[float] = Unset,
+        min_length: Optional[int] = Unset,
+        max_length: Optional[int] = Unset,
+        pattern: Optional[str] = Unset,
+        discriminator: Optional[str] = Unset,
+        strict: Union[bool, None] = Unset,
+        multiple_of: Union[float, None] = Unset,
+        allow_inf_nan: Union[bool, None] = Unset,
+        max_digits: Union[int, None] = Unset,
+        decimal_places: Union[int, None] = Unset,
+        deprecated: Union[Deprecated, str, bool, None] = Unset,
+        examples: Optional[List[Any]] = Unset,
+        json_schema_extra: Union[Dict[str, Any], None] = Unset,
+        validate: bool = True,
+        **extra: Any,
     ) -> None:
         json_schema_extra = json_schema_extra if json_schema_extra is not Unset else {}
 
@@ -109,7 +109,7 @@ class RapidyFieldInfo(FieldInfo):
         if is_not_none_and_unset(pattern):
             return pattern
 
-        elif is_not_none_and_unset(regex):
+        if is_not_none_and_unset(regex):
             warnings.warn(
                 '`regex` has been deprecated, please use `pattern` instead',
                 category=DeprecationWarning,
@@ -121,12 +121,14 @@ class RapidyFieldInfo(FieldInfo):
 
 
 if PYDANTIC_IS_V1:
-    def copy_field_info(*, field_info: RapidyFieldInfo, annotation: Any) -> RapidyFieldInfo:
+
+    def copy_field_info(*, field_info: RapidyFieldInfo, annotation: Any) -> RapidyFieldInfo:  # noqa: ARG001
         return deepcopy(field_info)
 
 else:
-    def copy_field_info(*, field_info: RapidyFieldInfo, annotation: Any) -> RapidyFieldInfo:  # noqa: F811 WPS440
-        # FIXME:
+
+    def copy_field_info(*, field_info: RapidyFieldInfo, annotation: Any) -> RapidyFieldInfo:
+        # FIXME:  # noqa: FIX001 TD002 TD003
         #  If the desired data type is of type `Union` (pydantic.UUID4, ...), the metadata will be assembled according
         #  to the parameter definition.
         #  Example: `data: Annotated[UUID4, Body(regex='some')`

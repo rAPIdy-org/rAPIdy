@@ -58,18 +58,18 @@ async def extract_query(request: Request) -> MultiDictProxy[str]:
     return request.rel_url.query
 
 
-async def extract_body_stream(request: Request, body_field_info: Body) -> StreamReader:
+async def extract_body_stream(request: Request, body_field_info: Body) -> StreamReader:  # noqa: ARG001
     return request.content
 
 
-async def extract_body_bytes(request: Request, body_field_info: Body) -> Optional[bytes]:
+async def extract_body_bytes(request: Request, body_field_info: Body) -> Optional[bytes]:  # noqa: ARG001
     if not request.body_exists:
         return None
 
     return await request.read()
 
 
-async def extract_body_text(request: Request, body_field_info: Body) -> Optional[str]:
+async def extract_body_text(request: Request, body_field_info: Body) -> Optional[str]:  # noqa: ARG001
     if not request.body_exists:
         return None
 
@@ -87,8 +87,8 @@ async def extract_body_json(request: Request, body_field_info: Body) -> Optional
 
 
 async def extract_post_data(
-        request: Request,
-        body_field_info: Body,
+    request: Request,
+    body_field_info: Body,  # noqa: ARG001
 ) -> Optional[MultiDictProxy[Union[str, bytes, FileField]]]:
     if not request.body_exists:
         return None
@@ -142,7 +142,7 @@ def _get_body_extractor_by_content_type(content_type: helpers.MimeType) -> Extra
 
 def get_extractor(field_info: RequestParamFieldInfo) -> ExtractFunction:
     if field_info.param_type == HTTPRequestParamType.body:
-        assert isinstance(field_info, Body)
+        assert isinstance(field_info, Body)  # noqa: S101
         return get_body_extractor(field_info)
 
     return get_simple_param_extractor(field_info)
@@ -153,7 +153,7 @@ def get_simple_param_extractor(field_info: RequestParamFieldInfo) -> ExtractFunc
 
 
 def get_body_extractor(body_field_info: Body) -> ExtractFunction:
-    assert body_field_info.annotation
+    assert body_field_info.annotation  # noqa: S101
 
     expected_ctype = helpers.parse_mimetype(body_field_info.content_type)
 
@@ -168,24 +168,21 @@ def get_body_extractor(body_field_info: Body) -> ExtractFunction:
 
 
 def create_checked_type_extractor(
-        extractor: ExtractBodyFunction,
-        body_field_info: Body,
-        expected_ctype: helpers.MimeType,
+    extractor: ExtractBodyFunction,
+    body_field_info: Body,
+    expected_ctype: helpers.MimeType,
 ) -> ExtractFunction:
     async def wrapped_extractor(request: Request) -> Optional[DictStrAny]:
         request_ctype = get_mimetype(request)
 
         if (
-            (request_ctype.type == expected_ctype.type or expected_ctype.type == '*')
-            and (request_ctype.subtype == expected_ctype.subtype or expected_ctype.subtype == '*')
+            (request_ctype.type == expected_ctype.type or expected_ctype.type == '*')  # noqa: PLR1714
+            and (request_ctype.subtype == expected_ctype.subtype or expected_ctype.subtype == '*')  # noqa: PLR1714
         ):
             return await extractor(request, body_field_info)
 
         if not request_ctype.type and not request_ctype.subtype:
-            error = (
-                '`Content-Type` header cannot be empty. '
-                f'Expected: `{expected_ctype.type}/{expected_ctype.subtype}`'
-            )
+            error = f'`Content-Type` header cannot be empty. Expected: `{expected_ctype.type}/{expected_ctype.subtype}`'
         else:
             error = (
                 f'Expected Content-Type `{expected_ctype.type}/{expected_ctype.subtype}` '

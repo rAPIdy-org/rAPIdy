@@ -7,7 +7,8 @@ from rapidy import Rapidy, web
 from rapidy.routing.http.routers import get
 
 
-async def handler() -> None: pass
+async def handler() -> None:
+    pass
 
 
 def create_app_routing_handler_use_deco(allow_head: bool) -> Rapidy:
@@ -50,9 +51,9 @@ def create_app_use_router_table_def(allow_head: bool) -> Rapidy:
 )
 @pytest.mark.parametrize('allow_head', [True, False])
 async def test_allow_head(
-        aiohttp_client: AiohttpClient,
-        app_factory: Callable[[bool], Rapidy],
-        allow_head: bool,
+    aiohttp_client: AiohttpClient,
+    app_factory: Callable[[bool], Rapidy],
+    allow_head: bool,
 ) -> None:
     rapidy = app_factory(allow_head)
 

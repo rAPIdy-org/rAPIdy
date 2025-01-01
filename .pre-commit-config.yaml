@@ -22,11 +22,6 @@ repos:
       args: [ --pytest-test-first ]
       exclude: ^tests/helpers.py|^tests/test_mypy/cases|^.*base.py|^.*helpers.py
 
-  - repo: https://github.com/PyCQA/isort
-    rev: 5.13.1
-    hooks:
-      - id: isort
-
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.14.0
     hooks:
@@ -38,10 +33,10 @@ repos:
         exclude: ^tests/mypy/cases/
         additional_dependencies: ["attrs==24.2.0"]
 
-  - repo: https://github.com/PyCQA/flake8
-    rev: 6.1.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
     hooks:
-      - id: flake8
-        types:
-          - python
-        additional_dependencies: ["flake8-pyproject", "wemake-python-styleguide"]
+      - id: ruff
+        args: [ --fix, --config=pyproject.toml ]
+      - id: ruff-format
+        args: [ --config=pyproject.toml ]

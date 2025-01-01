@@ -1,7 +1,6 @@
 import inspect
 from functools import partial
 from typing import Any, Callable, Tuple, Union
-
 from typing_extensions import Annotated, get_args, get_origin
 
 from rapidy.constants import PYDANTIC_IS_V1
@@ -9,9 +8,9 @@ from rapidy.typedefs import Unset
 from rapidy.version import PY_VERSION_TUPLE
 
 if PYDANTIC_IS_V1:
-    from pydantic.utils import lenient_issubclass as lenient_issubclass  # noqa: F401 WPS433 WPS440
+    from pydantic.utils import lenient_issubclass
 else:
-    from pydantic._internal._utils import lenient_issubclass as lenient_issubclass  # noqa: F401 WPS433 WPS440
+    from pydantic._internal._utils import lenient_issubclass
 
 __all__ = (
     'lenient_issubclass',
@@ -23,20 +22,21 @@ __all__ = (
 
 
 if PY_VERSION_TUPLE >= (3, 10, 0):
-    from types import UnionType  # type: ignore[attr-defined, unused-ignore]  # noqa: WPS433
+    from types import UnionType  # type: ignore[attr-defined, unused-ignore]
 
     def is_union(annotation: Any) -> bool:
         origin = get_origin(annotation)
         return origin is UnionType or origin is Union
 
 else:
-    def is_union(annotation: Any) -> bool:  # noqa: WPS440
+
+    def is_union(annotation: Any) -> bool:
         return get_origin(annotation) is Union
 
 
 def is_optional(annotation: Any) -> bool:
     if is_union(annotation):
-        return type(None) in get_args(annotation)  # noqa: WPS516
+        return type(None) in get_args(annotation)
 
     return False
 
@@ -53,7 +53,7 @@ def get_base_annotations(annotation: Any) -> Tuple[Any, ...]:
                 return annotated_args
             return ()
 
-        return tuple(filter(lambda x: x != type(None), annotated_args))  # noqa: E721 WPS516
+        return tuple(filter(lambda x: x != type(None), annotated_args))  # noqa: E721
 
     if is_annotated(annotation):
         return (get_args(annotation)[0],)
@@ -73,6 +73,5 @@ def is_async_callable(func: Callable[..., Any]) -> Any:
     base_function = func.func if isinstance(func, partial) else func
 
     return inspect.iscoroutinefunction(func) or (
-        callable(base_function)
-        and inspect.iscoroutinefunction(base_function.__call__)  # type: ignore[operator]  # noqa: WPS609
+        callable(base_function) and inspect.iscoroutinefunction(base_function.__call__)  # type: ignore[operator]
     )

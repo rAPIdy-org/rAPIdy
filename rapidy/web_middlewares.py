@@ -3,7 +3,10 @@ from functools import wraps
 from typing import Any, Callable, cast, NamedTuple, Optional, overload, Type, TypeVar, Union
 from urllib.request import Request
 
-from aiohttp.web_middlewares import middleware as aiohttp_middleware, normalize_path_middleware
+from aiohttp.web_middlewares import (
+    middleware as aiohttp_middleware,
+    normalize_path_middleware,
+)
 
 from rapidy.constants import DEFAULT_JSON_ENCODER
 from rapidy.encoders import CustomEncoder, Exclude, Include
@@ -37,48 +40,46 @@ class MiddlewareAttrData(NamedTuple):
 
 
 @overload
-def middleware(middleware: TMiddleware) -> TMiddleware:  # noqa: WPS442
-    ...  # noqa: WPS428
+def middleware(middleware: TMiddleware) -> TMiddleware: ...
 
 
 @overload
 def middleware(
-        *,
-        response_validate: bool = True,
-        response_type: Optional[Type[Any]] = Unset,  # type: ignore
-        response_content_type: Union[str, ContentType, None] = None,
-        response_charset: Union[str, Charset] = Charset.utf8,
-        response_zlib_executor: Optional[Executor] = None,
-        response_zlib_executor_size: Optional[int] = None,
-        response_include_fields: Optional[Include] = None,
-        response_exclude_fields: Optional[Exclude] = None,
-        response_by_alias: bool = True,
-        response_exclude_unset: bool = False,
-        response_exclude_defaults: bool = False,
-        response_exclude_none: bool = False,
-        response_custom_encoder: Optional[CustomEncoder] = None,
-        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-) -> Callable[[Any], TMiddleware]:
-    ...  # noqa: WPS428
+    *,
+    response_validate: bool = True,
+    response_type: Optional[Type[Any]] = Unset,  # type: ignore[has-type]
+    response_content_type: Union[str, ContentType, None] = None,
+    response_charset: Union[str, Charset] = Charset.utf8,
+    response_zlib_executor: Optional[Executor] = None,
+    response_zlib_executor_size: Optional[int] = None,
+    response_include_fields: Optional[Include] = None,
+    response_exclude_fields: Optional[Exclude] = None,
+    response_by_alias: bool = True,
+    response_exclude_unset: bool = False,
+    response_exclude_defaults: bool = False,
+    response_exclude_none: bool = False,
+    response_custom_encoder: Optional[CustomEncoder] = None,
+    response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+) -> Callable[[Any], TMiddleware]: ...
 
 
 def middleware(
-        middleware: Optional[TMiddleware] = None,  # noqa: WPS442
-        *,
-        response_validate: bool = True,
-        response_type: Optional[Type[Any]] = Unset,  # type: ignore
-        response_content_type: Union[str, ContentType, None] = None,
-        response_charset: Union[str, Charset] = Charset.utf8,
-        response_zlib_executor: Optional[Executor] = None,
-        response_zlib_executor_size: Optional[int] = None,
-        response_include_fields: Optional[Include] = None,
-        response_exclude_fields: Optional[Exclude] = None,
-        response_by_alias: bool = True,
-        response_exclude_unset: bool = False,
-        response_exclude_defaults: bool = False,
-        response_exclude_none: bool = False,
-        response_custom_encoder: Optional[CustomEncoder] = None,
-        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+    middleware: Optional[TMiddleware] = None,
+    *,
+    response_validate: bool = True,
+    response_type: Optional[Type[Any]] = Unset,  # type: ignore[has-type]
+    response_content_type: Union[str, ContentType, None] = None,
+    response_charset: Union[str, Charset] = Charset.utf8,
+    response_zlib_executor: Optional[Executor] = None,
+    response_zlib_executor_size: Optional[int] = None,
+    response_include_fields: Optional[Include] = None,
+    response_exclude_fields: Optional[Exclude] = None,
+    response_by_alias: bool = True,
+    response_exclude_unset: bool = False,
+    response_exclude_defaults: bool = False,
+    response_exclude_none: bool = False,
+    response_custom_encoder: Optional[CustomEncoder] = None,
+    response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
 ) -> Union[TMiddleware, Callable[[Any], TMiddleware]]:
     """`rapidy` middleware decorator.
 
@@ -143,16 +144,18 @@ def middleware(
     )
 
     if not middleware:
-        def inner_middleware(m: TMiddleware) -> TMiddleware:  # noqa: WPS440 WPS442
+
+        def inner_middleware(m: TMiddleware) -> TMiddleware:
             return _create_rapidy_middleware(m, middleware_attr_data=middleware_attr_data)
+
         return inner_middleware
 
     return _create_rapidy_middleware(middleware, middleware_attr_data=middleware_attr_data)
 
 
 def _create_rapidy_middleware(
-        middleware: TMiddleware,  # noqa: WPS440 WPS442
-        middleware_attr_data: MiddlewareAttrData,
+    middleware: TMiddleware,
+    middleware_attr_data: MiddlewareAttrData,
 ) -> TMiddleware:
     aiohttp_middleware(middleware)
     middleware.__rapidy_middleware__ = True  # type: ignore[attr-defined]
@@ -165,13 +168,13 @@ def _create_rapidy_middleware(
     return cast(TMiddleware, impl)
 
 
-def get_middleware_attr_data(middleware: TMiddleware) -> MiddlewareAttrData:  # noqa: WPS442
+def get_middleware_attr_data(middleware: TMiddleware) -> MiddlewareAttrData:
     return middleware.__attr_data__  # type: ignore[attr-defined]
 
 
-def is_aiohttp_new_style_middleware(middleware: Middleware) -> bool:  # noqa: WPS442
+def is_aiohttp_new_style_middleware(middleware: Middleware) -> bool:
     return getattr(middleware, '__middleware_version__', 0) == 1
 
 
-def is_rapidy_middleware(middleware: Middleware) -> bool:  # noqa: WPS442
+def is_rapidy_middleware(middleware: Middleware) -> bool:
     return getattr(middleware, '__rapidy_middleware__', False) is True

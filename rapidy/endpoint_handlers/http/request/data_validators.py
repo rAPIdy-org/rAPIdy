@@ -58,38 +58,41 @@ class BaseRequestParameterValidator(BaseRequestValidator, ABC):
         self._map_model_fields_by_alias[extraction_name] = model_field
 
     async def _extract_raw_data(self, request: Request) -> Any:
-        raw_data = request._cache.get(self._http_request_param_type)
+        raw_data = request._cache.get(self._http_request_param_type)  # noqa: SLF001
 
         if not raw_data:
             raw_data = await self._extractor(request)
-            request._cache[self._http_request_param_type] = raw_data
+            request._cache[self._http_request_param_type] = raw_data  # noqa: SLF001
 
         return raw_data
 
     @abstractmethod
     async def _get_validated_data(
-            self,
-            raw_data: Any,
-            required_fields_map: Dict[str, RequestModelField],
+        self,
+        raw_data: Any,
+        required_fields_map: Dict[str, RequestModelField],
     ) -> ValidateReturn:
         raise NotImplementedError
 
 
 class RequestSingleParameterValidator(BaseRequestParameterValidator):
     async def _get_validated_data(
-            self,
-            raw_data: Any,
-            required_fields_map: Dict[str, RequestModelField],
+        self,
+        raw_data: Any,
+        required_fields_map: Dict[str, RequestModelField],
     ) -> ValidateReturn:
         all_validated_values: Dict[str, Any] = {}
         all_validated_errors: List[Dict[str, Any]] = []
 
-        for required_field_name, model_field in required_fields_map.items():  # noqa: WPS440
+        for required_field_name, model_field in required_fields_map.items():
             loc = (model_field.http_param_type, model_field.alias)
             raw_param_data = raw_data.get(required_field_name) if raw_data is not None else None
 
             validated_data, validated_errors = validate_data_by_model(
-                model_field, raw_data=raw_param_data, values=all_validated_values, loc=loc,
+                model_field,
+                raw_data=raw_param_data,
+                values=all_validated_values,
+                loc=loc,
             )
             if validated_errors:
                 all_validated_errors.extend(validated_errors)
@@ -101,17 +104,20 @@ class RequestSingleParameterValidator(BaseRequestParameterValidator):
 
 class RequestAllDataParameterValidator(BaseRequestParameterValidator):
     async def _get_validated_data(
-            self,
-            raw_data: Any,
-            required_fields_map: Dict[str, RequestModelField],
+        self,
+        raw_data: Any,
+        required_fields_map: Dict[str, RequestModelField],
     ) -> ValidateReturn:
-        model_field = list(required_fields_map.values())[0]
+        model_field = list(required_fields_map.values())[0]  # noqa: RUF015
 
         if is_dataclass(model_field.type_) and isinstance(raw_data, (MultiDict, MultiDictProxy, Mapping)):
             raw_data = self._create_dataclass_raw_data_by_multidict(raw_data, model_field_type=model_field.type_)
 
         validated_data, validated_errors = validate_data_by_model(
-            model_field, raw_data=raw_data, values={}, loc=(model_field.field_info.param_type,),
+            model_field,
+            raw_data=raw_data,
+            values={},
+            loc=(model_field.field_info.param_type,),
         )
         if validated_errors:
             return {}, validated_errors
@@ -119,17 +125,13 @@ class RequestAllDataParameterValidator(BaseRequestParameterValidator):
         return {model_field.name: validated_data}, validated_errors
 
     def _create_dataclass_raw_data_by_multidict(
-            self,
-            current_raw: Any,
-            *,
-            model_field_type: Any,
+        self,
+        current_raw: Any,
+        *,
+        model_field_type: Any,
     ) -> Dict[str, Any]:
         dataclass_attrs = inspect.signature(model_field_type).parameters.keys()
-        return {
-            attr_name: current_raw.get(attr_name)
-            for attr_name in dataclass_attrs
-            if attr_name in current_raw
-        }
+        return {attr_name: current_raw.get(attr_name) for attr_name in dataclass_attrs if attr_name in current_raw}
 
 
 class RequestValidator(BaseRequestValidator):
@@ -152,11 +154,11 @@ class RequestValidator(BaseRequestValidator):
 
 class ResultValidator(Validator[Any]):
     def __init__(
-            self,
-            handler: Handler,
-            return_annotation: Optional[Type[Any]],
-            *,
-            response_type: Optional[Type[Any]],
+        self,
+        handler: Handler,
+        return_annotation: Optional[Type[Any]],
+        *,
+        response_type: Optional[Type[Any]],
     ) -> None:
         self._handler = handler
 
@@ -177,10 +179,7 @@ class ResultValidator(Validator[Any]):
         if is_union(annotation):
             union_annotations = get_args(annotation)
             annotation = Union[
-                tuple(
-                    annotation for annotation in union_annotations  # noqa: WPS361
-                    if not annotation_is_stream_response(annotation)
-                )
+                tuple(annotation for annotation in union_annotations if not annotation_is_stream_response(annotation))
             ]
 
         return create_model_field_by_annotation(annotation)
@@ -196,8 +195,8 @@ def request_parameter_validator_factory(field_info: RequestParamFieldInfo) -> Ba
 
 
 def request_validator_factory(
-        handler: Handler,
-        request_params: List[HTTPRequestAttr],
+    handler: Handler,
+    request_params: List[HTTPRequestAttr],
 ) -> RequestValidator:
     parameter_extract_all: Dict[HTTPRequestParamType, bool] = {}
     param_validators: Dict[HTTPRequestParamType, BaseRequestParameterValidator] = {}
@@ -213,7 +212,8 @@ def request_validator_factory(
                 or already_defined_extract_all != extract_all  # can't contain two types of extraction
             ):
                 raise AnotherDataExtractionTypeAlreadyExistsError.create(
-                    handler=handler, attr_name=request_param.attribute_name,
+                    handler=handler,
+                    attr_name=request_param.attribute_name,
                 )
 
         else:
@@ -230,9 +230,9 @@ def request_validator_factory(
 
 
 def result_validator_factory(
-        handler: Handler,
-        return_annotation: Optional[Type[Any]],
-        response_type: Optional[Union[Type[Any]]],
+    handler: Handler,
+    return_annotation: Optional[Type[Any]],
+    response_type: Optional[Union[Type[Any]]],
 ) -> ResultValidator:
     return ResultValidator(
         handler=handler,

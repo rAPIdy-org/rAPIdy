@@ -19,12 +19,12 @@ class Data(BaseModel):
 @pytest.mark.parametrize(
     'include_fields, expected_data',
     [
-        [{'test'}, {'Test': 'test'}],
-        [
+        ({'test'}, {'Test': 'test'}),
+        (
             {'another_test', 'test', 'another_inner_test'},
             {'AnotherTest': 'another_test', 'Test': 'test', 'AnotherInnerTest': {'Test': 'test'}},
-        ],
-        [{}, {}],
+        ),
+        ({}, {}),
     ],
 )
 def test_include_by_alias(include_fields: Any, expected_data: Any) -> None:
@@ -34,10 +34,10 @@ def test_include_by_alias(include_fields: Any, expected_data: Any) -> None:
 @pytest.mark.parametrize(
     'exclude_fields, expected_data',
     [
-        [{'test'}, {'AnotherTest': 'another_test', 'AnotherInnerTest': {'Test': 'test'}}],
-        [{'another_test': True, 'test': True, 'another_inner_test': {'test'}}, {'AnotherInnerTest': {}}],
-        [{'another_test', 'test', 'another_inner_test'}, {}],
-        [{}, {'Test': 'test', 'AnotherTest': 'another_test', 'AnotherInnerTest': {'Test': 'test'}}],
+        ({'test'}, {'AnotherTest': 'another_test', 'AnotherInnerTest': {'Test': 'test'}}),
+        ({'another_test': True, 'test': True, 'another_inner_test': {'test'}}, {'AnotherInnerTest': {}}),
+        ({'another_test', 'test', 'another_inner_test'}, {}),
+        ({}, {'Test': 'test', 'AnotherTest': 'another_test', 'AnotherInnerTest': {'Test': 'test'}}),
     ],
 )
 def test_exclude_by_alias(exclude_fields: Any, expected_data: Any) -> None:

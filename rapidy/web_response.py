@@ -7,7 +7,10 @@ from typing import Any, Counter, DefaultDict, Optional, Tuple, Type, Union
 from aiohttp import Payload
 from aiohttp.helpers import parse_mimetype
 from aiohttp.typedefs import LooseHeaders
-from aiohttp.web_response import Response as AioHTTPResponse, StreamResponse
+from aiohttp.web_response import (
+    Response as AioHTTPResponse,
+    StreamResponse,
+)
 from pydantic import BaseModel
 
 from rapidy._base_exceptions import RapidyException
@@ -22,10 +25,22 @@ __all__ = (
 )
 
 DEFAULT_JSON_TYPES: Tuple[Type[Any], ...] = (
-    BaseModel, dict, list, tuple, set, frozenset, DefaultDict, Counter,
+    BaseModel,
+    dict,
+    list,
+    tuple,
+    set,
+    frozenset,
+    DefaultDict,
+    Counter,
 )
 DEFAULT_TEXT_PLAIN_TYPES: Tuple[Type[Any], ...] = (
-    str, Enum, int, float, Decimal, bool,
+    str,
+    Enum,
+    int,
+    float,
+    Decimal,
+    bool,
 )
 
 
@@ -38,28 +53,30 @@ class ResponseEncodeError(RapidyException):
 
 
 class Response(AioHTTPResponse):
+    """Overridden aiohttp Response."""
+
     def __init__(
-            self,
-            body: Optional[Any] = None,
-            *,
-            status: int = 200,
-            headers: Optional[LooseHeaders] = None,
-            content_type: Union[str, ContentType, None] = None,
-            charset: Optional[Union[str, Charset]] = None,
-            zlib_executor: Optional[Executor] = None,
-            zlib_executor_size: Optional[int] = None,
-            # body preparer
-            include: Optional[Include] = None,
-            exclude: Optional[Exclude] = None,
-            by_alias: bool = True,
-            exclude_unset: bool = False,
-            exclude_defaults: bool = False,
-            exclude_none: bool = False,
-            custom_encoder: Optional[CustomEncoder] = None,
-            json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            # backwards compatibility
-            text: Optional[Any] = None,
-            reason: Optional[str] = None,
+        self,
+        body: Optional[Any] = None,
+        *,
+        status: int = 200,
+        headers: Optional[LooseHeaders] = None,
+        content_type: Union[str, ContentType, None] = None,
+        charset: Optional[Union[str, Charset]] = None,
+        zlib_executor: Optional[Executor] = None,
+        zlib_executor_size: Optional[int] = None,
+        # body preparer
+        include: Optional[Include] = None,
+        exclude: Optional[Exclude] = None,
+        by_alias: bool = True,
+        exclude_unset: bool = False,
+        exclude_defaults: bool = False,
+        exclude_none: bool = False,
+        custom_encoder: Optional[CustomEncoder] = None,
+        json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        # backwards compatibility
+        text: Optional[Any] = None,
+        reason: Optional[str] = None,
     ) -> None:
         """Low-level response factory.
 
@@ -111,7 +128,6 @@ class Response(AioHTTPResponse):
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True.
         """
-
         if isinstance(charset, Enum):
             charset = charset.value
 
@@ -152,22 +168,26 @@ class Response(AioHTTPResponse):
 
     @property
     def body(self) -> Optional[Union[bytes, Payload]]:
-        return self._super.body  # noqa: WPS608
+        """Read attribute for storing response`s content aka BODY, bytes."""
+        return self._super.body
 
     @body.setter
     def body(self, body: Optional[Any]) -> None:
+        """Write attribute for storing response`s content aka BODY, bytes."""
         if body is None or isinstance(body, bytes):
-            self._super.body.fset(self, body)  # noqa: WPS608
+            self._super.body.fset(self, body)
             return
 
         self._set_body(body)
 
     @property
     def text(self) -> Optional[Union[bytes, Payload]]:
+        """Read attribute for storing response`s body, represented as str."""
         return self._super.text
 
     @text.setter
     def text(self, text: Optional[Any]) -> None:
+        """Write attribute for storing response`s body, represented as str."""
         if text is None or isinstance(text, str):
             self._set_text(text)
             return
@@ -175,7 +195,7 @@ class Response(AioHTTPResponse):
         self._set_body(text)
 
     def _set_body(self, body: Optional[Any]) -> None:
-        current_ctype = self.content_type if self.content_type != ContentType.stream.value else None  # noqa: WPS504
+        current_ctype = self.content_type if self.content_type != ContentType.stream.value else None
         if current_ctype is None:
             current_ctype = self._get_and_set_ctype_by_data(body).value
 
@@ -240,4 +260,4 @@ class Response(AioHTTPResponse):
 
     @property
     def _super(self) -> Any:
-        return super(self.__class__, self.__class__)  # noqa: WPS608
+        return super(self.__class__, self.__class__)

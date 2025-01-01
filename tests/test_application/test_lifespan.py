@@ -22,7 +22,7 @@ class HookMock:
         self.call_count += 1
 
 
-class SomeException(Exception):
+class SomeError(Exception):
     pass
 
 
@@ -69,8 +69,8 @@ def callable_async_ctx_partial(startup_mock: HookMock, shutdown_mock: HookMock) 
 
 @pytest.fixture
 def async_ctx_manager(
-        startup_mock: HookMock,
-        shutdown_mock: HookMock,
+    startup_mock: HookMock,
+    shutdown_mock: HookMock,
 ) -> 'ABCAContextManager':  # type: ignore[type-arg]
     @asynccontextmanager
     async def _async_ctx() -> AsyncGenerator[None, None]:
@@ -84,10 +84,10 @@ def async_ctx_manager(
 
 
 async def test_lifespan_ctx_manager(
-        aiohttp_client: AiohttpClient,
-        startup_mock: HookMock,
-        shutdown_mock: HookMock,
-        async_ctx_manager: 'ABCAContextManager',  # type: ignore[type-arg]
+    aiohttp_client: AiohttpClient,
+    startup_mock: HookMock,
+    shutdown_mock: HookMock,
+    async_ctx_manager: 'ABCAContextManager',  # type: ignore[type-arg]
 ) -> None:
     await _test_lifespan_manager(
         aiohttp_client=aiohttp_client,
@@ -98,10 +98,10 @@ async def test_lifespan_ctx_manager(
 
 
 async def test_lifespan_partial_ctx_manager(
-        aiohttp_client: AiohttpClient,
-        startup_mock: HookMock,
-        shutdown_mock: HookMock,
-        callable_async_ctx_partial: 'CallableAsyncCTX',
+    aiohttp_client: AiohttpClient,
+    startup_mock: HookMock,
+    shutdown_mock: HookMock,
+    callable_async_ctx_partial: 'CallableAsyncCTX',
 ) -> None:
     await _test_lifespan_manager(
         aiohttp_client=aiohttp_client,
@@ -112,10 +112,10 @@ async def test_lifespan_partial_ctx_manager(
 
 
 async def test_lifespan_callable_async_ctx(
-        aiohttp_client: AiohttpClient,
-        startup_mock: HookMock,
-        shutdown_mock: HookMock,
-        callable_async_ctx: 'ABCAContextManager',  # type: ignore[type-arg]
+    aiohttp_client: AiohttpClient,
+    startup_mock: HookMock,
+    shutdown_mock: HookMock,
+    callable_async_ctx: 'ABCAContextManager',  # type: ignore[type-arg]
 ) -> None:
     await _test_lifespan_manager(
         aiohttp_client=aiohttp_client,
@@ -126,10 +126,10 @@ async def test_lifespan_callable_async_ctx(
 
 
 async def _test_lifespan_manager(
-        aiohttp_client: AiohttpClient,
-        manager: Union['CallableAsyncCTX', 'ABCAContextManager'],  # type: ignore[type-arg]
-        startup_mock: HookMock,
-        shutdown_mock: HookMock,
+    aiohttp_client: AiohttpClient,
+    manager: Union['CallableAsyncCTX', 'ABCAContextManager'],  # type: ignore[type-arg]
+    startup_mock: HookMock,
+    shutdown_mock: HookMock,
 ) -> None:
     app = web.Application(lifespan=[manager])
     cli = await aiohttp_client(app)
@@ -145,10 +145,10 @@ async def _test_lifespan_manager(
 
 
 async def test_lifespan_hooks(
-        aiohttp_client: AiohttpClient,
-        startup_mock: HookMock,
-        shutdown_mock: HookMock,
-        cleanup_mock: HookMock,
+    aiohttp_client: AiohttpClient,
+    startup_mock: HookMock,
+    shutdown_mock: HookMock,
+    cleanup_mock: HookMock,
 ) -> None:
     app = web.Application(on_startup=[startup_mock], on_shutdown=[shutdown_mock], on_cleanup=[cleanup_mock])
     cli = await aiohttp_client(app)
@@ -167,21 +167,21 @@ async def test_lifespan_hooks(
 
 async def test_lifespan_startup_exception(aiohttp_client: AiohttpClient) -> None:
     async def hook() -> None:
-        raise SomeException
+        raise SomeError
 
     app = web.Application(on_startup=[hook])
 
-    with pytest.raises(SomeException):
+    with pytest.raises(SomeError):
         await aiohttp_client(app)
 
 
 async def test_lifespan_shutdown_exception(aiohttp_client: AiohttpClient, shutdown_mock: HookMock) -> None:
     async def hook_with_exc() -> None:
-        raise SomeException
+        raise SomeError
 
     app = web.Application(on_shutdown=[hook_with_exc, shutdown_mock])
 
-    with pytest.raises(SomeException):
+    with pytest.raises(SomeError):  # noqa: PT012
         cli = await aiohttp_client(app)
         await cli.close()
         await asyncio.sleep(0.1)

@@ -4,7 +4,10 @@ import warnings
 from typing import Any, AsyncGenerator, Callable, Coroutine, Iterable, Iterator, List, Mapping, Optional, Tuple
 
 from aiohttp.log import web_logger
-from aiohttp.web_app import Application as AiohttpApplication, CleanupError
+from aiohttp.web_app import (
+    Application as AiohttpApplication,
+    CleanupError,
+)
 from aiohttp.web_middlewares import _fix_request_current_app
 from aiohttp.web_request import Request
 
@@ -28,16 +31,34 @@ __all__ = (
 InnerDeco = Callable[[], Coroutine[Any, Any, None]]
 
 
-def server_info_wrapper(show_server_info_in_response: bool = False) -> Callable[[Any], InnerDeco]:
+class RouterTypeError(RapidyException):
+    message = """
+    `route_handler` must be a subclass of HTTPRouter
+    If you are using `web.View` - make sure it is under the `@view` / `@get` / `@post` /... decorator.
+
+    >>>
+    >>> from rapidy.http import get, view
+    >>>
+    >>> @view("/")  # <-- view deco
+    >>> class MyView(web.View):
+    >>>     async def get(self) -> None: pass
+    >>>
+    >>> @get("/")  # <-- get deco
+    >>> class MyView(web.View):
+    >>>     async def get(self) -> None: pass
+    """
+
+
+def server_info_wrapper(*, show_info: bool = False) -> Callable[[Any], InnerDeco]:
     def deco(prepare_headers_bound_method: Any) -> InnerDeco:
         response = prepare_headers_bound_method.__self__
 
         async def inner() -> None:
             await prepare_headers_bound_method()
-            if show_server_info_in_response:
-                response._headers[HeaderName.server.value] = SERVER_INFO
+            if show_info:
+                response._headers[HeaderName.server.value] = SERVER_INFO  # noqa: SLF001
             else:
-                response._headers.pop(HeaderName.server)
+                response._headers.pop(HeaderName.server)  # noqa: SLF001
 
         return inner
 
@@ -45,36 +66,38 @@ def server_info_wrapper(show_server_info_in_response: bool = False) -> Callable[
 
 
 class Application(AiohttpApplication):
+    """Overridden aiohttp Application."""
+
     def __init__(
-            self,
-            *,
-            logger: logging.Logger = web_logger,
-            middlewares: Optional[Iterable[Middleware]] = None,
-            handler_args: Optional[Mapping[str, Any]] = None,
-            client_max_size: int = CLIENT_MAX_SIZE,
-            server_info_in_response: bool = False,
-            lifespan: Optional[List[LifespanCTX]] = None,
-            on_startup: Optional[List[LifespanHook]] = None,
-            on_shutdown: Optional[List[LifespanHook]] = None,
-            on_cleanup: Optional[List[LifespanHook]] = None,
-            # routes
-            http_route_handlers: Iterable[HTTPRouterType] = (),
+        self,
+        *,
+        logger: logging.Logger = web_logger,
+        middlewares: Optional[Iterable[Middleware]] = None,
+        handler_args: Optional[Mapping[str, Any]] = None,
+        client_max_size: int = CLIENT_MAX_SIZE,
+        server_info_in_response: bool = False,
+        lifespan: Optional[List[LifespanCTX]] = None,
+        on_startup: Optional[List[LifespanHook]] = None,
+        on_shutdown: Optional[List[LifespanHook]] = None,
+        on_cleanup: Optional[List[LifespanHook]] = None,
+        # routes
+        http_route_handlers: Iterable[HTTPRouterType] = (),
     ) -> None:
         """Create an `rapidy` Application instance.
 
         Args:
             logger:
                 logging.Logger instance for storing application logs.
-                By default the value is logging.getLogger("aiohttp.web").
+                By default, the value is logging.getLogger("aiohttp.web").
             middlewares:
                 List of middleware factories.
             handler_args:
                 Mapping object that overrides keyword arguments of Application.make_handler()
             client_max_size:
-                Client’s maximum size in a request, in bytes.
+                Client`s maximum size in a request, in bytes.
                 If a POST request exceeds this value, it raises an HTTPRequestEntityTooLarge exception.
             server_info_in_response:
-                Boolean value indicating whether or not to give the server information in the `Server`
+                Boolean value indicating whether to give the server information in the `Server`
                 response header in each request.
                 > 'Server': 'Python/3.12.0 rapidy/1.0.0 aiohttp/4.0.0'
             lifespan:
@@ -95,7 +118,7 @@ class Application(AiohttpApplication):
             on_startup:
                 A sequence of `rapidy.typedefs.LifespanHook` called during application startup.
                 Developers may use this to run background tasks in the event loop
-                along with the application’s request handler just after the application start-up.
+                along with the application`s request handler just after the application start-up.
                 >>> def on_startup(app):
                 >>>     pass
 
@@ -201,41 +224,31 @@ class Application(AiohttpApplication):
         self._router = UrlDispatcher()
 
         # It is hidden by default, as I believe showing server information is a potential vulnerability.
-        self._hide_server_info_deco = server_info_wrapper(server_info_in_response)
+        self._hide_server_info_deco = server_info_wrapper(show_info=server_info_in_response)
 
-        self.add_http_route_handlers(http_route_handlers)
+        self.add_http_routers(http_route_handlers)
 
-    def add_http_route_handler(self, route_handler: HTTPRouterType) -> None:
+    def add_http_router(self, http_router: HTTPRouterType) -> None:
+        """Add http router."""
         # mypy is bullshit - class decorators that change type don't work
         # we need to do this check to protect the developers
-        if not isinstance(route_handler, BaseHTTPRouter):
-            raise RapidyException(
-                '`route_handler` must be a subclass of HTTPRouter'
-                '\nIf you are using `web.View` - make sure it is under the `@view` / `@get` / `@post` /... decorator.'
-                '\n>>>'
-                '\n>>> from rapidy.http import get, view'
-                '\n>>>'
-                '\n>>> @view("/")  # <-- view deco'
-                '\n>>> class MyView(web.View):'
-                '\n>>>     async def get(self) -> None: pass'
-                '\n>>>'
-                '\n>>> @get("/")  # <-- get deco'
-                '\n>>> class MyView(web.View):'
-                '\n>>>     async def get(self) -> None: pass',
-            )
+        if not isinstance(http_router, BaseHTTPRouter):
+            raise RouterTypeError
 
-        route_handler.register(application=self)
+        http_router.register(application=self)
 
-    def add_http_route_handlers(self, route_handlers: Iterable[HTTPRouterType]) -> None:
+    def add_http_routers(self, route_handlers: Iterable[HTTPRouterType]) -> None:
+        """Add http routers."""
         for route_handler in route_handlers:
-            self.add_http_route_handler(route_handler)
+            self.add_http_router(route_handler)
 
     @property
     def router(self) -> UrlDispatcher:
+        """Return overridden aiohttp UrlDispatcher."""
         return self._router
 
     def _create_lifespan_cleanup_ctx(self, lifespan: Lifespan) -> Callable[['Application'], AsyncGenerator[None, None]]:
-        async def lifespan_cleanup_ctx(app: 'Application') -> AsyncGenerator[None, None]:
+        async def lifespan_cleanup_ctx(app: 'Application') -> AsyncGenerator[None, None]:  # noqa: ARG001
             lifespan_ctx_generator = lifespan.ctx_manager().gen
 
             await lifespan_ctx_generator.__anext__()
@@ -253,7 +266,7 @@ class Application(AiohttpApplication):
                 if is_rapidy_middleware(middleware):
                     m_attr_data = get_middleware_attr_data(middleware)
 
-                    middleware = middleware_validation_wrapper(
+                    middleware = middleware_validation_wrapper(  # noqa: PLW2901
                         middleware,
                         response_validate=m_attr_data.response_validate,
                         response_type=m_attr_data.response_type,
@@ -286,7 +299,7 @@ class Application(AiohttpApplication):
         yield _fix_request_current_app(self), True
 
     async def _prepare_response(self, resp: StreamResponse) -> StreamResponse:
-        resp._prepare_headers = self._hide_server_info_deco(resp._prepare_headers)
+        resp._prepare_headers = self._hide_server_info_deco(resp._prepare_headers)  # noqa: SLF001
         return resp
 
     async def _handle(self, request: Request) -> StreamResponse:

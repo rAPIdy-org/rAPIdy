@@ -7,10 +7,10 @@ from rapidy.endpoint_handlers.http.request.data_validators import AttributeAlrea
 from rapidy.parameters.http import Header
 
 
-async def test_already_exist():
+async def test_already_exist() -> None:
     async def handler(
-            _: Any = Header(alias='same_name'),
-            __: Any = Header(alias='same_name'),
+        _: Any = Header(alias='same_name'),
+        __: Any = Header(alias='same_name'),
     ) -> Any:
         return web.Response()
 

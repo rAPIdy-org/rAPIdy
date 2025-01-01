@@ -1,7 +1,7 @@
 from typing import Any
+from typing_extensions import Annotated
 
 import pytest
-from typing_extensions import Annotated
 
 from rapidy import web
 
@@ -15,7 +15,8 @@ async def default_def_handler(attr: Any) -> None:
 
 
 @pytest.mark.parametrize(
-    'handler', [
+    'handler',
+    [
         pytest.param(annotated_def_handler, id='annotated-def'),
         pytest.param(default_def_handler, id='default-def'),
     ],

@@ -8,9 +8,9 @@ AnyTypeExplicit = AnyType(TypeOfAny.explicit)
 
 RAPIDY_HTTP_PARAM_MODULE = 'rapidy.parameters.http'
 
-ALL_RAPIDY_PARAMS: Set[str] = {f'{RAPIDY_HTTP_PARAM_MODULE}.{param}' for param in http.__all__}  # noqa: WPS407
+ALL_RAPIDY_PARAMS: Set[str] = {f'{RAPIDY_HTTP_PARAM_MODULE}.{param}' for param in http.__all__}
 
-PARAMETERS_WITHOUT_DEFAULT_VALUES: Set[str] = {  # noqa: WPS407
+PARAMETERS_WITHOUT_DEFAULT_VALUES: Set[str] = {
     # PATH
     f'{RAPIDY_HTTP_PARAM_MODULE}.PathParam',
     f'{RAPIDY_HTTP_PARAM_MODULE}.PathParams',

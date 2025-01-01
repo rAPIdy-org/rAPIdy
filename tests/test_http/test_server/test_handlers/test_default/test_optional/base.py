@@ -1,10 +1,10 @@
 from http import HTTPStatus
 from typing import Any, Dict, Optional, Type
+from typing_extensions import Annotated
 
 import pytest
 from aiohttp.pytest_plugin import AiohttpClient
 from pydantic import BaseModel
-from typing_extensions import Annotated
 
 from rapidy import web
 from rapidy.endpoint_handlers.attr_extractor import CannotBeOptionalError
@@ -13,11 +13,11 @@ from rapidy.version import PY_VERSION_TUPLE
 
 
 async def base_test_optional(
-        aiohttp_client: AiohttpClient,
-        type_: Type[RequestParamFieldInfo],
-        annotation: Any = Any,
-        can_default: bool = True,
-        **type_kwargs: Any,
+    aiohttp_client: AiohttpClient,
+    type_: Type[RequestParamFieldInfo],
+    annotation: Any = Any,
+    can_default: bool = True,
+    **type_kwargs: Any,
 ) -> None:
     async def handler_annotated_def(data: Annotated[Optional[annotation], type_(**type_kwargs)]) -> web.Response:
         assert data is None
@@ -29,14 +29,15 @@ async def base_test_optional(
 
     handlers = [handler_annotated_def, handler_default_def]
     if PY_VERSION_TUPLE >= (3, 10, 0):
+
         async def handler_annotated_union_type_def(
-                data: Annotated[annotation | None, type_(**type_kwargs)],  # type: ignore[syntax, unused-ignore]
+            data: Annotated[annotation | None, type_(**type_kwargs)],  # type: ignore[syntax, unused-ignore]
         ) -> web.Response:
             assert data is None
             return web.Response()
 
         async def handler_default_union_type_def(
-                data: annotation | None = type_(**type_kwargs),  # type: ignore[syntax, unused-ignore]
+            data: annotation | None = type_(**type_kwargs),  # type: ignore[syntax, unused-ignore]
         ) -> web.Response:
             assert data is None
             return web.Response()
@@ -63,10 +64,10 @@ async def base_test_optional(
 
 
 async def base_test_optional_schema_param_fields(
-        aiohttp_client: AiohttpClient,
-        type_: Type[RequestParamFieldInfo],
-        request_kwargs: Dict[str, Any] = {},
-        **type_kwargs: Any,
+    aiohttp_client: AiohttpClient,
+    type_: Type[RequestParamFieldInfo],
+    request_kwargs: Dict[str, Any] = {},
+    **type_kwargs: Any,
 ) -> None:
     class Schema(BaseModel):
         attr1: Optional[str] = None

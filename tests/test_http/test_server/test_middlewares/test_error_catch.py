@@ -32,8 +32,8 @@ def errors_catch_middleware_by_web_module(web_module: Any) -> Any:
 
 @rapidy_web.middleware
 async def rapidy_validation_errors_catch_middleware(
-        request: rapidy_web.Request,
-        call_next: CallNext,
+    request: rapidy_web.Request,
+    call_next: CallNext,
 ) -> rapidy_web.StreamResponse:
     try:
         return await call_next(request)
@@ -48,26 +48,28 @@ async def rapidy_validation_errors_catch_middleware(
 
 
 @pytest.mark.parametrize(
-    'middleware_web_module', [
+    'middleware_web_module',
+    [
         pytest.param(aiohttp_web, id='aiohttp-middleware'),
         pytest.param(rapidy_web, id='rapidy-middleware'),
     ],
 )
 @pytest.mark.parametrize(
-    'app_web_module', [
+    'app_web_module',
+    [
         pytest.param(aiohttp_web, id='aiohttp-app'),
         pytest.param(rapidy_web, id='rapidy-app'),
     ],
 )
 async def test_backward_compatibility_middleware(
-        aiohttp_client: AiohttpClient,
-        app_web_module: Any,
-        middleware_web_module: Any,
+    aiohttp_client: AiohttpClient,
+    app_web_module: Any,
+    middleware_web_module: Any,
 ) -> None:
     @middleware_web_module.middleware
     async def middleware_manually_raise_error(
-            request: rapidy_web.Request,
-            handler: CallNext,
+        request: rapidy_web.Request,
+        handler: CallNext,
     ) -> middleware_web_module.StreamResponse:
         raise middleware_web_module.HTTPOk(text=TEXT_SUCCESS_CATCH_OK)
 
@@ -79,14 +81,14 @@ async def test_backward_compatibility_middleware(
 
 @pytest.mark.parametrize('middleware_web_module', [aiohttp_web, rapidy_web])
 async def test_success_catch_unprocessable_entity_with_rapidy_middleware_validation(
-        aiohttp_client: AiohttpClient,
-        middleware_web_module: Any,
+    aiohttp_client: AiohttpClient,
+    middleware_web_module: Any,
 ) -> None:
     @rapidy_web.middleware
     async def middleware_validation_failure(
-            request: rapidy_web.Request,
-            handler: CallNext,
-            body: str = rapidy_web.Body(),  # raises HTTPValidationFailure
+        request: rapidy_web.Request,
+        handler: CallNext,
+        body: str = rapidy_web.Body(),  # raises HTTPValidationFailure
     ) -> rapidy_web.StreamResponse:
         raise rapidy_web.HTTPInternalServerError(text=TEXT_NOT_CATCH)
 
@@ -100,21 +102,24 @@ async def test_success_catch_unprocessable_entity_with_rapidy_handler_validation
     app = rapidy_web.Application(middlewares=[errors_catch_middleware_by_web_module(rapidy_web)])
 
     async def handler(
-            body: str = rapidy_web.Body(),  # raises HTTPValidationFailure
+        body: str = rapidy_web.Body(),  # raises HTTPValidationFailure
     ) -> rapidy_web.Response:
         return rapidy_web.Response(body=TEXT_NOT_CATCH)
 
     await _test(
-        aiohttp_client=aiohttp_client, app=app, handler=handler, expected_text=TEXT_SUCCESS_CATCH_UNPROCESSABLE_ENTITY,
+        aiohttp_client=aiohttp_client,
+        app=app,
+        handler=handler,
+        expected_text=TEXT_SUCCESS_CATCH_UNPROCESSABLE_ENTITY,
     )
 
 
 async def test_success_rapidy_catch_middleware_validation_failure(aiohttp_client: AiohttpClient) -> None:
     @rapidy_web.middleware
     async def middleware_validation_failure(
-            request: rapidy_web.Request,
-            call_next: CallNext,
-            body: str = rapidy_web.Body(),  # raises HTTPValidationFailure
+        request: rapidy_web.Request,
+        call_next: CallNext,
+        body: str = rapidy_web.Body(),  # raises HTTPValidationFailure
     ) -> rapidy_web.StreamResponse:
         raise rapidy_web.HTTPInternalServerError(text=TEXT_NOT_CATCH)
 
@@ -124,7 +129,10 @@ async def test_success_rapidy_catch_middleware_validation_failure(aiohttp_client
         return rapidy_web.Response(body=TEXT_NOT_CATCH)
 
     await _test(
-        aiohttp_client=aiohttp_client, app=app, handler=handler, expected_text=TEXT_SUCCESS_CATCH_VALIDATION_ERROR,
+        aiohttp_client=aiohttp_client,
+        app=app,
+        handler=handler,
+        expected_text=TEXT_SUCCESS_CATCH_VALIDATION_ERROR,
     )
 
 
@@ -132,12 +140,15 @@ async def test_success_rapidy_catch_handler_validation_failure(aiohttp_client: A
     app = rapidy_web.Application(middlewares=[rapidy_validation_errors_catch_middleware])
 
     async def handler(
-            body: str = rapidy_web.Body(),  # raises HTTPValidationFailure
+        body: str = rapidy_web.Body(),  # raises HTTPValidationFailure
     ) -> rapidy_web.Response:
         return rapidy_web.Response(body=TEXT_NOT_CATCH)
 
     await _test(
-        aiohttp_client=aiohttp_client, app=app, handler=handler, expected_text=TEXT_SUCCESS_CATCH_VALIDATION_ERROR,
+        aiohttp_client=aiohttp_client,
+        app=app,
+        handler=handler,
+        expected_text=TEXT_SUCCESS_CATCH_VALIDATION_ERROR,
     )
 
 
@@ -174,13 +185,14 @@ async def test_success_rapidy_catch_aiohttp_not_allowed(aiohttp_client: AiohttpC
 
 
 async def _test(
-        aiohttp_client: AiohttpClient,
-        app: Union[aiohttp_web.Application, rapidy_web.Application],
-        expected_text: str,
-        web_module: Any = rapidy_web,
-        handler: Optional[Handler] = None,
+    aiohttp_client: AiohttpClient,
+    app: Union[aiohttp_web.Application, rapidy_web.Application],
+    expected_text: str,
+    web_module: Any = rapidy_web,
+    handler: Optional[Handler] = None,
 ) -> None:
     if not handler:
+
         async def handler(request: web_module.Request) -> web_module.Response:
             return web_module.Response()
 

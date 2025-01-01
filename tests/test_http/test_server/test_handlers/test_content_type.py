@@ -40,7 +40,8 @@ test_cases = (
 
 @pytest.mark.parametrize('test_case', [pytest.param(test_case, id=test_case.id) for test_case in test_cases])
 async def test_unsupported_type(aiohttp_client: AiohttpClient, test_case: TestCase) -> None:
-    async def handler(_: Any = Body(content_type=test_case.expected_ctype)) -> Any: pass
+    async def handler(_: Any = Body(content_type=test_case.expected_ctype)) -> Any:
+        pass
 
     app = web.Application()
     app.add_routes([web.post('/', handler)])

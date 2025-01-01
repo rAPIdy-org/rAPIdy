@@ -8,7 +8,8 @@ from rapidy import web
 async def test_server_info(aiohttp_client: AiohttpClient, server_info_in_response: bool) -> None:
     app = web.Application(server_info_in_response=server_info_in_response)
 
-    async def handler() -> None: pass
+    async def handler() -> None:
+        pass
 
     app.add_routes([web.post('/', handler)])
     client = await aiohttp_client(app)

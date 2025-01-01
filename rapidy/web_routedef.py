@@ -4,7 +4,12 @@ from typing import Any, Optional, Type, Union
 from aiohttp.abc import AbstractView
 from aiohttp.hdrs import METH_ANY, METH_DELETE, METH_GET, METH_HEAD, METH_OPTIONS, METH_PATCH, METH_POST, METH_PUT
 from aiohttp.typedefs import DEFAULT_JSON_ENCODER, JSONEncoder, PathLike
-from aiohttp.web_routedef import AbstractRouteDef, RouteDef, RouteTableDef as AioHTTPRouteTableDef, StaticDef
+from aiohttp.web_routedef import (
+    AbstractRouteDef,
+    RouteDef,
+    RouteTableDef as AioHTTPRouteTableDef,
+    StaticDef,
+)
 
 from rapidy.encoders import CustomEncoder, Exclude, Include
 from rapidy.enums import Charset, ContentType
@@ -29,30 +34,42 @@ __all__ = (
 
 
 def route(method: str, path: str, handler: HandlerOrView, **kwargs: Any) -> RouteDef:
+    """Create a new RouteDef item for registering web-handler.
+
+    Args:
+        method:
+            HTTP method name.
+        path:
+            Resource path spec.
+        handler:
+            Route handler.
+        kwargs:
+            Additional internal arguments.
+    """
     return RouteDef(method=method, path=path, handler=handler, kwargs=kwargs)
 
 
 def get(
-        path: str,
-        handler: HandlerOrView,
-        *,
-        name: Optional[str] = None,
-        allow_head: bool = True,
-        response_validate: bool = True,
-        response_type: Optional[Type[Any]] = Unset,
-        response_content_type: Union[str, ContentType, None] = None,
-        response_charset: Union[str, Charset] = Charset.utf8,
-        response_zlib_executor: Optional[Executor] = None,
-        response_zlib_executor_size: Optional[int] = None,
-        response_include_fields: Optional[Include] = None,
-        response_exclude_fields: Optional[Exclude] = None,
-        response_by_alias: bool = True,
-        response_exclude_unset: bool = False,
-        response_exclude_defaults: bool = False,
-        response_exclude_none: bool = False,
-        response_custom_encoder: Optional[CustomEncoder] = None,
-        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-        **kwargs: Any,
+    path: str,
+    handler: HandlerOrView,
+    *,
+    name: Optional[str] = None,
+    allow_head: bool = True,
+    response_validate: bool = True,
+    response_type: Optional[Type[Any]] = Unset,
+    response_content_type: Union[str, ContentType, None] = None,
+    response_charset: Union[str, Charset] = Charset.utf8,
+    response_zlib_executor: Optional[Executor] = None,
+    response_zlib_executor_size: Optional[int] = None,
+    response_include_fields: Optional[Include] = None,
+    response_exclude_fields: Optional[Exclude] = None,
+    response_by_alias: bool = True,
+    response_exclude_unset: bool = False,
+    response_exclude_defaults: bool = False,
+    response_exclude_none: bool = False,
+    response_custom_encoder: Optional[CustomEncoder] = None,
+    response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+    **kwargs: Any,
 ) -> RouteDef:
     """Create a new RouteDef item for registering GET web-handler.
 
@@ -109,6 +126,8 @@ def get(
         response_json_encoder:
             Any callable that accepts an object and returns a JSON string.
             Will be used if dumps=True
+        kwargs:
+            Additional internal arguments.
     """
     return route(
         # aiohttp attrs
@@ -137,25 +156,25 @@ def get(
 
 
 def post(
-        path: str,
-        handler: HandlerOrView,
-        *,
-        name: Optional[str] = None,
-        response_validate: bool = True,
-        response_type: Optional[Type[Any]] = Unset,
-        response_content_type: Union[str, ContentType, None] = None,
-        response_charset: Union[str, Charset] = Charset.utf8,
-        response_zlib_executor: Optional[Executor] = None,
-        response_zlib_executor_size: Optional[int] = None,
-        response_include_fields: Optional[Include] = None,
-        response_exclude_fields: Optional[Exclude] = None,
-        response_by_alias: bool = True,
-        response_exclude_unset: bool = False,
-        response_exclude_defaults: bool = False,
-        response_exclude_none: bool = False,
-        response_custom_encoder: Optional[CustomEncoder] = None,
-        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-        **kwargs: Any,
+    path: str,
+    handler: HandlerOrView,
+    *,
+    name: Optional[str] = None,
+    response_validate: bool = True,
+    response_type: Optional[Type[Any]] = Unset,
+    response_content_type: Union[str, ContentType, None] = None,
+    response_charset: Union[str, Charset] = Charset.utf8,
+    response_zlib_executor: Optional[Executor] = None,
+    response_zlib_executor_size: Optional[int] = None,
+    response_include_fields: Optional[Include] = None,
+    response_exclude_fields: Optional[Exclude] = None,
+    response_by_alias: bool = True,
+    response_exclude_unset: bool = False,
+    response_exclude_defaults: bool = False,
+    response_exclude_none: bool = False,
+    response_custom_encoder: Optional[CustomEncoder] = None,
+    response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+    **kwargs: Any,
 ) -> RouteDef:
     """Create a new RouteDef item for registering POST web-handler.
 
@@ -205,6 +224,8 @@ def post(
         response_json_encoder:
             Any callable that accepts an object and returns a JSON string.
             Will be used if dumps=True
+        kwargs:
+            Additional internal arguments.
     """
     return route(
         # aiohttp attrs
@@ -232,25 +253,25 @@ def post(
 
 
 def put(
-        path: str,
-        handler: HandlerOrView,
-        *,
-        name: Optional[str] = None,
-        response_validate: bool = True,
-        response_type: Optional[Type[Any]] = Unset,
-        response_content_type: Union[str, ContentType, None] = None,
-        response_charset: Union[str, Charset] = Charset.utf8,
-        response_zlib_executor: Optional[Executor] = None,
-        response_zlib_executor_size: Optional[int] = None,
-        response_include_fields: Optional[Include] = None,
-        response_exclude_fields: Optional[Exclude] = None,
-        response_by_alias: bool = True,
-        response_exclude_unset: bool = False,
-        response_exclude_defaults: bool = False,
-        response_exclude_none: bool = False,
-        response_custom_encoder: Optional[CustomEncoder] = None,
-        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-        **kwargs: Any,
+    path: str,
+    handler: HandlerOrView,
+    *,
+    name: Optional[str] = None,
+    response_validate: bool = True,
+    response_type: Optional[Type[Any]] = Unset,
+    response_content_type: Union[str, ContentType, None] = None,
+    response_charset: Union[str, Charset] = Charset.utf8,
+    response_zlib_executor: Optional[Executor] = None,
+    response_zlib_executor_size: Optional[int] = None,
+    response_include_fields: Optional[Include] = None,
+    response_exclude_fields: Optional[Exclude] = None,
+    response_by_alias: bool = True,
+    response_exclude_unset: bool = False,
+    response_exclude_defaults: bool = False,
+    response_exclude_none: bool = False,
+    response_custom_encoder: Optional[CustomEncoder] = None,
+    response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+    **kwargs: Any,
 ) -> RouteDef:
     """Create a new RouteDef item for registering PUT web-handler.
 
@@ -300,6 +321,8 @@ def put(
         response_json_encoder:
             Any callable that accepts an object and returns a JSON string.
             Will be used if dumps=True
+        kwargs:
+            Additional internal arguments.
     """
     return route(
         # aiohttp attrs
@@ -327,25 +350,25 @@ def put(
 
 
 def patch(
-        path: str,
-        handler: HandlerOrView,
-        *,
-        name: Optional[str] = None,
-        response_validate: bool = True,
-        response_type: Optional[Type[Any]] = Unset,
-        response_content_type: Union[str, ContentType, None] = None,
-        response_charset: Union[str, Charset] = Charset.utf8,
-        response_zlib_executor: Optional[Executor] = None,
-        response_zlib_executor_size: Optional[int] = None,
-        response_include_fields: Optional[Include] = None,
-        response_exclude_fields: Optional[Exclude] = None,
-        response_by_alias: bool = True,
-        response_exclude_unset: bool = False,
-        response_exclude_defaults: bool = False,
-        response_exclude_none: bool = False,
-        response_custom_encoder: Optional[CustomEncoder] = None,
-        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-        **kwargs: Any,
+    path: str,
+    handler: HandlerOrView,
+    *,
+    name: Optional[str] = None,
+    response_validate: bool = True,
+    response_type: Optional[Type[Any]] = Unset,
+    response_content_type: Union[str, ContentType, None] = None,
+    response_charset: Union[str, Charset] = Charset.utf8,
+    response_zlib_executor: Optional[Executor] = None,
+    response_zlib_executor_size: Optional[int] = None,
+    response_include_fields: Optional[Include] = None,
+    response_exclude_fields: Optional[Exclude] = None,
+    response_by_alias: bool = True,
+    response_exclude_unset: bool = False,
+    response_exclude_defaults: bool = False,
+    response_exclude_none: bool = False,
+    response_custom_encoder: Optional[CustomEncoder] = None,
+    response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+    **kwargs: Any,
 ) -> RouteDef:
     """Create a new RouteDef item for registering PATCH web-handler.
 
@@ -395,6 +418,8 @@ def patch(
         response_json_encoder:
             Any callable that accepts an object and returns a JSON string.
             Will be used if dumps=True
+        kwargs:
+            Additional internal arguments.
     """
     return route(
         # aiohttp attrs
@@ -422,25 +447,25 @@ def patch(
 
 
 def delete(
-        path: str,
-        handler: HandlerOrView,
-        *,
-        name: Optional[str] = None,
-        response_validate: bool = True,
-        response_type: Optional[Type[Any]] = Unset,
-        response_content_type: Union[str, ContentType, None] = None,
-        response_charset: Union[str, Charset] = Charset.utf8,
-        response_zlib_executor: Optional[Executor] = None,
-        response_zlib_executor_size: Optional[int] = None,
-        response_include_fields: Optional[Include] = None,
-        response_exclude_fields: Optional[Exclude] = None,
-        response_by_alias: bool = True,
-        response_exclude_unset: bool = False,
-        response_exclude_defaults: bool = False,
-        response_exclude_none: bool = False,
-        response_custom_encoder: Optional[CustomEncoder] = None,
-        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-        **kwargs: Any,
+    path: str,
+    handler: HandlerOrView,
+    *,
+    name: Optional[str] = None,
+    response_validate: bool = True,
+    response_type: Optional[Type[Any]] = Unset,
+    response_content_type: Union[str, ContentType, None] = None,
+    response_charset: Union[str, Charset] = Charset.utf8,
+    response_zlib_executor: Optional[Executor] = None,
+    response_zlib_executor_size: Optional[int] = None,
+    response_include_fields: Optional[Include] = None,
+    response_exclude_fields: Optional[Exclude] = None,
+    response_by_alias: bool = True,
+    response_exclude_unset: bool = False,
+    response_exclude_defaults: bool = False,
+    response_exclude_none: bool = False,
+    response_custom_encoder: Optional[CustomEncoder] = None,
+    response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+    **kwargs: Any,
 ) -> RouteDef:
     """Create a new RouteDef item for registering DELETE web-handler.
 
@@ -490,6 +515,8 @@ def delete(
         response_json_encoder:
             Any callable that accepts an object and returns a JSON string.
             Will be used if dumps=True
+        kwargs:
+            Additional internal arguments.
     """
     return route(
         # aiohttp attrs
@@ -517,25 +544,25 @@ def delete(
 
 
 def view(
-        path: str,
-        handler: Type[AbstractView],
-        *,
-        name: Optional[str] = None,
-        response_validate: bool = True,
-        response_type: Optional[Type[Any]] = Unset,
-        response_content_type: Union[str, ContentType, None] = None,
-        response_charset: Union[str, Charset] = Charset.utf8,
-        response_zlib_executor: Optional[Executor] = None,
-        response_zlib_executor_size: Optional[int] = None,
-        response_include_fields: Optional[Include] = None,
-        response_exclude_fields: Optional[Exclude] = None,
-        response_by_alias: bool = True,
-        response_exclude_unset: bool = False,
-        response_exclude_defaults: bool = False,
-        response_exclude_none: bool = False,
-        response_custom_encoder: Optional[CustomEncoder] = None,
-        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-        **kwargs: Any,
+    path: str,
+    handler: Type[AbstractView],
+    *,
+    name: Optional[str] = None,
+    response_validate: bool = True,
+    response_type: Optional[Type[Any]] = Unset,
+    response_content_type: Union[str, ContentType, None] = None,
+    response_charset: Union[str, Charset] = Charset.utf8,
+    response_zlib_executor: Optional[Executor] = None,
+    response_zlib_executor_size: Optional[int] = None,
+    response_include_fields: Optional[Include] = None,
+    response_exclude_fields: Optional[Exclude] = None,
+    response_by_alias: bool = True,
+    response_exclude_unset: bool = False,
+    response_exclude_defaults: bool = False,
+    response_exclude_none: bool = False,
+    response_custom_encoder: Optional[CustomEncoder] = None,
+    response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+    **kwargs: Any,
 ) -> RouteDef:
     """Create a new RouteDef item for adding class-based view handler.
 
@@ -585,6 +612,8 @@ def view(
         response_json_encoder:
             Any callable that accepts an object and returns a JSON string.
             Will be used if dumps=True
+        kwargs:
+            Additional internal arguments.
     """
     return route(
         # aiohttp attrs
@@ -612,25 +641,25 @@ def view(
 
 
 def head(
-        path: str,
-        handler: HandlerOrView,
-        *,
-        name: Optional[str] = None,
-        response_validate: bool = True,
-        response_type: Optional[Type[Any]] = Unset,
-        response_content_type: Union[str, ContentType, None] = None,
-        response_charset: Union[str, Charset] = Charset.utf8,
-        response_zlib_executor: Optional[Executor] = None,
-        response_zlib_executor_size: Optional[int] = None,
-        response_include_fields: Optional[Include] = None,
-        response_exclude_fields: Optional[Exclude] = None,
-        response_by_alias: bool = True,
-        response_exclude_unset: bool = False,
-        response_exclude_defaults: bool = False,
-        response_exclude_none: bool = False,
-        response_custom_encoder: Optional[CustomEncoder] = None,
-        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-        **kwargs: Any,
+    path: str,
+    handler: HandlerOrView,
+    *,
+    name: Optional[str] = None,
+    response_validate: bool = True,
+    response_type: Optional[Type[Any]] = Unset,
+    response_content_type: Union[str, ContentType, None] = None,
+    response_charset: Union[str, Charset] = Charset.utf8,
+    response_zlib_executor: Optional[Executor] = None,
+    response_zlib_executor_size: Optional[int] = None,
+    response_include_fields: Optional[Include] = None,
+    response_exclude_fields: Optional[Exclude] = None,
+    response_by_alias: bool = True,
+    response_exclude_unset: bool = False,
+    response_exclude_defaults: bool = False,
+    response_exclude_none: bool = False,
+    response_custom_encoder: Optional[CustomEncoder] = None,
+    response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+    **kwargs: Any,
 ) -> RouteDef:
     """Create a new RouteDef item for registering HEAD web-handler.
 
@@ -680,6 +709,8 @@ def head(
         response_json_encoder:
             Any callable that accepts an object and returns a JSON string.
             Will be used if dumps=True
+        kwargs:
+            Additional internal arguments.
     """
     return route(
         # aiohttp attrs
@@ -707,25 +738,25 @@ def head(
 
 
 def options(
-        path: str,
-        handler: HandlerOrView,
-        *,
-        name: Optional[str] = None,
-        response_validate: bool = True,
-        response_type: Optional[Type[Any]] = Unset,
-        response_content_type: Union[str, ContentType, None] = None,
-        response_charset: Union[str, Charset] = Charset.utf8,
-        response_zlib_executor: Optional[Executor] = None,
-        response_zlib_executor_size: Optional[int] = None,
-        response_include_fields: Optional[Include] = None,
-        response_exclude_fields: Optional[Exclude] = None,
-        response_by_alias: bool = True,
-        response_exclude_unset: bool = False,
-        response_exclude_defaults: bool = False,
-        response_exclude_none: bool = False,
-        response_custom_encoder: Optional[CustomEncoder] = None,
-        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-        **kwargs: Any,
+    path: str,
+    handler: HandlerOrView,
+    *,
+    name: Optional[str] = None,
+    response_validate: bool = True,
+    response_type: Optional[Type[Any]] = Unset,
+    response_content_type: Union[str, ContentType, None] = None,
+    response_charset: Union[str, Charset] = Charset.utf8,
+    response_zlib_executor: Optional[Executor] = None,
+    response_zlib_executor_size: Optional[int] = None,
+    response_include_fields: Optional[Include] = None,
+    response_exclude_fields: Optional[Exclude] = None,
+    response_by_alias: bool = True,
+    response_exclude_unset: bool = False,
+    response_exclude_defaults: bool = False,
+    response_exclude_none: bool = False,
+    response_custom_encoder: Optional[CustomEncoder] = None,
+    response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+    **kwargs: Any,
 ) -> RouteDef:
     """Create a new RouteDef item for registering OPTIONS web-handler.
 
@@ -775,6 +806,8 @@ def options(
         response_json_encoder:
             Any callable that accepts an object and returns a JSON string.
             Will be used if dumps=True
+        kwargs:
+            Additional internal arguments.
     """
     return route(
         # aiohttp attrs
@@ -802,11 +835,25 @@ def options(
 
 
 def static(prefix: str, path: PathLike, **kwargs: Any) -> StaticDef:
+    """Create a new StaticDef item."""
     return StaticDef(prefix, path, kwargs)
 
 
 class RouteTableDef(AioHTTPRouteTableDef):
+    """Overridden aiohttp RouteTableDef."""
+
     def route(self, method: str, path: str, **kwargs: Any) -> RouterDeco:
+        """An internal method for registering handlers.
+
+        Args:
+            method:
+                HTTP method name.
+            path:
+                Resource path spec.
+            kwargs:
+                Additional internal arguments.
+        """
+
         def inner(handler: HandlerOrView) -> HandlerOrView:
             self._items.append(RouteDef(method, path, handler, kwargs))
             return handler
@@ -814,26 +861,26 @@ class RouteTableDef(AioHTTPRouteTableDef):
         return inner
 
     def get(
-            self,
-            path: str,
-            *,
-            name: Optional[str] = None,
-            allow_head: bool = True,
-            response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,
-            response_content_type: Union[str, ContentType, None] = None,
-            response_charset: Union[str, Charset] = Charset.utf8,
-            response_zlib_executor: Optional[Executor] = None,
-            response_zlib_executor_size: Optional[int] = None,
-            response_include_fields: Optional[Include] = None,
-            response_exclude_fields: Optional[Exclude] = None,
-            response_by_alias: bool = True,
-            response_exclude_unset: bool = False,
-            response_exclude_defaults: bool = False,
-            response_exclude_none: bool = False,
-            response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            **kwargs: Any,
+        self,
+        path: str,
+        *,
+        name: Optional[str] = None,
+        allow_head: bool = True,
+        response_validate: bool = True,
+        response_type: Optional[Type[Any]] = Unset,
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
     ) -> RouterDeco:
         """Add a new RouteDef item for registering GET web-handler.
 
@@ -888,6 +935,8 @@ class RouteTableDef(AioHTTPRouteTableDef):
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
+            kwargs:
+                Additional internal arguments.
         """
         return self.route(
             # aiohttp attrs
@@ -914,25 +963,25 @@ class RouteTableDef(AioHTTPRouteTableDef):
         )
 
     def post(
-            self,
-            path: str,
-            *,
-            name: Optional[str] = None,
-            response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,
-            response_content_type: Union[str, ContentType, None] = None,
-            response_charset: Union[str, Charset] = Charset.utf8,
-            response_zlib_executor: Optional[Executor] = None,
-            response_zlib_executor_size: Optional[int] = None,
-            response_include_fields: Optional[Include] = None,
-            response_exclude_fields: Optional[Exclude] = None,
-            response_by_alias: bool = True,
-            response_exclude_unset: bool = False,
-            response_exclude_defaults: bool = False,
-            response_exclude_none: bool = False,
-            response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            **kwargs: Any,
+        self,
+        path: str,
+        *,
+        name: Optional[str] = None,
+        response_validate: bool = True,
+        response_type: Optional[Type[Any]] = Unset,
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
     ) -> RouterDeco:
         """Add a new RouteDef item for registering POST web-handler.
 
@@ -980,6 +1029,8 @@ class RouteTableDef(AioHTTPRouteTableDef):
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
+            kwargs:
+                Additional internal arguments.
         """
         return self.route(
             # aiohttp attrs
@@ -1005,25 +1056,25 @@ class RouteTableDef(AioHTTPRouteTableDef):
         )
 
     def put(
-            self,
-            path: str,
-            *,
-            name: Optional[str] = None,
-            response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,
-            response_content_type: Union[str, ContentType, None] = None,
-            response_charset: Union[str, Charset] = Charset.utf8,
-            response_zlib_executor: Optional[Executor] = None,
-            response_zlib_executor_size: Optional[int] = None,
-            response_include_fields: Optional[Include] = None,
-            response_exclude_fields: Optional[Exclude] = None,
-            response_by_alias: bool = True,
-            response_exclude_unset: bool = False,
-            response_exclude_defaults: bool = False,
-            response_exclude_none: bool = False,
-            response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            **kwargs: Any,
+        self,
+        path: str,
+        *,
+        name: Optional[str] = None,
+        response_validate: bool = True,
+        response_type: Optional[Type[Any]] = Unset,
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
     ) -> RouterDeco:
         """Add a new RouteDef item for registering PUT web-handler.
 
@@ -1071,6 +1122,8 @@ class RouteTableDef(AioHTTPRouteTableDef):
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
+            kwargs:
+                Additional internal arguments.
         """
         return self.route(
             # aiohttp attrs
@@ -1096,25 +1149,25 @@ class RouteTableDef(AioHTTPRouteTableDef):
         )
 
     def patch(
-            self,
-            path: str,
-            *,
-            name: Optional[str] = None,
-            response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,
-            response_content_type: Union[str, ContentType, None] = None,
-            response_charset: Union[str, Charset] = Charset.utf8,
-            response_zlib_executor: Optional[Executor] = None,
-            response_zlib_executor_size: Optional[int] = None,
-            response_include_fields: Optional[Include] = None,
-            response_exclude_fields: Optional[Exclude] = None,
-            response_by_alias: bool = True,
-            response_exclude_unset: bool = False,
-            response_exclude_defaults: bool = False,
-            response_exclude_none: bool = False,
-            response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            **kwargs: Any,
+        self,
+        path: str,
+        *,
+        name: Optional[str] = None,
+        response_validate: bool = True,
+        response_type: Optional[Type[Any]] = Unset,
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
     ) -> RouterDeco:
         """Add a new RouteDef item for registering PATCH web-handler.
 
@@ -1162,6 +1215,8 @@ class RouteTableDef(AioHTTPRouteTableDef):
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
+            kwargs:
+                Additional internal arguments.
         """
         return self.route(
             # aiohttp attrs
@@ -1187,25 +1242,25 @@ class RouteTableDef(AioHTTPRouteTableDef):
         )
 
     def delete(
-            self,
-            path: str,
-            *,
-            name: Optional[str] = None,
-            response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,
-            response_content_type: Union[str, ContentType, None] = None,
-            response_charset: Union[str, Charset] = Charset.utf8,
-            response_zlib_executor: Optional[Executor] = None,
-            response_zlib_executor_size: Optional[int] = None,
-            response_include_fields: Optional[Include] = None,
-            response_exclude_fields: Optional[Exclude] = None,
-            response_by_alias: bool = True,
-            response_exclude_unset: bool = False,
-            response_exclude_defaults: bool = False,
-            response_exclude_none: bool = False,
-            response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            **kwargs: Any,
+        self,
+        path: str,
+        *,
+        name: Optional[str] = None,
+        response_validate: bool = True,
+        response_type: Optional[Type[Any]] = Unset,
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
     ) -> RouterDeco:
         """Add a new RouteDef item for registering DELETE web-handler.
 
@@ -1253,6 +1308,8 @@ class RouteTableDef(AioHTTPRouteTableDef):
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
+            kwargs:
+                Additional internal arguments.
         """
         return self.route(
             # aiohttp attrs
@@ -1278,25 +1335,25 @@ class RouteTableDef(AioHTTPRouteTableDef):
         )
 
     def view(
-            self,
-            path: str,
-            *,
-            name: Optional[str] = None,
-            response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,
-            response_content_type: Union[str, ContentType, None] = None,
-            response_charset: Union[str, Charset] = Charset.utf8,
-            response_zlib_executor: Optional[Executor] = None,
-            response_zlib_executor_size: Optional[int] = None,
-            response_include_fields: Optional[Include] = None,
-            response_exclude_fields: Optional[Exclude] = None,
-            response_by_alias: bool = True,
-            response_exclude_unset: bool = False,
-            response_exclude_defaults: bool = False,
-            response_exclude_none: bool = False,
-            response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            **kwargs: Any,
+        self,
+        path: str,
+        *,
+        name: Optional[str] = None,
+        response_validate: bool = True,
+        response_type: Optional[Type[Any]] = Unset,
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
     ) -> RouterDeco:
         """Add a new RouteDef item for adding class-based view handler.
 
@@ -1344,6 +1401,8 @@ class RouteTableDef(AioHTTPRouteTableDef):
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
+            kwargs:
+                Additional internal arguments.
         """
         return self.route(
             # aiohttp attrs
@@ -1369,25 +1428,25 @@ class RouteTableDef(AioHTTPRouteTableDef):
         )
 
     def head(
-            self,
-            path: str,
-            *,
-            name: Optional[str] = None,
-            response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,
-            response_content_type: Union[str, ContentType, None] = None,
-            response_charset: Union[str, Charset] = Charset.utf8,
-            response_zlib_executor: Optional[Executor] = None,
-            response_zlib_executor_size: Optional[int] = None,
-            response_include_fields: Optional[Include] = None,
-            response_exclude_fields: Optional[Exclude] = None,
-            response_by_alias: bool = True,
-            response_exclude_unset: bool = False,
-            response_exclude_defaults: bool = False,
-            response_exclude_none: bool = False,
-            response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            **kwargs: Any,
+        self,
+        path: str,
+        *,
+        name: Optional[str] = None,
+        response_validate: bool = True,
+        response_type: Optional[Type[Any]] = Unset,
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
     ) -> RouterDeco:
         """Add a new RouteDef item for registering HEAD web-handler.
 
@@ -1435,6 +1494,8 @@ class RouteTableDef(AioHTTPRouteTableDef):
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
+            kwargs:
+                Additional internal arguments.
         """
         return self.route(
             # aiohttp attrs
@@ -1460,29 +1521,29 @@ class RouteTableDef(AioHTTPRouteTableDef):
         )
 
     def options(
-            self,
-            path: str,
-            *,
-            name: Optional[str] = None,
-            response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,
-            response_content_type: Union[str, ContentType, None] = None,
-            response_charset: Union[str, Charset] = Charset.utf8,
-            response_zlib_executor: Optional[Executor] = None,
-            response_zlib_executor_size: Optional[int] = None,
-            response_include_fields: Optional[Include] = None,
-            response_exclude_fields: Optional[Exclude] = None,
-            response_by_alias: bool = True,
-            response_exclude_unset: bool = False,
-            response_exclude_defaults: bool = False,
-            response_exclude_none: bool = False,
-            response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            **kwargs: Any,
+        self,
+        path: str,
+        *,
+        name: Optional[str] = None,
+        response_validate: bool = True,
+        response_type: Optional[Type[Any]] = Unset,
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
     ) -> RouterDeco:
         """Add a new RouteDef item for registering OPTIONS web-handler.
 
-       Args:
+        Args:
             path:
                 Resource path spec.
             name:
@@ -1526,6 +1587,8 @@ class RouteTableDef(AioHTTPRouteTableDef):
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
+            kwargs:
+                Additional internal arguments.
         """
         return self.route(
             # aiohttp attrs

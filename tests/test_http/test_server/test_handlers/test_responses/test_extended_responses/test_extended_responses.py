@@ -44,7 +44,8 @@ async def test_validation_flag(aiohttp_client: AiohttpClient, response_validate:
 
 
 @pytest.mark.parametrize(
-    'return_type', [
+    'return_type',
+    [
         int,
         str,
         Union[int, str],
@@ -64,7 +65,8 @@ async def test_handler_return_none(aiohttp_client: AiohttpClient, response_valid
 
 
 @pytest.mark.parametrize(
-    'return_type', [
+    'return_type',
+    [
         web.Response,
         Any,
         None,
@@ -73,7 +75,9 @@ async def test_handler_return_none(aiohttp_client: AiohttpClient, response_valid
 )
 @pytest.mark.parametrize('response_validate', [True, False])
 async def test_return_none_unsupported_validation_types(
-        aiohttp_client: AiohttpClient, return_type: Any, response_validate: bool,
+    aiohttp_client: AiohttpClient,
+    return_type: Any,
+    response_validate: bool,
 ) -> None:
     await check_all_handlers(
         aiohttp_client=aiohttp_client,
@@ -109,7 +113,7 @@ class TestCaseResponseBodyType(BaseModel):
 
 
 test_body_types_cases = (
-    # TODO: more body types
+    # TODO: more body types  # noqa: TD002 TD003 FIX002
     TestCaseResponseBodyType(
         id='json',
         content_type=ContentType.json,
@@ -194,9 +198,9 @@ async def test_update_data_for_injected_response(aiohttp_client: AiohttpClient) 
 @pytest.mark.parametrize('create_web_response', [True, False])
 @pytest.mark.parametrize('return_middleware', [True, False])
 async def test_union_stream_response(
-        aiohttp_client: AiohttpClient,
-        create_web_response: bool,
-        return_middleware: bool,
+    aiohttp_client: AiohttpClient,
+    create_web_response: bool,
+    return_middleware: bool,
 ) -> None:
     async def handler() -> Union[web.Response, str]:
         if create_web_response:

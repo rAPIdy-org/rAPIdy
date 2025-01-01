@@ -8,15 +8,15 @@ from rapidy import web
 
 
 async def handler_request_fst(  # type: ignore[no-untyped-def]
-        r,
-        any_param=web.Headers(),
+    r,
+    any_param=web.Headers(),
 ) -> None:
     pass
 
 
 async def handler_request_snd(  # type: ignore[no-untyped-def]
-        any_param=web.Headers(),
-        r: web.Request = ...,
+    any_param=web.Headers(),
+    r: web.Request = ...,
 ) -> None:
     pass
 

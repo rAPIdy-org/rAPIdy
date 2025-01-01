@@ -1,7 +1,8 @@
+from typing import Final
+
 from mypy.errorcodes import ErrorCode
 from mypy.nodes import Context
 from mypy.plugin import CheckerPluginInterface
-from typing_extensions import Final
 
 RAPIDY_NAME: Final[str] = 'rAPIdy'
 

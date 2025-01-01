@@ -1,9 +1,9 @@
 from http import HTTPStatus
 from typing import Any, Final, Tuple, Type
+from typing_extensions import Annotated
 
 import pytest
 from aiohttp.pytest_plugin import AiohttpClient
-from typing_extensions import Annotated
 
 from rapidy import web
 from rapidy._base_exceptions import RapidyHandlerException
@@ -20,12 +20,12 @@ DEFAULT_VALUE: Final[str] = 'DEFAULT'
 
 
 async def base_test_specify_both_default_and_default_factory(
-        type_: Type[RequestParamFieldInfo],
-        annotation: Any = Any,
-        **type_kwargs: Any,
+    type_: Type[RequestParamFieldInfo],
+    annotation: Any = Any,
+    **type_kwargs: Any,
 ) -> None:
     async def handler(
-            p: Annotated[annotation, type_(default_factory=lambda: 'default', **type_kwargs)] = 'default',
+        p: Annotated[annotation, type_(default_factory=lambda: 'default', **type_kwargs)] = 'default',
     ) -> web.Response:
         pass
 
@@ -35,9 +35,9 @@ async def base_test_specify_both_default_and_default_factory(
 
 
 async def base_test_incorrect_define_default_annotated_def(
-        type_: Type[RequestParamFieldInfo],
-        annotation: Any = Any,
-        **type_kwargs: Any,
+    type_: Type[RequestParamFieldInfo],
+    annotation: Any = Any,
+    **type_kwargs: Any,
 ) -> None:
     async def handler(p: Annotated[annotation, type_('default', **type_kwargs)] = 'default') -> web.Response:
         pass
@@ -47,16 +47,16 @@ async def base_test_incorrect_define_default_annotated_def(
         app.add_routes([web.post('/', handler)])
 
     with pytest.raises((TypeError, ValueError)):
-        type_('default', default_factory=lambda: 'default',  **type_kwargs)  # NOTE: this exc raise pydantic
+        type_('default', default_factory=lambda: 'default', **type_kwargs)  # NOTE: this exc raise pydantic
 
 
 async def base_test_can_default(
-        aiohttp_client: AiohttpClient,
-        *,
-        type_: Type[RequestParamFieldInfo],
-        annotation: Any = Any,
-        can_default: bool = True,
-        **type_kwargs: Any,
+    aiohttp_client: AiohttpClient,
+    *,
+    type_: Type[RequestParamFieldInfo],
+    annotation: Any = Any,
+    can_default: bool = True,
+    **type_kwargs: Any,
 ) -> None:
     app = web.Application()
     counter, paths = 0, []
@@ -78,10 +78,10 @@ async def base_test_can_default(
 
 
 def create_all_default_handlers_type(
-        type_: Type[RequestParamFieldInfo],
-        annotation: Any = Any,
-        default: Any = DEFAULT_VALUE,
-        **type_kwargs: Any,
+    type_: Type[RequestParamFieldInfo],
+    annotation: Any = Any,
+    default: Any = DEFAULT_VALUE,
+    **type_kwargs: Any,
 ) -> Tuple[Tuple[Handler, Type[RapidyHandlerException]], ...]:
     async def handler_1(p: Annotated[annotation, type_(**type_kwargs)] = default) -> web.Response:
         assert p == default
@@ -92,7 +92,7 @@ def create_all_default_handlers_type(
         return web.Response()
 
     async def handler_3(
-            p: Annotated[annotation, type_(default_factory=lambda: default, **type_kwargs)],
+        p: Annotated[annotation, type_(default_factory=lambda: default, **type_kwargs)],
     ) -> web.Response:
         assert p == default
         return web.Response()

@@ -17,23 +17,23 @@ if TYPE_CHECKING:
 
 
 def handler_validation_wrapper(
-        handler: Handler,
-        *,
-        response_validate: bool,
-        response_type: Optional[Type[Any]],
-        response_content_type: Union[str, ContentType, None],
-        response_charset: Union[str, Charset],
-        response_zlib_executor: Optional[Executor],
-        response_zlib_executor_size: Optional[int],
-        response_json_encoder: JSONEncoder,
-        # response json preparer
-        response_include_fields: Optional[Include],
-        response_exclude_fields: Optional[Exclude],
-        response_by_alias: bool,
-        response_exclude_unset: bool,
-        response_exclude_defaults: bool,
-        response_exclude_none: bool,
-        response_custom_encoder: Optional[CustomEncoder],
+    handler: Handler,
+    *,
+    response_validate: bool,
+    response_type: Optional[Type[Any]],
+    response_content_type: Union[str, ContentType, None],
+    response_charset: Union[str, Charset],
+    response_zlib_executor: Optional[Executor],
+    response_zlib_executor_size: Optional[int],
+    response_json_encoder: JSONEncoder,
+    # response json preparer
+    response_include_fields: Optional[Include],
+    response_exclude_fields: Optional[Exclude],
+    response_by_alias: bool,
+    response_exclude_unset: bool,
+    response_exclude_defaults: bool,
+    response_exclude_none: bool,
+    response_custom_encoder: Optional[CustomEncoder],
 ) -> Handler:
     handler_controller = controller_factory(
         handler,
@@ -88,31 +88,27 @@ def handler_validation_wrapper(
 
 
 def view_validation_wrapper(
-        view: Type['View'],
-        *,
-        response_validate: bool,
-        response_type: Optional[Type[Any]],
-        response_content_type: Union[str, ContentType, None],
-        response_charset: Union[str, Charset],
-        response_zlib_executor: Optional[Executor],
-        response_zlib_executor_size: Optional[int],
-        response_json_encoder: JSONEncoder,
-        # response json preparer
-        response_include_fields: Optional[Include],
-        response_exclude_fields: Optional[Exclude],
-        response_by_alias: bool,
-        response_exclude_unset: bool,
-        response_exclude_defaults: bool,
-        response_exclude_none: bool,
-        response_custom_encoder: Optional[CustomEncoder],
+    view: Type['View'],
+    *,
+    response_validate: bool,
+    response_type: Optional[Type[Any]],
+    response_content_type: Union[str, ContentType, None],
+    response_charset: Union[str, Charset],
+    response_zlib_executor: Optional[Executor],
+    response_zlib_executor_size: Optional[int],
+    response_json_encoder: JSONEncoder,
+    # response json preparer
+    response_include_fields: Optional[Include],
+    response_exclude_fields: Optional[Exclude],
+    response_by_alias: bool,
+    response_exclude_unset: bool,
+    response_exclude_defaults: bool,
+    response_exclude_none: bool,
+    response_custom_encoder: Optional[CustomEncoder],
 ) -> 'View':
     handler_controllers = {}
 
-    for method in (  # noqa: WPS335 WPS352
-        handler_attr
-        for handler_attr in dir(view)
-        if handler_attr.upper() in METH_ALL
-    ):
+    for method in (handler_attr for handler_attr in dir(view) if handler_attr.upper() in METH_ALL):
         method_handler: Handler = getattr(view, method)
         handler_controllers[method.lower()] = controller_factory(
             method_handler,
@@ -142,13 +138,13 @@ def view_validation_wrapper(
         try:
             endpoint_handler = handler_controllers[method_name]
         except KeyError:
-            instance_view._raise_allowed_methods()
+            instance_view._raise_allowed_methods()  # noqa: SLF001
             raise  # for linters only
 
         try:
-            method = getattr(instance_view, method_name)  # noqa: WPS442
+            method = getattr(instance_view, method_name)
         except AttributeError:
-            instance_view._raise_allowed_methods()
+            instance_view._raise_allowed_methods()  # noqa: SLF001
             raise  # for linters only
 
         validated_data = await endpoint_handler.validate_request(request)
@@ -182,23 +178,23 @@ def view_validation_wrapper(
 
 
 def middleware_validation_wrapper(
-        middleware: Middleware,
-        *,
-        response_validate: bool,
-        response_type: Optional[Type[Any]],
-        response_content_type: Union[str, ContentType, None],
-        response_charset: Union[str, Charset],
-        response_zlib_executor: Optional[Executor],
-        response_zlib_executor_size: Optional[int],
-        response_json_encoder: JSONEncoder,
-        # response json preparer
-        response_include_fields: Optional[Include],
-        response_exclude_fields: Optional[Exclude],
-        response_by_alias: bool,
-        response_exclude_unset: bool,
-        response_exclude_defaults: bool,
-        response_exclude_none: bool,
-        response_custom_encoder: Optional[CustomEncoder],
+    middleware: Middleware,
+    *,
+    response_validate: bool,
+    response_type: Optional[Type[Any]],
+    response_content_type: Union[str, ContentType, None],
+    response_charset: Union[str, Charset],
+    response_zlib_executor: Optional[Executor],
+    response_zlib_executor_size: Optional[int],
+    response_json_encoder: JSONEncoder,
+    # response json preparer
+    response_include_fields: Optional[Include],
+    response_exclude_fields: Optional[Exclude],
+    response_by_alias: bool,
+    response_exclude_unset: bool,
+    response_exclude_defaults: bool,
+    response_exclude_none: bool,
+    response_custom_encoder: Optional[CustomEncoder],
 ) -> Middleware:
     handler_controller = controller_factory(
         middleware,

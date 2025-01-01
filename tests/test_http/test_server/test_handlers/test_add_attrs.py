@@ -29,12 +29,14 @@ async def some_attr_middleware(request: web.Request, handler: CallNext) -> web.S
 
 
 @add_some_attr_deco
-async def handler() -> None: pass
+async def handler() -> None:
+    pass
 
 
 @add_some_attr_deco
 class ViewHandler(web.View):
-    async def get(self) -> None: pass
+    async def get(self) -> None:
+        pass
 
 
 @pytest.mark.parametrize('handler', [handler, ViewHandler])
