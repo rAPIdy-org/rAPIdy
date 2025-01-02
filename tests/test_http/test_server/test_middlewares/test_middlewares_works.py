@@ -1,12 +1,12 @@
 from http import HTTPStatus
 from typing import Any, Awaitable, Callable, Coroutine
+from typing_extensions import Annotated, Final
 
 import pytest
 from aiohttp.web_middlewares import normalize_path_middleware
 from aiohttp.web_request import Request
 from aiohttp.web_response import StreamResponse
 from pytest_aiohttp.plugin import AiohttpClient
-from typing_extensions import Annotated, Final
 
 from rapidy import web
 from rapidy.enums import ContentType
@@ -21,9 +21,9 @@ BODY_DATA: Final[str] = '<SomeBodyTextData>'
 
 @middleware
 async def new_style_auth_middleware(
-        request: web.Request,
-        call_next: CallNext,
-        bearer_token: Annotated[str, Header(alias='Authorization')],
+    request: web.Request,
+    call_next: CallNext,
+    bearer_token: Annotated[str, Header(alias='Authorization')],
 ) -> web.StreamResponse:
     assert bearer_token == BEARER_TOKEN
     return await call_next(request)
@@ -39,17 +39,17 @@ async def old_style_auth_middleware(app: web.Application, handler: CallNext) -> 
 
 @middleware
 async def new_style_request_id_middleware(
-        request: web.Request,
-        handler: CallNext,
-        request_id: Annotated[str, Header(alias='Request-ID')],
+    request: web.Request,
+    handler: CallNext,
+    request_id: Annotated[str, Header(alias='Request-ID')],
 ) -> web.StreamResponse:
     assert request_id == REQUEST_ID
     return await handler(request)
 
 
 async def old_style_request_id_middleware(
-        app: web.Application,
-        call_next: CallNext,
+    app: web.Application,
+    call_next: CallNext,
 ) -> Callable[[web.Request], Awaitable[web.StreamResponse]]:
     async def middleware_handler(request: web.Request) -> web.StreamResponse:
         assert request.headers.get('Request-ID') == REQUEST_ID
@@ -59,12 +59,12 @@ async def old_style_request_id_middleware(
 
 
 async def unsupported_old_style_request_id_middleware(
-        app: web.Application,
-        handler: CallNext,
+    app: web.Application,
+    handler: CallNext,
 ) -> Callable[[Request, str], Coroutine[Any, Any, StreamResponse]]:
     async def middleware_handler(
-            request: web.Request,
-            request_id: Annotated[str, Header(alias='Request-ID')],
+        request: web.Request,
+        request_id: Annotated[str, Header(alias='Request-ID')],
     ) -> web.StreamResponse:
         assert request_id == REQUEST_ID
         return await handler(request)
@@ -117,9 +117,9 @@ async def test_success_parametrized_middleware(aiohttp_client: AiohttpClient) ->
     ],
 )
 async def test_multiple_new_style_middlewares_validation(
-        aiohttp_client: AiohttpClient,
-        auth_middleware: Middleware,
-        request_id_middleware: Middleware,
+    aiohttp_client: AiohttpClient,
+    auth_middleware: Middleware,
+    request_id_middleware: Middleware,
 ) -> None:
     async def handler(body: Annotated[str, Body(content_type=ContentType.text_plain)]) -> web.Response:
         assert body == BODY_DATA
@@ -147,9 +147,9 @@ async def test_multiple_new_style_middlewares_validation(
     ],
 )
 async def test_multiple_new_style_middlewares_in_subapp_validation(
-        aiohttp_client: AiohttpClient,
-        auth_middleware: Middleware,
-        request_id_middleware: Middleware,
+    aiohttp_client: AiohttpClient,
+    auth_middleware: Middleware,
+    request_id_middleware: Middleware,
 ) -> None:
     async def protected_handler(body: Annotated[str, Body(content_type=ContentType.text_plain)]) -> web.Response:
         assert body == BODY_DATA
@@ -195,7 +195,8 @@ async def test_rename_snd_attr(aiohttp_client: AiohttpClient) -> None:
     async def simple_middleware(request: web.Request, call_next: CallNext) -> web.StreamResponse:
         return await call_next(request)
 
-    async def handler() -> Any: pass
+    async def handler() -> Any:
+        pass
 
     app = web.Application(middlewares=[simple_middleware])
     app.add_routes([web.post('/', handler)])

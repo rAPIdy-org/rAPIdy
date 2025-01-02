@@ -1,9 +1,9 @@
 from http import HTTPStatus
 from typing import Any, Dict, List
+from typing_extensions import Annotated, Final
 
 from pydantic import BaseModel, Field
 from pytest_aiohttp.plugin import AiohttpClient
-from typing_extensions import Annotated, Final
 
 from rapidy import web
 from rapidy.constants import PYDANTIC_IS_V1
@@ -29,7 +29,6 @@ REQUEST_PATH: Final[str] = HANDLER_PATH.format(**REQUEST)
 attr1_model_field_args = {
     'alias': 'attr1',
     'min_length': 2,
-
 }
 attr2_model_field_args = {
     'alias': 'attr2',
@@ -53,23 +52,23 @@ class Schema(BaseModel):
 
 async def test_individual_params(aiohttp_client: AiohttpClient) -> None:
     async def handler(
-            path_attr1: Annotated[str, PathParam(**attr1_model_field_args)],
-            path_attr2: Annotated[int, PathParam(**attr2_model_field_args)],
-            path_attr3: Annotated[List[int], PathParam(**attr3_model_field_args)],
-            path_attr4: Annotated[str, PathParam(**attr4_model_field_args)],
-            header_attr1: Annotated[str, Header(**attr1_model_field_args)],
-            header_attr2: Annotated[int, Header(**attr2_model_field_args)],
-            header_attr3: Annotated[List[int], Header(**attr3_model_field_args)],
-            header_attr4: Annotated[str, Header(**attr4_model_field_args)],
-            cookie_attr1: Annotated[str, Cookie(**attr1_model_field_args)],
-            cookie_attr2: Annotated[int, Cookie(**attr2_model_field_args)],
-            cookie_attr3: Annotated[List[int], Cookie(**attr3_model_field_args)],
-            cookie_attr4: Annotated[str, Cookie(**attr4_model_field_args)],
-            query_attr1: Annotated[str, QueryParam(**attr1_model_field_args)],
-            query_attr2: Annotated[int, QueryParam(**attr2_model_field_args)],
-            query_attr3: Annotated[List[int], QueryParam(**attr3_model_field_args)],
-            query_attr4: Annotated[str, QueryParam(**attr4_model_field_args)],
-            body_data: Annotated[Schema, Body()],
+        path_attr1: Annotated[str, PathParam(**attr1_model_field_args)],
+        path_attr2: Annotated[int, PathParam(**attr2_model_field_args)],
+        path_attr3: Annotated[List[int], PathParam(**attr3_model_field_args)],
+        path_attr4: Annotated[str, PathParam(**attr4_model_field_args)],
+        header_attr1: Annotated[str, Header(**attr1_model_field_args)],
+        header_attr2: Annotated[int, Header(**attr2_model_field_args)],
+        header_attr3: Annotated[List[int], Header(**attr3_model_field_args)],
+        header_attr4: Annotated[str, Header(**attr4_model_field_args)],
+        cookie_attr1: Annotated[str, Cookie(**attr1_model_field_args)],
+        cookie_attr2: Annotated[int, Cookie(**attr2_model_field_args)],
+        cookie_attr3: Annotated[List[int], Cookie(**attr3_model_field_args)],
+        cookie_attr4: Annotated[str, Cookie(**attr4_model_field_args)],
+        query_attr1: Annotated[str, QueryParam(**attr1_model_field_args)],
+        query_attr2: Annotated[int, QueryParam(**attr2_model_field_args)],
+        query_attr3: Annotated[List[int], QueryParam(**attr3_model_field_args)],
+        query_attr4: Annotated[str, QueryParam(**attr4_model_field_args)],
+        body_data: Annotated[Schema, Body()],
     ) -> web.Response:
         return web.Response()
 
@@ -78,11 +77,11 @@ async def test_individual_params(aiohttp_client: AiohttpClient) -> None:
 
 async def test_single_schema(aiohttp_client: AiohttpClient) -> None:
     async def handler(
-            path_data: Annotated[Schema, PathParams()],
-            header_data: Annotated[Schema, Headers()],
-            cookie_data: Annotated[Schema, Cookies()],
-            query_data: Annotated[Schema, QueryParams()],
-            body_data: Annotated[Schema, Body()],
+        path_data: Annotated[Schema, PathParams()],
+        header_data: Annotated[Schema, Headers()],
+        cookie_data: Annotated[Schema, Cookies()],
+        query_data: Annotated[Schema, QueryParams()],
+        body_data: Annotated[Schema, Body()],
     ) -> web.Response:
         return web.Response()
 

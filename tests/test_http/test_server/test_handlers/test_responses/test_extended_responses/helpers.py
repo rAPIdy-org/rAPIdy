@@ -2,10 +2,10 @@ import inspect
 from dataclasses import dataclass
 from http import HTTPStatus
 from typing import Any, Awaitable, Callable, Literal, Optional, Tuple, Type
+from typing_extensions import Final, TypeAlias
 
 from aiohttp.pytest_plugin import AiohttpClient
 from pydantic import BaseModel
-from typing_extensions import Final, TypeAlias
 
 from rapidy import web
 from rapidy.web_routedef import RouteTableDef
@@ -48,9 +48,9 @@ def get_bound_method_by_http_method_name(obj: Any, method_name: str) -> Any:
 
 
 def create_app_use_route_table_def(
-        handler: Any,
-        web_method: str,
-        **handler_kwargs: Any,
+    handler: Any,
+    web_method: str,
+    **handler_kwargs: Any,
 ) -> web.Application:
     routes = RouteTableDef()
     method = get_bound_method_by_http_method_name(routes, web_method)
@@ -63,9 +63,9 @@ def create_app_use_route_table_def(
 
 
 def create_app_use_simple_method_func(
-        handler: Any,
-        web_method: str,
-        **handler_kwargs: Any,
+    handler: Any,
+    web_method: str,
+    **handler_kwargs: Any,
 ) -> web.Application:
     method = get_bound_method_by_http_method_name(web, web_method)
 
@@ -76,9 +76,9 @@ def create_app_use_simple_method_func(
 
 
 def create_app_use_app_router(
-        handler: Any,
-        web_method: str,
-        **handler_kwargs: Any,
+    handler: Any,
+    web_method: str,
+    **handler_kwargs: Any,
 ) -> web.Application:
     app = web.Application()
     method = get_bound_method_by_http_method_name(app.router, 'add_' + web_method)
@@ -88,35 +88,32 @@ def create_app_use_app_router(
 
 
 def create_app_use_rapidy_router(
-        handler: Any,
-        web_method: str,
-        **handler_kwargs: Any,
+    handler: Any,
+    web_method: str,
+    **handler_kwargs: Any,
 ) -> web.Application:
     from rapidy.routing.http import routers
 
     method = get_bound_method_by_http_method_name(routers, web_method)
     route = method(PATH, **handler_kwargs)(handler)
-
-    app = web.Application(http_route_handlers=[route])
-
-    return app
+    return web.Application(http_route_handlers=[route])
 
 
 def create_app_use_rapidy_router_as_handler(
-        handler: Any,
-        web_method: str,
-        **handler_kwargs: Any,
+    handler: Any,
+    web_method: str,
+    **handler_kwargs: Any,
 ) -> web.Application:
     from rapidy.routing.http import routers
+
     method = get_bound_method_by_http_method_name(routers, web_method)
-    app = web.Application(http_route_handlers=[method.handler(PATH, handler, **handler_kwargs)])
-    return app
+    return web.Application(http_route_handlers=[method.handler(PATH, handler, **handler_kwargs)])
 
 
 def create_all_type_apps(
-        handler: Any,
-        web_method: str,
-        **handler_kwargs: Any,
+    handler: Any,
+    web_method: str,
+    **handler_kwargs: Any,
 ) -> Tuple[web.Application, ...]:
     return (
         create_app_use_route_table_def(handler, web_method, **handler_kwargs),
@@ -128,10 +125,10 @@ def create_all_type_apps(
 
 
 def create_all_function_handler_apps(
-        handler_return_type: Any,
-        web_method: str,
-        return_value: Any,
-        **handler_kwargs: Any,
+    handler_return_type: Any,
+    web_method: str,
+    return_value: Any,
+    **handler_kwargs: Any,
 ) -> Tuple[web.Application, ...]:
     async def handler() -> handler_return_type:
         return return_value
@@ -140,18 +137,29 @@ def create_all_function_handler_apps(
 
 
 def create_all_view_handler_apps(
-        handler_return_type: Any,
-        web_method: str,
-        return_value: Any,
-        **handler_kwargs: Any,
+    handler_return_type: Any,
+    web_method: str,
+    return_value: Any,
+    **handler_kwargs: Any,
 ) -> Tuple[web.Application, ...]:
     class Handler(web.View):
-        async def get(self) -> handler_return_type: return return_value
-        async def post(self) -> handler_return_type: return return_value
-        async def put(self) -> handler_return_type: return return_value
-        async def patch(self) -> handler_return_type: return return_value
-        async def delete(self) -> handler_return_type: return return_value
-        async def options(self) -> handler_return_type: return return_value
+        async def get(self) -> handler_return_type:
+            return return_value
+
+        async def post(self) -> handler_return_type:
+            return return_value
+
+        async def put(self) -> handler_return_type:
+            return return_value
+
+        async def patch(self) -> handler_return_type:
+            return return_value
+
+        async def delete(self) -> handler_return_type:
+            return return_value
+
+        async def options(self) -> handler_return_type:
+            return return_value
 
     app_with_routes_as_method = create_all_type_apps(Handler, web_method, **handler_kwargs)
     app_with_routes_as_view = create_all_type_apps(Handler, 'view', **handler_kwargs)
@@ -159,12 +167,13 @@ def create_all_view_handler_apps(
 
 
 def create_middleware_handler_apps(
-        handler_return_type: Any,
-        web_method: str,
-        return_value: Any,
-        **handler_kwargs: Any,
+    handler_return_type: Any,
+    web_method: str,
+    return_value: Any,
+    **handler_kwargs: Any,
 ) -> Tuple[web.Application, ...]:
-    async def handler(): pass
+    async def handler() -> None:
+        pass
 
     @web.middleware(**handler_kwargs)
     async def middleware(request: web.Request, handler: Callable[[Any], Awaitable[Any]]) -> handler_return_type:
@@ -186,16 +195,16 @@ app_fabrics: Tuple[AppFabric, ...] = (
 
 
 async def check_fabric(
-        app_fabric: AppFabric,
-        web_method_name: str,
-        *,
-        aiohttp_client: AiohttpClient,
-        aiohttp_client_response_body_attr_name: Literal['text', 'json', 'read'] = 'json',
-        handler_return_type: Any,
-        handler_return_value: Optional[Any] = None,
-        expected_return_value: Any = DEFAULT_RETURN_VALUE,
-        expected_validation_error: bool = False,
-        **handler_kwargs: Any,
+    app_fabric: AppFabric,
+    web_method_name: str,
+    *,
+    aiohttp_client: AiohttpClient,
+    aiohttp_client_response_body_attr_name: Literal['text', 'json', 'read'] = 'json',
+    handler_return_type: Any,
+    handler_return_value: Optional[Any] = None,
+    expected_return_value: Any = DEFAULT_RETURN_VALUE,
+    expected_validation_error: bool = False,
+    **handler_kwargs: Any,
 ) -> None:
     all_app_types = app_fabric(handler_return_type, web_method_name, handler_return_value, **handler_kwargs)
     for app in all_app_types:
@@ -214,14 +223,14 @@ async def check_fabric(
 
 
 async def check_all_handlers(
-        aiohttp_client: AiohttpClient,
-        *,
-        aiohttp_client_response_body_attr_name: Literal['text', 'json', 'read'] = 'json',
-        handler_return_type: Any = inspect.Signature.empty,
-        handler_return_value: Optional[Any] = None,
-        expected_return_value: Any = DEFAULT_RETURN_VALUE,
-        expected_validation_error: bool = False,
-        **handler_kwargs: Any,
+    aiohttp_client: AiohttpClient,
+    *,
+    aiohttp_client_response_body_attr_name: Literal['text', 'json', 'read'] = 'json',
+    handler_return_type: Any = inspect.Signature.empty,
+    handler_return_value: Optional[Any] = None,
+    expected_return_value: Any = DEFAULT_RETURN_VALUE,
+    expected_validation_error: bool = False,
+    **handler_kwargs: Any,
 ) -> None:
     for web_method_name in WEB_METHOD_NAMES:
         for app_fabric in app_fabrics:
@@ -239,14 +248,14 @@ async def check_all_handlers(
 
 
 async def check_all_handlers_with_all_response_model_flows(
-        aiohttp_client: AiohttpClient,
-        *,
-        aiohttp_client_response_body_attr_name: Literal['text', 'json', 'read'] = 'json',
-        handler_return_type: Any,
-        handler_return_value: Optional[Any] = None,
-        expected_return_value: Any = DEFAULT_RETURN_VALUE,
-        expected_validation_error: bool = False,
-        **handler_kwargs: Any,
+    aiohttp_client: AiohttpClient,
+    *,
+    aiohttp_client_response_body_attr_name: Literal['text', 'json', 'read'] = 'json',
+    handler_return_type: Any,
+    handler_return_value: Optional[Any] = None,
+    expected_return_value: Any = DEFAULT_RETURN_VALUE,
+    expected_validation_error: bool = False,
+    **handler_kwargs: Any,
 ) -> None:
     attrs = ['handler_return_type', 'response_type']
     for attr_name in attrs:

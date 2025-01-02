@@ -14,7 +14,7 @@ def annotation_is_stream_response(annotation: Any) -> bool:
     return lenient_issubclass(annotation, StreamResponse)
 
 
-def is_stream_reader(annotation: Any, can_optional: bool = False) -> bool:
+def is_stream_reader(annotation: Any, *, can_optional: bool = False) -> bool:
     if can_optional:
-        return any((base_annotation == StreamReader for base_annotation in get_base_annotations(annotation)))
+        return any(base_annotation == StreamReader for base_annotation in get_base_annotations(annotation))
     return annotation is StreamReader

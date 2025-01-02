@@ -38,9 +38,11 @@ body_params = (
 async def test_check_single_and_complex_params(type_tuple: Any) -> None:
     type1, type2 = type_tuple
 
-    async def handler1(_: Any = type1, __: Any = type2) -> None: pass
+    async def handler1(_: Any = type1, __: Any = type2) -> None:
+        pass
 
-    async def handler2(_: Any = type2, __: Any = type1) -> None: pass
+    async def handler2(_: Any = type2, __: Any = type1) -> None:
+        pass
 
     app = web.Application()
 
@@ -57,7 +59,8 @@ async def test_body_diff_types(type1: Any, type2: Any) -> None:
     if type1.__class__.__name__ == type2.__class__.__name__:
         return
 
-    async def handler(_: Any = type1, __: Any = type2) -> None: pass
+    async def handler(_: Any = type1, __: Any = type2) -> None:
+        pass
 
     app = web.Application()
     with pytest.raises(AnotherDataExtractionTypeAlreadyExistsError):

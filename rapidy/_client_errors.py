@@ -19,8 +19,8 @@ class ClientBaseError(ABC, ValueError):
 
     @abstractmethod
     def get_error_info(
-            self,
-            loc: LocStr,
+        self,
+        loc: LocStr,
     ) -> Dict[str, Any]:  # pragma: no cover
         raise NotImplementedError
 
@@ -30,8 +30,8 @@ if PYDANTIC_IS_V1:
 
     class ClientError(ClientBaseError, ABC):
         def get_error_info(
-                self,
-                loc: LocStr,
+            self,
+            loc: LocStr,
         ) -> Dict[str, Any]:
             return {
                 'loc': loc,
@@ -39,19 +39,16 @@ if PYDANTIC_IS_V1:
                 'type': self.type,
             }
 
-    class RequiredFieldIsMissing(ClientError):
+    class RequiredFieldIsMissingError(ClientError):
         type = 'value_error.missing'
         msg_template = 'field required'
 
     def regenerate_error_with_loc(
-            *,
-            errors: List[Any],
-            loc: LocStr,
+        *,
+        errors: List[Any],
+        loc: LocStr,
     ) -> List[Dict[str, Any]]:
-        return [
-            {**err, 'loc': loc + err.get('loc', ())}
-            for err in normalize_errors(errors)
-        ]
+        return [{**err, 'loc': loc + err.get('loc', ())} for err in normalize_errors(errors)]
 
     def normalize_error_wrapper(error: ErrorWrapper) -> List[DictStrAny]:
         return ValidationError(errors=[error], model=RequestErrorModel).errors()
@@ -71,7 +68,7 @@ if PYDANTIC_IS_V1:
     def normalize_errors(errors: Union[Any, List[Any]]) -> ValidationErrorList:
         if isinstance(errors, list):
             return normalize_list(errors)
-        elif isinstance(errors, ErrorWrapper):
+        if isinstance(errors, ErrorWrapper):
             return normalize_error_wrapper(errors)
         return [errors]
 
@@ -81,8 +78,8 @@ else:
 
     class ClientError(ClientBaseError, ABC):  # type: ignore[no-redef]
         def get_error_info(
-                self,
-                loc: LocStr,
+            self,
+            loc: LocStr,
         ) -> Dict[str, Any]:
             err = PydanticCustomError(self.type, self._err_msg)
             err_details = InitErrorDetails(type=err, loc=loc, input=input)
@@ -92,21 +89,19 @@ else:
                 hide_input=True,
             ).errors()[0]
 
-    class RequiredFieldIsMissing(ClientError):  # type: ignore[no-redef]
+    class RequiredFieldIsMissingError(ClientError):  # type: ignore[no-redef]
         type = 'missing'
         msg_template = 'Field required'
 
     def regenerate_error_with_loc(
-            *,
-            errors: List[Any],
-            loc: LocStr,
+        *,
+        errors: List[Any],
+        loc: LocStr,
     ) -> List[Dict[str, Any]]:
-        return [
-            {**err, 'loc': loc + err.get('loc', ())}
-            for err in errors
-        ]
+        return [{**err, 'loc': loc + err.get('loc', ())} for err in errors]
 
-    def error_dict_pop_useless_keys(error: Dict[str, Any]) -> None:  # TODO: need advice - not sure about this
+    def error_dict_pop_useless_keys(error: Dict[str, Any]) -> None:
+        # TODO: need advice - not sure about this  # noqa: FIX002 TD002 TD003
         error.pop('url', None)
         error.pop('input', None)
 

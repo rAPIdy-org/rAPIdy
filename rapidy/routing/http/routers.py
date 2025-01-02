@@ -50,25 +50,25 @@ class HTTPRouteHandler(BaseHTTPRouter):
     )
 
     def __init__(
-            self,
-            path: str,
-            *,
-            name: Optional[str] = None,
-            response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,
-            response_content_type: Union[str, ContentType, None] = None,
-            response_charset: Union[str, Charset] = Charset.utf8,
-            response_zlib_executor: Optional[Executor] = None,
-            response_zlib_executor_size: Optional[int] = None,
-            response_include_fields: Optional[Include] = None,
-            response_exclude_fields: Optional[Exclude] = None,
-            response_by_alias: bool = True,
-            response_exclude_unset: bool = False,
-            response_exclude_defaults: bool = False,
-            response_exclude_none: bool = False,
-            response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            **kwargs: Any,
+        self,
+        path: str,
+        *,
+        name: Optional[str] = None,
+        response_validate: bool = True,
+        response_type: Optional[Type[Any]] = Unset,
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
     ) -> None:
         super().__init__(path=path)
 
@@ -110,26 +110,26 @@ class HTTPRouteHandler(BaseHTTPRouter):
 
     @classmethod
     def handler(
-            cls,
-            path: str,
-            handler: HandlerOrView,
-            *,
-            name: Optional[str] = None,
-            response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,
-            response_content_type: Union[str, ContentType, None] = None,
-            response_charset: Union[str, Charset] = Charset.utf8,
-            response_zlib_executor: Optional[Executor] = None,
-            response_zlib_executor_size: Optional[int] = None,
-            response_include_fields: Optional[Include] = None,
-            response_exclude_fields: Optional[Exclude] = None,
-            response_by_alias: bool = True,
-            response_exclude_unset: bool = False,
-            response_exclude_defaults: bool = False,
-            response_exclude_none: bool = False,
-            response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            **kwargs: Any,
+        cls,
+        path: str,
+        handler: HandlerOrView,
+        *,
+        name: Optional[str] = None,
+        response_validate: bool = True,
+        response_type: Optional[Type[Any]] = Unset,
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
     ) -> 'HTTPRouteHandler':
         init = cls(
             path=path,
@@ -153,7 +153,8 @@ class HTTPRouteHandler(BaseHTTPRouter):
         return init(handler)
 
     def register(self, application: Application) -> None:
-        assert self._route_def
+        assert self._route_def  # noqa: S101
+
         handler = self._route_def.handler
         if not is_async_callable(handler):
             if not is_view(handler):
@@ -165,9 +166,10 @@ class HTTPRouteHandler(BaseHTTPRouter):
                     if isinstance(h_method, HTTPRouteHandler):
                         h_method.register(application)
 
-                        assert h_method._real_handler
+                        assert h_method._real_handler  # noqa: S101 SLF001
 
-                        setattr(handler, handler_attr, h_method._real_handler)  # register true handler (remove deco)
+                        # register true handler (remove deco)
+                        setattr(handler, handler_attr, h_method._real_handler)  # noqa: SLF001
 
         self._route_def.register(application.router)
 
@@ -179,16 +181,16 @@ class HTTPRouter(BaseHTTPRouter):
     )
 
     def __init__(
-            self,
-            path: str,
-            route_handlers: Iterable[HTTPRouterType] = (),
-            *,
-            middlewares: Optional[Iterable[Middleware]] = None,
-            client_max_size: int = CLIENT_MAX_SIZE,
-            lifespan: Optional[List[LifespanCTX]] = None,
-            on_startup: Optional[List[LifespanHook]] = None,
-            on_shutdown: Optional[List[LifespanHook]] = None,
-            on_cleanup: Optional[List[LifespanHook]] = None,
+        self,
+        path: str,
+        route_handlers: Iterable[HTTPRouterType] = (),
+        *,
+        middlewares: Optional[Iterable[Middleware]] = None,
+        client_max_size: int = CLIENT_MAX_SIZE,
+        lifespan: Optional[List[LifespanCTX]] = None,
+        on_startup: Optional[List[LifespanHook]] = None,
+        on_shutdown: Optional[List[LifespanHook]] = None,
+        on_cleanup: Optional[List[LifespanHook]] = None,
     ) -> None:
         """Create an `rapidy` HTTPRouter instance.
 
@@ -229,7 +231,7 @@ class HTTPRouter(BaseHTTPRouter):
             middlewares:
                 List of middleware factories.
             client_max_size:
-                Client’s maximum size in a request, in bytes.
+                Client`s maximum size in a request, in bytes.
                 If a POST request exceeds this value, it raises an HTTPRequestEntityTooLarge exception.
             lifespan:
                 A list of callables returning async context managers,
@@ -249,7 +251,7 @@ class HTTPRouter(BaseHTTPRouter):
             on_startup:
                 A sequence of `rapidy.typedefs.LifespanHook` called during application startup.
                 Developers may use this to run background tasks in the event loop
-                along with the application’s request handler just after the application start-up.
+                along with the application`s request handler just after the application start-up.
                 >>> def on_startup(app):
                 >>>     pass
 
@@ -303,7 +305,6 @@ class HTTPRouter(BaseHTTPRouter):
 
                 >>> app = web.Application(on_cleanup=[on_cleanup, ...], ...)
         """
-
         super().__init__(path=path)
 
         self.application = Application(
@@ -324,26 +325,26 @@ class get(HTTPRouteHandler):
     _method_name = MethodName.get
 
     def __init__(
-            self,
-            path: str,
-            *,
-            name: Optional[str] = None,
-            allow_head: bool = True,
-            response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,
-            response_content_type: Union[str, ContentType, None] = None,
-            response_charset: Union[str, Charset] = Charset.utf8,
-            response_zlib_executor: Optional[Executor] = None,
-            response_zlib_executor_size: Optional[int] = None,
-            response_include_fields: Optional[Include] = None,
-            response_exclude_fields: Optional[Exclude] = None,
-            response_by_alias: bool = True,
-            response_exclude_unset: bool = False,
-            response_exclude_defaults: bool = False,
-            response_exclude_none: bool = False,
-            response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            **kwargs: Any,
+        self,
+        path: str,
+        *,
+        name: Optional[str] = None,
+        allow_head: bool = True,
+        response_validate: bool = True,
+        response_type: Optional[Type[Any]] = Unset,
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
     ) -> None:
         """Create a new RouteDef item for registering GET web-handler.
 
@@ -398,6 +399,8 @@ class get(HTTPRouteHandler):
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
+            kwargs:
+                Additional internal arguments.
         """
         super().__init__(
             path=path,
@@ -425,25 +428,25 @@ class post(HTTPRouteHandler):
     _method_name = MethodName.post
 
     def __init__(
-            self,
-            path: str,
-            *,
-            name: Optional[str] = None,
-            response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,
-            response_content_type: Union[str, ContentType, None] = None,
-            response_charset: Union[str, Charset] = Charset.utf8,
-            response_zlib_executor: Optional[Executor] = None,
-            response_zlib_executor_size: Optional[int] = None,
-            response_include_fields: Optional[Include] = None,
-            response_exclude_fields: Optional[Exclude] = None,
-            response_by_alias: bool = True,
-            response_exclude_unset: bool = False,
-            response_exclude_defaults: bool = False,
-            response_exclude_none: bool = False,
-            response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            **kwargs: Any,
+        self,
+        path: str,
+        *,
+        name: Optional[str] = None,
+        response_validate: bool = True,
+        response_type: Optional[Type[Any]] = Unset,
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
     ) -> None:
         """Create a new RouteDef item for registering POST web-handler.
 
@@ -491,6 +494,8 @@ class post(HTTPRouteHandler):
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
+            kwargs:
+                Additional internal arguments.
         """
         super().__init__(
             path=path,
@@ -517,25 +522,25 @@ class put(HTTPRouteHandler):
     _method_name = MethodName.put
 
     def __init__(
-            self,
-            path: str,
-            *,
-            name: Optional[str] = None,
-            response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,
-            response_content_type: Union[str, ContentType, None] = None,
-            response_charset: Union[str, Charset] = Charset.utf8,
-            response_zlib_executor: Optional[Executor] = None,
-            response_zlib_executor_size: Optional[int] = None,
-            response_include_fields: Optional[Include] = None,
-            response_exclude_fields: Optional[Exclude] = None,
-            response_by_alias: bool = True,
-            response_exclude_unset: bool = False,
-            response_exclude_defaults: bool = False,
-            response_exclude_none: bool = False,
-            response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            **kwargs: Any,
+        self,
+        path: str,
+        *,
+        name: Optional[str] = None,
+        response_validate: bool = True,
+        response_type: Optional[Type[Any]] = Unset,
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
     ) -> None:
         """Create a new RouteDef item for registering PUT web-handler.
 
@@ -583,6 +588,8 @@ class put(HTTPRouteHandler):
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
+            kwargs:
+                Additional internal arguments.
         """
         super().__init__(
             path=path,
@@ -609,25 +616,25 @@ class patch(HTTPRouteHandler):
     _method_name = MethodName.patch
 
     def __init__(
-            self,
-            path: str,
-            *,
-            name: Optional[str] = None,
-            response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,
-            response_content_type: Union[str, ContentType, None] = None,
-            response_charset: Union[str, Charset] = Charset.utf8,
-            response_zlib_executor: Optional[Executor] = None,
-            response_zlib_executor_size: Optional[int] = None,
-            response_include_fields: Optional[Include] = None,
-            response_exclude_fields: Optional[Exclude] = None,
-            response_by_alias: bool = True,
-            response_exclude_unset: bool = False,
-            response_exclude_defaults: bool = False,
-            response_exclude_none: bool = False,
-            response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            **kwargs: Any,
+        self,
+        path: str,
+        *,
+        name: Optional[str] = None,
+        response_validate: bool = True,
+        response_type: Optional[Type[Any]] = Unset,
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
     ) -> None:
         """Create a new RouteDef item for registering PATCH web-handler.
 
@@ -675,6 +682,8 @@ class patch(HTTPRouteHandler):
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
+            kwargs:
+                Additional internal arguments.
         """
         super().__init__(
             path=path,
@@ -701,25 +710,25 @@ class delete(HTTPRouteHandler):
     _method_name = MethodName.delete
 
     def __init__(
-            self,
-            path: str,
-            *,
-            name: Optional[str] = None,
-            response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,
-            response_content_type: Union[str, ContentType, None] = None,
-            response_charset: Union[str, Charset] = Charset.utf8,
-            response_zlib_executor: Optional[Executor] = None,
-            response_zlib_executor_size: Optional[int] = None,
-            response_include_fields: Optional[Include] = None,
-            response_exclude_fields: Optional[Exclude] = None,
-            response_by_alias: bool = True,
-            response_exclude_unset: bool = False,
-            response_exclude_defaults: bool = False,
-            response_exclude_none: bool = False,
-            response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            **kwargs: Any,
+        self,
+        path: str,
+        *,
+        name: Optional[str] = None,
+        response_validate: bool = True,
+        response_type: Optional[Type[Any]] = Unset,
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
     ) -> None:
         """Create a new RouteDef item for registering DELETE web-handler.
 
@@ -767,6 +776,8 @@ class delete(HTTPRouteHandler):
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
+            kwargs:
+                Additional internal arguments.
         """
         super().__init__(
             path=path,
@@ -793,25 +804,25 @@ class view(HTTPRouteHandler):
     _method_name = MethodName.any
 
     def __init__(
-            self,
-            path: str,
-            *,
-            name: Optional[str] = None,
-            response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,
-            response_content_type: Union[str, ContentType, None] = None,
-            response_charset: Union[str, Charset] = Charset.utf8,
-            response_zlib_executor: Optional[Executor] = None,
-            response_zlib_executor_size: Optional[int] = None,
-            response_include_fields: Optional[Include] = None,
-            response_exclude_fields: Optional[Exclude] = None,
-            response_by_alias: bool = True,
-            response_exclude_unset: bool = False,
-            response_exclude_defaults: bool = False,
-            response_exclude_none: bool = False,
-            response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            **kwargs: Any,
+        self,
+        path: str,
+        *,
+        name: Optional[str] = None,
+        response_validate: bool = True,
+        response_type: Optional[Type[Any]] = Unset,
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
     ) -> None:
         """Create a new RouteDef item for adding class-based view handler.
 
@@ -859,6 +870,8 @@ class view(HTTPRouteHandler):
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
+            kwargs:
+                Additional internal arguments.
         """
         super().__init__(
             path=path,
@@ -881,6 +894,7 @@ class view(HTTPRouteHandler):
         )
 
     def __call__(self, handler: HandlerOrView) -> HTTPRouteHandler:
+        """Wrap handler into a route handler."""
         if not is_view(handler):
             raise IncorrectTypeViewError(type_handler=str(type(handler)))
         return self._fn(handler)
@@ -890,25 +904,25 @@ class head(HTTPRouteHandler):
     _method_name = MethodName.head
 
     def __init__(
-            self,
-            path: str,
-            *,
-            name: Optional[str] = None,
-            response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,
-            response_content_type: Union[str, ContentType, None] = None,
-            response_charset: Union[str, Charset] = Charset.utf8,
-            response_zlib_executor: Optional[Executor] = None,
-            response_zlib_executor_size: Optional[int] = None,
-            response_include_fields: Optional[Include] = None,
-            response_exclude_fields: Optional[Exclude] = None,
-            response_by_alias: bool = True,
-            response_exclude_unset: bool = False,
-            response_exclude_defaults: bool = False,
-            response_exclude_none: bool = False,
-            response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            **kwargs: Any,
+        self,
+        path: str,
+        *,
+        name: Optional[str] = None,
+        response_validate: bool = True,
+        response_type: Optional[Type[Any]] = Unset,
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
     ) -> None:
         """Create a new RouteDef item for registering HEAD web-handler.
 
@@ -956,6 +970,8 @@ class head(HTTPRouteHandler):
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
+            kwargs:
+                Additional internal arguments.
         """
         super().__init__(
             path=path,
@@ -982,25 +998,25 @@ class options(HTTPRouteHandler):
     _method_name = MethodName.options
 
     def __init__(
-            self,
-            path: str,
-            *,
-            name: Optional[str] = None,
-            response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,
-            response_content_type: Union[str, ContentType, None] = None,
-            response_charset: Union[str, Charset] = Charset.utf8,
-            response_zlib_executor: Optional[Executor] = None,
-            response_zlib_executor_size: Optional[int] = None,
-            response_include_fields: Optional[Include] = None,
-            response_exclude_fields: Optional[Exclude] = None,
-            response_by_alias: bool = True,
-            response_exclude_unset: bool = False,
-            response_exclude_defaults: bool = False,
-            response_exclude_none: bool = False,
-            response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            **kwargs: Any,
+        self,
+        path: str,
+        *,
+        name: Optional[str] = None,
+        response_validate: bool = True,
+        response_type: Optional[Type[Any]] = Unset,
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
     ) -> None:
         """Create a new RouteDef item for registering OPTIONS web-handler.
 
@@ -1048,6 +1064,8 @@ class options(HTTPRouteHandler):
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
+            kwargs:
+                Additional internal arguments.
         """
         super().__init__(
             path=path,

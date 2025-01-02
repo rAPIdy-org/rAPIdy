@@ -1,9 +1,9 @@
 import inspect
 from abc import ABC
 from typing import Any, List
+from typing_extensions import get_args
 
 from attrs import define, Factory
-from typing_extensions import get_args
 
 from rapidy._base_exceptions import RapidyHandlerException
 from rapidy.annotation_checkers import is_annotated, is_empty, is_optional
@@ -49,13 +49,13 @@ class DefaultDefineTwiceError(DefaultError):
 
 
 def create_data_attr(
-        attribute: inspect.Parameter,
-        attribute_idx: int,
-        type_annotation: Any,
-        raw_field_info: RapidyFieldInfo,
-        annotation_def_as_annotated: bool,
-        # only to create context with exception
-        handler: Handler,
+    attribute: inspect.Parameter,
+    attribute_idx: int,
+    type_annotation: Any,
+    raw_field_info: RapidyFieldInfo,
+    annotation_def_as_annotated: bool,  # noqa: FBT001
+    # only to create context with exception
+    handler: Handler,
 ) -> DataAttr:
     prepared_field_info = prepare_attribute_field_info(
         attribute=attribute,
@@ -78,14 +78,14 @@ def check_default_value_for_field_exists(field_info: RapidyFieldInfo) -> bool:
 
 
 def raise_if_field_cannot_default(
-        field_info: RapidyFieldInfo,
-        *,
-        default_exists: bool,
-        default_is_none: bool,
-        param_is_optional: bool,
-        # only to create context with exception
-        handler: Handler,
-        attribute: inspect.Parameter,
+    field_info: RapidyFieldInfo,
+    *,
+    default_exists: bool,
+    default_is_none: bool,
+    param_is_optional: bool,
+    # only to create context with exception
+    handler: Handler,
+    attribute: inspect.Parameter,
 ) -> None:
     if not field_info.can_default and param_is_optional:
         raise CannotBeOptionalError.create(
@@ -140,10 +140,10 @@ def raise_if_field_cannot_default(
 
 
 def get_default_definition_attr_default(
-        field_info: RapidyFieldInfo,
-        # only to create context with exception
-        handler: Handler,
-        attribute: inspect.Parameter,
+    field_info: RapidyFieldInfo,
+    # only to create context with exception
+    handler: Handler,
+    attribute: inspect.Parameter,
 ) -> Any:
     param_is_optional = is_optional(attribute.annotation)
 
@@ -164,11 +164,11 @@ def get_default_definition_attr_default(
 
 
 def get_annotated_definition_attr_default(
-        attribute: inspect.Parameter,
-        type_annotation: Any,
-        field_info: RapidyFieldInfo,
-        # only to create context with exception
-        handler: Handler,
+    attribute: inspect.Parameter,
+    type_annotation: Any,
+    field_info: RapidyFieldInfo,
+    # only to create context with exception
+    handler: Handler,
 ) -> Any:
     default_value_for_param_exists = not is_empty(attribute.default)
     default_value_for_field_exists = check_default_value_for_field_exists(field_info)
@@ -203,12 +203,12 @@ def get_annotated_definition_attr_default(
 
 
 def prepare_attribute_field_info(
-        attribute: inspect.Parameter,
-        type_annotation: Any,
-        field_info: RapidyFieldInfo,
-        annotation_def_as_annotated: bool,
-        # only to create context with exception
-        handler: Handler,
+    attribute: inspect.Parameter,
+    type_annotation: Any,
+    field_info: RapidyFieldInfo,
+    annotation_def_as_annotated: bool,  # noqa: FBT001
+    # only to create context with exception
+    handler: Handler,
 ) -> RapidyFieldInfo:
     field_info = copy_field_info(field_info=field_info, annotation=attribute.annotation)
     if annotation_def_as_annotated:
@@ -229,7 +229,7 @@ def prepare_attribute_field_info(
 
     field_info.default = prepared_default
     field_info.name = attribute.name
-    field_info.annotation = type_annotation if not is_empty(type_annotation) else Any  # noqa: WPS504
+    field_info.annotation = type_annotation if not is_empty(type_annotation) else Any
 
     return field_info
 
@@ -237,7 +237,7 @@ def prepare_attribute_field_info(
 def is_rapidy_type(type_: Any) -> bool:
     try:
         return isinstance(type_, type) and issubclass(type_, RapidyFieldInfo)
-    except Exception:
+    except Exception:  # noqa: BLE001
         return False
 
 
@@ -273,7 +273,7 @@ def get_handler_raw_info(handler: Handler) -> HandlerRawInfo:
                 handler_raw_info.data_attrs.append(data_attr)
                 continue
 
-            elif is_rapidy_type(attribute.default):
+            if is_rapidy_type(attribute.default):
                 raise ParameterNotInstanceError.create(handler=handler, attr_name=attribute.name)
 
         if is_annotated(attribute.annotation):
@@ -294,11 +294,13 @@ def get_handler_raw_info(handler: Handler) -> HandlerRawInfo:
                 handler_raw_info.data_attrs.append(data_attr)
                 continue
 
-            elif is_rapidy_type(last_attr):
+            if is_rapidy_type(last_attr):
                 raise ParameterNotInstanceError.create(handler=handler, attr_name=attribute.name)
 
         attr = Attr(
-            attribute_name=attribute.name, attribute_idx=attribute_idx, attribute_annotation=attribute.annotation,
+            attribute_name=attribute.name,
+            attribute_idx=attribute_idx,
+            attribute_annotation=attribute.annotation,
         )
 
         handler_raw_info.attrs.append(attr)

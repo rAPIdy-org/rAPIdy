@@ -7,31 +7,35 @@ from enum import Enum
 from ipaddress import IPv4Address, IPv4Interface, IPv4Network, IPv6Address, IPv6Interface, IPv6Network
 from pathlib import Path, PurePath
 from typing import Any, Callable, Deque, Dict, FrozenSet, List, Optional, overload, Pattern, Set, Tuple, Type, Union
+from typing_extensions import Literal, TypeAlias
 from uuid import UUID
 
 from pydantic import BaseModel
 from pydantic.color import Color
 from pydantic.networks import AnyUrl, NameEmail
 from pydantic.types import SecretBytes, SecretStr
-from typing_extensions import Literal, TypeAlias
 
 from rapidy.constants import DEFAULT_JSON_ENCODER, PYDANTIC_IS_V1
 from rapidy.enums import Charset
 from rapidy.typedefs import JSONEncoder
 
 if PYDANTIC_IS_V1:
-    from pydantic import AnyUrl as Url  # noqa: WPS433
+    from pydantic import AnyUrl as Url
 
     def pydantic_model_dump(
-            model: BaseModel, mode: Literal['json', 'python'] = 'json', **kwargs: Any,
+        model: BaseModel,
+        mode: Literal['json', 'python'] = 'json',  # noqa: ARG001
+        **kwargs: Any,
     ) -> Any:
         return model.dict(**kwargs)
 
 else:
-    from pydantic_core import Url as Url  # noqa: WPS440 WPS433
+    from pydantic_core import Url
 
-    def pydantic_model_dump(  # noqa: WPS440
-        model: BaseModel, mode: Literal['json', 'python'] = 'json', **kwargs: Any,
+    def pydantic_model_dump(
+        model: BaseModel,
+        mode: Literal['json', 'python'] = 'json',
+        **kwargs: Any,
     ) -> Any:
         return model.model_dump(mode=mode, **kwargs)
 
@@ -43,7 +47,7 @@ __all__ = (
     'CustomEncoder',
 )
 
-_IncludeOrExclude: TypeAlias = Union[Set[int], Set[str], Dict[int, Any], Dict[str, Any]]  # noqa: WPS221
+_IncludeOrExclude: TypeAlias = Union[Set[int], Set[str], Dict[int, Any], Dict[str, Any]]
 Include: TypeAlias = _IncludeOrExclude
 Exclude: TypeAlias = _IncludeOrExclude
 
@@ -113,17 +117,15 @@ def prepare_re_pattern(value: Pattern[Any]) -> str:
     return value.pattern
 
 
-SIMPLE_ENCODERS_BY_TYPE: Dict[Type[Any], Callable[[Any], Any]] = {  # noqa: WPS407
+SIMPLE_ENCODERS_BY_TYPE: Dict[Type[Any], Callable[[Any], Any]] = {
     Enum: prepare_enum,
     Decimal: prepare_decimal,
     UUID: prepare_uuid,
-
     # prepare_datetime
     datetime.date: prepare_datetime_date,
     datetime.datetime: prepare_datetime_date,
     datetime.time: prepare_datetime_date,
     datetime.timedelta: prepare_datetime_timedelta,
-
     # prepare_ip
     IPv4Address: prepare_ip,
     IPv4Interface: prepare_ip,
@@ -131,18 +133,14 @@ SIMPLE_ENCODERS_BY_TYPE: Dict[Type[Any], Callable[[Any], Any]] = {  # noqa: WPS4
     IPv6Address: prepare_ip,
     IPv6Interface: prepare_ip,
     IPv6Network: prepare_ip,
-
     # re
     Pattern: prepare_re_pattern,
-
     # pydantic types
     Color: prepare_colour,
     NameEmail: prepare_email,
     Path: prepare_path,
-
     SecretBytes: prepare_pydantic_secret,
     SecretStr: prepare_pydantic_secret,
-
     Url: prepare_url,
     AnyUrl: prepare_url,
 }
@@ -160,71 +158,68 @@ encoders_by_class_tuples = get_encoders_by_class_tuples()
 
 @overload
 def jsonify(
-        obj: Any,
-        *,
-        include: Optional[Include] = ...,
-        exclude: Optional[Exclude] = ...,
-        by_alias: bool = ...,
-        exclude_unset: bool = ...,
-        exclude_defaults: bool = ...,
-        exclude_none: bool = ...,
-        custom_encoder: Optional[CustomEncoder] = ...,
-        charset: Union[str, Charset] = ...,
-        dumps: Literal[False] = ...,
-        dumps_encoder: JSONEncoder = ...,
-) -> Any:
-    ...
+    obj: Any,
+    *,
+    include: Optional[Include] = ...,
+    exclude: Optional[Exclude] = ...,
+    by_alias: bool = ...,
+    exclude_unset: bool = ...,
+    exclude_defaults: bool = ...,
+    exclude_none: bool = ...,
+    custom_encoder: Optional[CustomEncoder] = ...,
+    charset: Union[str, Charset] = ...,
+    dumps: Literal[False] = ...,
+    dumps_encoder: JSONEncoder = ...,
+) -> Any: ...
 
 
 @overload
 def jsonify(
-        obj: Any,
-        *,
-        include: Optional[Include] = ...,
-        exclude: Optional[Exclude] = ...,
-        by_alias: bool = ...,
-        exclude_unset: bool = ...,
-        exclude_defaults: bool = ...,
-        exclude_none: bool = ...,
-        custom_encoder: Optional[CustomEncoder] = ...,
-        charset: Union[str, Charset] = ...,
-        dumps: Literal[True] = ...,
-        dumps_encoder: JSONEncoder = ...,
-) -> str:
-    ...
+    obj: Any,
+    *,
+    include: Optional[Include] = ...,
+    exclude: Optional[Exclude] = ...,
+    by_alias: bool = ...,
+    exclude_unset: bool = ...,
+    exclude_defaults: bool = ...,
+    exclude_none: bool = ...,
+    custom_encoder: Optional[CustomEncoder] = ...,
+    charset: Union[str, Charset] = ...,
+    dumps: Literal[True] = ...,
+    dumps_encoder: JSONEncoder = ...,
+) -> str: ...
 
 
 @overload
 def jsonify(
-        obj: Any,
-        *,
-        include: Optional[Include] = ...,
-        exclude: Optional[Exclude] = ...,
-        by_alias: bool = ...,
-        exclude_unset: bool = ...,
-        exclude_defaults: bool = ...,
-        exclude_none: bool = ...,
-        custom_encoder: Optional[CustomEncoder] = ...,
-        charset: Union[str, Charset] = ...,
-        dumps: bool = ...,
-        dumps_encoder: JSONEncoder = ...,
-) -> Union[str, Any]:
-    ...
+    obj: Any,
+    *,
+    include: Optional[Include] = ...,
+    exclude: Optional[Exclude] = ...,
+    by_alias: bool = ...,
+    exclude_unset: bool = ...,
+    exclude_defaults: bool = ...,
+    exclude_none: bool = ...,
+    custom_encoder: Optional[CustomEncoder] = ...,
+    charset: Union[str, Charset] = ...,
+    dumps: bool = ...,
+    dumps_encoder: JSONEncoder = ...,
+) -> Union[str, Any]: ...
 
 
 def jsonify(
-        obj: Any,
-        *,
-        include: Optional[Include] = None,
-        exclude: Optional[Exclude] = None,
-        by_alias: bool = True,
-        exclude_unset: bool = False,
-        exclude_defaults: bool = False,
-        exclude_none: bool = False,
-        custom_encoder: Optional[CustomEncoder] = None,
-        charset: Union[str, Charset] = Charset.utf8,
-        dumps: bool = False,
-        dumps_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+    obj: Any,
+    *,
+    include: Optional[Include] = None,
+    exclude: Optional[Exclude] = None,
+    by_alias: bool = True,
+    exclude_unset: bool = False,
+    exclude_defaults: bool = False,
+    exclude_none: bool = False,
+    custom_encoder: Optional[CustomEncoder] = None,
+    charset: Union[str, Charset] = Charset.utf8,
+    dumps: bool = False,
+    dumps_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
 ) -> Union[str, Any]:
     """Convert any object to something that can be encoded in JSON.
 
@@ -286,26 +281,25 @@ def jsonify(
     return result
 
 
-def _prepare_to_json(  # noqa: C901 WPS212
-        obj: Any,
-        *,
-        include: Optional[Include],
-        exclude: Optional[Exclude],
-        by_alias: bool,
-        exclude_unset: bool,
-        exclude_defaults: bool,
-        exclude_none: bool,
-        custom_encoder: Optional[CustomEncoder],
-        byte_preparation_charset: 'str',
+def _prepare_to_json(  # noqa: PLR0912 C901
+    obj: Any,
+    *,
+    include: Optional[Include],
+    exclude: Optional[Exclude],
+    by_alias: bool,
+    exclude_unset: bool,
+    exclude_defaults: bool,
+    exclude_none: bool,
+    custom_encoder: Optional[CustomEncoder],
+    byte_preparation_charset: 'str',
 ) -> Any:
-    custom_encoder = custom_encoder or {}  # TODO: tests
+    custom_encoder = custom_encoder or {}  # TODO: tests  # noqa: FIX002 TD002 TD003
     if custom_encoder:
-        if type(obj) in custom_encoder:  # noqa: WPS516
+        if type(obj) in custom_encoder:
             return custom_encoder[type(obj)](obj)
-        else:
-            for encoder_type, encoder_instance in custom_encoder.items():
-                if isinstance(obj, encoder_type):
-                    return encoder_instance(obj)
+        for encoder_type, encoder_instance in custom_encoder.items():
+            if isinstance(obj, encoder_type):
+                return encoder_instance(obj)
 
     if include is not None and not isinstance(include, (set, dict)):
         include = set(include)
@@ -367,7 +361,7 @@ def _prepare_to_json(  # noqa: C901 WPS212
     if isinstance(obj, bytes):
         return prepare_bytes(obj, charset=byte_preparation_charset)
 
-    if type(obj) in SIMPLE_ENCODERS_BY_TYPE:  # noqa: WPS516
+    if type(obj) in SIMPLE_ENCODERS_BY_TYPE:
         return SIMPLE_ENCODERS_BY_TYPE[type(obj)](obj)
 
     for encoder, classes_tuple in encoders_by_class_tuples.items():
@@ -393,16 +387,16 @@ def _prepare_to_json(  # noqa: C901 WPS212
 
 
 def prepare_base_model(
-        obj: BaseModel,
-        *,
-        include: Optional[Include],
-        exclude: Optional[Exclude],
-        by_alias: bool,
-        exclude_unset: bool,
-        exclude_none: bool,
-        exclude_defaults: bool,
-        custom_encoder: Optional[CustomEncoder],
-        byte_preparation_charset: str,
+    obj: BaseModel,
+    *,
+    include: Optional[Include],
+    exclude: Optional[Exclude],
+    by_alias: bool,
+    exclude_unset: bool,
+    exclude_none: bool,
+    exclude_defaults: bool,
+    custom_encoder: Optional[CustomEncoder],
+    byte_preparation_charset: str,
 ) -> Any:
     encoders: Dict[Any, Any] = {}
     if PYDANTIC_IS_V1:
@@ -437,16 +431,16 @@ def prepare_base_model(
 
 
 def prepare_dataclass(
-        obj: Any,
-        *,
-        include: Optional[Include],
-        exclude: Optional[Exclude],
-        by_alias: bool,
-        exclude_unset: bool,
-        exclude_none: bool,
-        exclude_defaults: bool,
-        custom_encoder: Optional[CustomEncoder],
-        byte_preparation_charset: str,
+    obj: Any,
+    *,
+    include: Optional[Include],
+    exclude: Optional[Exclude],
+    by_alias: bool,
+    exclude_unset: bool,
+    exclude_none: bool,
+    exclude_defaults: bool,
+    custom_encoder: Optional[CustomEncoder],
+    byte_preparation_charset: str,
 ) -> Any:
     obj_dict = dataclasses.asdict(obj)
     return _prepare_to_json(
@@ -463,46 +457,44 @@ def prepare_dataclass(
 
 
 def prepare_sequence(
-        obj: MainSequence,
-        *,
-        include: Optional[Include],
-        exclude: Optional[Exclude],
-        by_alias: bool,
-        exclude_unset: bool,
-        exclude_none: bool,
-        exclude_defaults: bool,
-        custom_encoder: Optional[CustomEncoder],
-        byte_preparation_charset: str,
+    obj: MainSequence,
+    *,
+    include: Optional[Include],
+    exclude: Optional[Exclude],
+    by_alias: bool,
+    exclude_unset: bool,
+    exclude_none: bool,
+    exclude_defaults: bool,
+    custom_encoder: Optional[CustomEncoder],
+    byte_preparation_charset: str,
 ) -> List[Any]:
-    encoded_values: List[Any] = []
-    for item in obj:
-        encoded_values.append(
-            _prepare_to_json(
-                item,
-                include=include,
-                exclude=exclude,
-                by_alias=by_alias,
-                exclude_unset=exclude_unset,
-                exclude_defaults=exclude_defaults,
-                exclude_none=exclude_none,
-                custom_encoder=custom_encoder,
-                byte_preparation_charset=byte_preparation_charset,
-            ),
+    return [
+        _prepare_to_json(
+            item,
+            include=include,
+            exclude=exclude,
+            by_alias=by_alias,
+            exclude_unset=exclude_unset,
+            exclude_defaults=exclude_defaults,
+            exclude_none=exclude_none,
+            custom_encoder=custom_encoder,
+            byte_preparation_charset=byte_preparation_charset,
         )
-    return encoded_values
+        for item in obj
+    ]
 
 
 def prepare_dict(
-        obj: Dict[Any, Any],
-        *,
-        include: Optional[Include],
-        exclude: Optional[Exclude],
-        by_alias: bool,
-        exclude_unset: bool,
-        exclude_none: bool,
-        exclude_defaults: bool,
-        custom_encoder: Optional[CustomEncoder],
-        byte_preparation_charset: str,
+    obj: Dict[Any, Any],
+    *,
+    include: Optional[Include],
+    exclude: Optional[Exclude],
+    by_alias: bool,
+    exclude_unset: bool,
+    exclude_none: bool,
+    exclude_defaults: bool,
+    custom_encoder: Optional[CustomEncoder],
+    byte_preparation_charset: str,
 ) -> Dict[Any, Any]:
     encoded_dict = {}
     allowed_keys = set(obj.keys())
@@ -513,11 +505,8 @@ def prepare_dict(
         allowed_keys -= set(exclude)
 
     for key, value in obj.items():
-        if (
-            (value is not None or not exclude_none)
-            and key in allowed_keys
-        ):
-            # FIXME: partially does not support nested BaseModel (fastapi legacy)
+        if (value is not None or not exclude_none) and key in allowed_keys:
+            # FIXME: partially does not support nested BaseModel (fastapi legacy)  # noqa: FIX001 TD002 TD003
             encoded_key = _prepare_to_json(
                 key,
                 include=None,
@@ -548,12 +537,12 @@ def prepare_dict(
 def get_data_for_prepare_by_unknown_type(obj: Any) -> Any:
     try:
         data = dict(obj)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         errors: List[Exception] = []
         errors.append(e)
-        try:  # noqa: WPS505
+        try:
             data = vars(obj)
-        except Exception as e:  # noqa: WPS440
+        except Exception as e:
             errors.append(e)
             raise ValueError(errors) from e
 

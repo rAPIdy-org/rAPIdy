@@ -46,10 +46,10 @@ HEAD_METHOD_NAME: Final[str] = 'head'
 
 
 def wrap_handler(
-        *,
-        handler: Union[Handler, View],
-        wrapper: Any,
-        **kwargs: Any,
+    *,
+    handler: Union[Handler, View],
+    wrapper: Any,
+    **kwargs: Any,
 ) -> Union[Handler, View]:
     return wrapper(
         handler,
@@ -71,15 +71,18 @@ def wrap_handler(
 
 
 class ResourceRoute(AioHTTPResourceRoute, ABC):
+    """Overridden aiohttp ResourceRoute."""
+
     def __init__(
-            self,
-            method: str,
-            handler: HandlerOrView,
-            resource: AbstractResource,
-            *,
-            expect_handler: Optional[_ExpectHandler] = None,
-            **kwargs: Any,
+        self,
+        method: str,
+        handler: HandlerOrView,
+        resource: AbstractResource,
+        *,
+        expect_handler: Optional[_ExpectHandler] = None,
+        **kwargs: Any,
     ) -> None:
+        """Initialize overridden aiohttp ResourceRoute."""
         if isinstance(handler, FunctionType):
             handler = wrap_handler(handler=handler, wrapper=handler_validation_wrapper, **kwargs)
         elif issubclass(handler, View):  # type: ignore[arg-type]
@@ -89,40 +92,46 @@ class ResourceRoute(AioHTTPResourceRoute, ABC):
 
 
 class Resource(AioHTTPResource, ABC):
+    """Overridden aiohttp Resource."""
+
     def add_route(
-            self,
-            method: str,
-            handler: HandlerOrView,
-            *,
-            expect_handler: Optional[_ExpectHandler] = None,
-            **kwargs: Any,
+        self,
+        method: str,
+        handler: HandlerOrView,
+        *,
+        expect_handler: Optional[_ExpectHandler] = None,
+        **kwargs: Any,
     ) -> 'ResourceRoute':
+        """Add a route to an overridden aiohttp Resource."""
         for route_obj in self._routes:
-            if route_obj.method == method or route_obj.method == METH_ANY:  # noqa: WPS514
-                raise RuntimeError(  # aiohttp code  # pragma: no cover
-                    'Added route will never be executed, '
-                    'method {route.method} is already '
-                    'registered'.format(route=route_obj),
+            if route_obj.method == method or route_obj.method == METH_ANY:  # noqa: PLR1714
+                raise RuntimeError(  # aiohttp code  # pragma: no cover  # noqa: TRY003
+                    'Added route will never be executed, '  # noqa: EM102
+                    f'method {route_obj.method} is already '
+                    'registered',
                 )
 
-        route_obj = ResourceRoute(method, handler, self, expect_handler=expect_handler, **kwargs)  # noqa: WPS440
-        self.register_route(route_obj)  # noqa: WPS441
+        route_obj = ResourceRoute(method, handler, self, expect_handler=expect_handler, **kwargs)
+        self.register_route(route_obj)
 
-        return route_obj  # noqa: WPS441
+        return route_obj
 
 
 class PlainResource(Resource, AioHTTPPlainResource):
-    pass
+    """PlainResource."""
 
 
 class DynamicResource(Resource, AioHTTPDynamicResource):
-    pass
+    """DynamicResource."""
 
 
 class UrlDispatcher(AioHTTPUrlDispatcher):
+    """UrlDispatcher."""
+
     def add_resource(self, path: str, *, name: Optional[str] = None) -> Resource:
+        """Add resource method."""
         if path and not path.startswith('/'):  # aiohttp code  # pragma: no cover
-            raise ValueError('path should be started with / or be empty')
+            raise ValueError('path should be started with / or be empty')  # noqa: TRY003
 
         # Reuse last added resource if path and name are the same
         if self._resources:
@@ -141,40 +150,56 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         return resource
 
     def add_route(
-            self,
-            method: str,
-            path: str,
-            handler: HandlerOrView,
-            *,
-            name: Optional[str] = None,
-            expect_handler: Optional[_ExpectHandler] = None,
-            **kwargs: Any,
+        self,
+        method: str,
+        path: str,
+        handler: HandlerOrView,
+        *,
+        name: Optional[str] = None,
+        expect_handler: Optional[_ExpectHandler] = None,
+        **kwargs: Any,
     ) -> AbstractRoute:
+        """An internal method for registering handlers.
+
+        Args:
+            method:
+                HTTP method name.
+            path:
+                Resource path spec.
+            handler:
+                HTTP handler.
+            name:
+                Optional resource name.
+            expect_handler:
+                Optional expect header handler.
+            kwargs:
+                Additional internal arguments.
+        """
         resource = self.add_resource(path, name=name)
         return resource.add_route(method, handler, expect_handler=expect_handler, **kwargs)
 
     def add_get(
-            self,
-            path: str,
-            handler: HandlerOrView,
-            *,
-            name: Optional[str] = None,
-            allow_head: bool = True,
-            response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,  # type: ignore
-            response_content_type: Union[str, ContentType, None] = None,
-            response_charset: Union[str, Charset] = Charset.utf8,
-            response_zlib_executor: Optional[Executor] = None,
-            response_zlib_executor_size: Optional[int] = None,
-            response_include_fields: Optional[Include] = None,
-            response_exclude_fields: Optional[Exclude] = None,
-            response_by_alias: bool = True,
-            response_exclude_unset: bool = False,
-            response_exclude_defaults: bool = False,
-            response_exclude_none: bool = False,
-            response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            **kwargs: Any,
+        self,
+        path: str,
+        handler: HandlerOrView,
+        *,
+        name: Optional[str] = None,
+        allow_head: bool = True,
+        response_validate: bool = True,
+        response_type: Optional[Type[Any]] = Unset,  # type: ignore[has-type]
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
     ) -> AbstractRoute:
         """Shortcut for add_route with method GET.
 
@@ -231,6 +256,8 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
+            kwargs:
+                Additional internal arguments.
         """
         resource = self.add_resource(path, name=name)
         if allow_head:
@@ -274,26 +301,26 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         )
 
     def add_post(
-            self,
-            path: str,
-            handler: HandlerOrView,
-            *,
-            name: Optional[str] = None,
-            response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,  # type: ignore
-            response_content_type: Union[str, ContentType, None] = None,
-            response_charset: Union[str, Charset] = Charset.utf8,
-            response_zlib_executor: Optional[Executor] = None,
-            response_zlib_executor_size: Optional[int] = None,
-            response_include_fields: Optional[Include] = None,
-            response_exclude_fields: Optional[Exclude] = None,
-            response_by_alias: bool = True,
-            response_exclude_unset: bool = False,
-            response_exclude_defaults: bool = False,
-            response_exclude_none: bool = False,
-            response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            **kwargs: Any,
+        self,
+        path: str,
+        handler: HandlerOrView,
+        *,
+        name: Optional[str] = None,
+        response_validate: bool = True,
+        response_type: Optional[Type[Any]] = Unset,  # type: ignore[has-type]
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
     ) -> AbstractRoute:
         """Shortcut for add_route with method POST.
 
@@ -343,6 +370,8 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
+            kwargs:
+                Additional internal arguments.
         """
         return self.add_route(
             # aiohttp attrs
@@ -369,26 +398,26 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         )
 
     def add_put(
-            self,
-            path: str,
-            handler: HandlerOrView,
-            *,
-            name: Optional[str] = None,
-            response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,  # type: ignore
-            response_content_type: Union[str, ContentType, None] = None,
-            response_charset: Union[str, Charset] = Charset.utf8,
-            response_zlib_executor: Optional[Executor] = None,
-            response_zlib_executor_size: Optional[int] = None,
-            response_include_fields: Optional[Include] = None,
-            response_exclude_fields: Optional[Exclude] = None,
-            response_by_alias: bool = True,
-            response_exclude_unset: bool = False,
-            response_exclude_defaults: bool = False,
-            response_exclude_none: bool = False,
-            response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            **kwargs: Any,
+        self,
+        path: str,
+        handler: HandlerOrView,
+        *,
+        name: Optional[str] = None,
+        response_validate: bool = True,
+        response_type: Optional[Type[Any]] = Unset,  # type: ignore[has-type]
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
     ) -> AbstractRoute:
         """Shortcut for add_route with method PUT.
 
@@ -438,6 +467,8 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
+            kwargs:
+                Additional internal arguments.
         """
         return self.add_route(
             # aiohttp attrs
@@ -464,26 +495,26 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         )
 
     def add_patch(
-            self,
-            path: str,
-            handler: HandlerOrView,
-            *,
-            name: Optional[str] = None,
-            response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,  # type: ignore
-            response_content_type: Union[str, ContentType, None] = None,
-            response_charset: Union[str, Charset] = Charset.utf8,
-            response_zlib_executor: Optional[Executor] = None,
-            response_zlib_executor_size: Optional[int] = None,
-            response_include_fields: Optional[Include] = None,
-            response_exclude_fields: Optional[Exclude] = None,
-            response_by_alias: bool = True,
-            response_exclude_unset: bool = False,
-            response_exclude_defaults: bool = False,
-            response_exclude_none: bool = False,
-            response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            **kwargs: Any,
+        self,
+        path: str,
+        handler: HandlerOrView,
+        *,
+        name: Optional[str] = None,
+        response_validate: bool = True,
+        response_type: Optional[Type[Any]] = Unset,  # type: ignore[has-type]
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
     ) -> AbstractRoute:
         """Shortcut for add_route with method PATCH.
 
@@ -533,6 +564,8 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
+            kwargs:
+                Additional internal arguments.
         """
         return self.add_route(
             # aiohttp attrs
@@ -559,26 +592,26 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         )
 
     def add_delete(
-            self,
-            path: str,
-            handler: HandlerOrView,
-            *,
-            name: Optional[str] = None,
-            response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,  # type: ignore
-            response_content_type: Union[str, ContentType, None] = None,
-            response_charset: Union[str, Charset] = Charset.utf8,
-            response_zlib_executor: Optional[Executor] = None,
-            response_zlib_executor_size: Optional[int] = None,
-            response_include_fields: Optional[Include] = None,
-            response_exclude_fields: Optional[Exclude] = None,
-            response_by_alias: bool = True,
-            response_exclude_unset: bool = False,
-            response_exclude_defaults: bool = False,
-            response_exclude_none: bool = False,
-            response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            **kwargs: Any,
+        self,
+        path: str,
+        handler: HandlerOrView,
+        *,
+        name: Optional[str] = None,
+        response_validate: bool = True,
+        response_type: Optional[Type[Any]] = Unset,  # type: ignore[has-type]
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
     ) -> AbstractRoute:
         """Shortcut for add_route with method DELETE.
 
@@ -628,6 +661,8 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
+            kwargs:
+                Additional internal arguments.
         """
         return self.add_route(
             # aiohttp attrs
@@ -654,26 +689,26 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         )
 
     def add_view(
-            self,
-            path: str,
-            handler: Type[AbstractView],
-            *,
-            name: Optional[str] = None,
-            response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,  # type: ignore
-            response_content_type: Union[str, ContentType, None] = None,
-            response_charset: Union[str, Charset] = Charset.utf8,
-            response_zlib_executor: Optional[Executor] = None,
-            response_zlib_executor_size: Optional[int] = None,
-            response_include_fields: Optional[Include] = None,
-            response_exclude_fields: Optional[Exclude] = None,
-            response_by_alias: bool = True,
-            response_exclude_unset: bool = False,
-            response_exclude_defaults: bool = False,
-            response_exclude_none: bool = False,
-            response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            **kwargs: Any,
+        self,
+        path: str,
+        handler: Type[AbstractView],
+        *,
+        name: Optional[str] = None,
+        response_validate: bool = True,
+        response_type: Optional[Type[Any]] = Unset,  # type: ignore[has-type]
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
     ) -> AbstractRoute:
         """Shortcut for add_route with ANY methods for a class-based view.
 
@@ -723,6 +758,8 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
+            kwargs:
+                Additional internal arguments.
         """
         return self.add_route(
             # aiohttp attrs
@@ -749,26 +786,26 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         )
 
     def add_head(
-            self,
-            path: str,
-            handler: HandlerOrView,
-            *,
-            name: Optional[str] = None,
-            response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,  # type: ignore
-            response_content_type: Union[str, ContentType, None] = None,
-            response_charset: Union[str, Charset] = Charset.utf8,
-            response_zlib_executor: Optional[Executor] = None,
-            response_zlib_executor_size: Optional[int] = None,
-            response_include_fields: Optional[Include] = None,
-            response_exclude_fields: Optional[Exclude] = None,
-            response_by_alias: bool = True,
-            response_exclude_unset: bool = False,
-            response_exclude_defaults: bool = False,
-            response_exclude_none: bool = False,
-            response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            **kwargs: Any,
+        self,
+        path: str,
+        handler: HandlerOrView,
+        *,
+        name: Optional[str] = None,
+        response_validate: bool = True,
+        response_type: Optional[Type[Any]] = Unset,  # type: ignore[has-type]
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
     ) -> AbstractRoute:
         """Shortcut for add_route with method HEAD.
 
@@ -818,6 +855,8 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
+            kwargs:
+                Additional internal arguments.
         """
         return self.add_route(
             # aiohttp attrs
@@ -844,26 +883,26 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         )
 
     def add_options(
-            self,
-            path: str,
-            handler: HandlerOrView,
-            *,
-            name: Optional[str] = None,
-            response_validate: bool = True,
-            response_type: Optional[Type[Any]] = Unset,  # type: ignore
-            response_content_type: Union[str, ContentType, None] = None,
-            response_charset: Union[str, Charset] = Charset.utf8,
-            response_zlib_executor: Optional[Executor] = None,
-            response_zlib_executor_size: Optional[int] = None,
-            response_include_fields: Optional[Include] = None,
-            response_exclude_fields: Optional[Exclude] = None,
-            response_by_alias: bool = True,
-            response_exclude_unset: bool = False,
-            response_exclude_defaults: bool = False,
-            response_exclude_none: bool = False,
-            response_custom_encoder: Optional[CustomEncoder] = None,
-            response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-            **kwargs: Any,
+        self,
+        path: str,
+        handler: HandlerOrView,
+        *,
+        name: Optional[str] = None,
+        response_validate: bool = True,
+        response_type: Optional[Type[Any]] = Unset,  # type: ignore[has-type]
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
     ) -> AbstractRoute:
         """Shortcut for add_route with method OPTIONS.
 
@@ -913,6 +952,8 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             response_json_encoder:
                 Any callable that accepts an object and returns a JSON string.
                 Will be used if dumps=True
+            kwargs:
+                Additional internal arguments.
         """
         return self.add_route(
             # aiohttp attrs

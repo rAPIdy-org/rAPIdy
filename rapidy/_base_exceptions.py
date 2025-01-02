@@ -5,9 +5,8 @@ BORDER_LEN: Final[int] = 30
 
 
 class RapidyException(Exception, ABC):  # noqa: N818
-    border = '\n' + '-' * BORDER_LEN + '\n'  # noqa: WPS336
+    border = '\n' + '-' * BORDER_LEN + '\n'
     message: str
-    # TODO: doc link
 
     def __init__(self, message: Optional[str] = None, **format_fields: str) -> None:
         message = message if message is not None else self.__class__.message
@@ -22,18 +21,16 @@ class RapidyException(Exception, ABC):  # noqa: N818
         return RapidyException.border + message + RapidyException.border
 
 
-class RapidyHandlerException(RapidyException, ABC):  # noqa: N818
+class RapidyHandlerException(RapidyException, ABC):
     @classmethod
     def create(
-            cls,
-            *,
-            handler: Any,
-            attr_name: Optional[str] = None,
-            **format_fields: str,
+        cls,
+        *,
+        handler: Any,
+        attr_name: Optional[str] = None,
+        **format_fields: str,
     ) -> 'RapidyHandlerException':
-        msg = (
-            f'{cls.message}\nHandler path: `{handler.__code__.co_filename}`\nHandler name: `{handler.__name__}`'
-        )
+        msg = f'{cls.message}\nHandler path: `{handler.__code__.co_filename}`\nHandler name: `{handler.__name__}`'
         if attr_name:
             msg = f'{msg}\nAttribute name: `{attr_name}`'
         return cls(msg, **format_fields)

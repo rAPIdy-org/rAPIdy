@@ -1,7 +1,6 @@
 from concurrent.futures import Executor
 from pprint import pformat
 from typing import Any, cast, Dict, Optional, Type, Union
-
 from typing_extensions import TypeAlias
 
 from rapidy._base_exceptions import RapidyHandlerException
@@ -30,42 +29,44 @@ class ResponseValidationError(RapidyHandlerException):
 
     @classmethod
     def create_with_handler_validation_errors(
-            cls,
-            handler: Any,
-            *,
-            errors: ValidationErrorList,
-            **format_fields: str,
+        cls,
+        handler: Any,
+        *,
+        errors: ValidationErrorList,
+        **format_fields: str,
     ) -> 'RapidyHandlerException':
         return ResponseValidationError.create(
-            handler=handler, errors=pformat(normalize_errors(errors)), **format_fields,
+            handler=handler,
+            errors=pformat(normalize_errors(errors)),
+            **format_fields,
         )
 
 
 class HandlerController:
     def __init__(
-            self,
-            handler: Handler,
-            *,
-            request_validator: RequestValidator,
-            result_validator: ResultValidator,
-            # injected attr names
-            request_attribute_name: Optional[str],
-            response_attribute_name: Optional[str],
-            # response
-            response_validate: bool,
-            response_content_type: Union[str, ContentType, None],
-            response_charset: str,
-            response_zlib_executor: Optional[Executor],
-            response_zlib_executor_size: Optional[int],
-            # response json preparer
-            response_include_fields: Optional[Include],
-            response_exclude_fields: Optional[Exclude],
-            response_by_alias: bool,
-            response_exclude_unset: bool,
-            response_exclude_defaults: bool,
-            response_exclude_none: bool,
-            response_custom_encoder: Optional[CustomEncoder],
-            response_json_encoder: JSONEncoder,
+        self,
+        handler: Handler,
+        *,
+        request_validator: RequestValidator,
+        result_validator: ResultValidator,
+        # injected attr names
+        request_attribute_name: Optional[str],
+        response_attribute_name: Optional[str],
+        # response
+        response_validate: bool,
+        response_content_type: Union[str, ContentType, None],
+        response_charset: str,
+        response_zlib_executor: Optional[Executor],
+        response_zlib_executor_size: Optional[int],
+        # response json preparer
+        response_include_fields: Optional[Include],
+        response_exclude_fields: Optional[Exclude],
+        response_by_alias: bool,
+        response_exclude_unset: bool,
+        response_exclude_defaults: bool,
+        response_exclude_none: bool,
+        response_custom_encoder: Optional[CustomEncoder],
+        response_json_encoder: JSONEncoder,
     ) -> None:
         self._handler = handler
 
@@ -105,7 +106,8 @@ class HandlerController:
             handler_result, validated_errors = await self._result_validator.validate(handler_result)
             if validated_errors:
                 raise ResponseValidationError.create_with_handler_validation_errors(
-                    handler=self._handler, errors=validated_errors,
+                    handler=self._handler,
+                    errors=validated_errors,
                 )
 
         if current_response is None:
@@ -132,34 +134,37 @@ class HandlerController:
 
 
 def controller_factory(
-        endpoint_handler: Handler,
-        *,
-        request_attr_can_declare: bool = False,
-        # response
-        response_validate: bool,
-        response_type: Optional[Type[Any]],
-        response_content_type: Union[str, ContentType, None],
-        response_charset: str,
-        response_zlib_executor: Optional[Executor],
-        response_zlib_executor_size: Optional[int],
-        response_json_encoder: JSONEncoder,
-        # response json preparer
-        response_include_fields: Optional[Include],
-        response_exclude_fields: Optional[Exclude],
-        response_by_alias: bool,
-        response_exclude_unset: bool,
-        response_exclude_defaults: bool,
-        response_exclude_none: bool,
-        response_custom_encoder: Optional[CustomEncoder],
+    endpoint_handler: Handler,
+    *,
+    request_attr_can_declare: bool = False,
+    # response
+    response_validate: bool,
+    response_type: Optional[Type[Any]],
+    response_content_type: Union[str, ContentType, None],
+    response_charset: str,
+    response_zlib_executor: Optional[Executor],
+    response_zlib_executor_size: Optional[int],
+    response_json_encoder: JSONEncoder,
+    # response json preparer
+    response_include_fields: Optional[Include],
+    response_exclude_fields: Optional[Exclude],
+    response_by_alias: bool,
+    response_exclude_unset: bool,
+    response_exclude_defaults: bool,
+    response_exclude_none: bool,
+    response_custom_encoder: Optional[CustomEncoder],
 ) -> HandlerController:
     http_handler_info = get_http_handler_info(endpoint_handler, request_attr_can_declare=request_attr_can_declare)
 
     # validators
     request_validator = request_validator_factory(
-        handler=endpoint_handler, request_params=http_handler_info.request_params,
+        handler=endpoint_handler,
+        request_params=http_handler_info.request_params,
     )
     result_validator = result_validator_factory(
-        handler=endpoint_handler, return_annotation=http_handler_info.return_annotation, response_type=response_type,
+        handler=endpoint_handler,
+        return_annotation=http_handler_info.return_annotation,
+        response_type=response_type,
     )
 
     # injected attr names

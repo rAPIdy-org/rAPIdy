@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Generic, List, Optional, Tuple, TypeVar
 
-from rapidy._client_errors import regenerate_error_with_loc, RequiredFieldIsMissing
+from rapidy._client_errors import regenerate_error_with_loc, RequiredFieldIsMissingError
 from rapidy.fields.model_fields import RapidyModelField
 from rapidy.typedefs import DictStrAny, ErrorWrapper, LocStr, ValidateReturn
 
@@ -14,16 +14,16 @@ class Validator(ABC, Generic[TData]):
         raise NotImplementedError
 
 
-def validate_data_by_model(  # noqa: WPS212
-        model_field: RapidyModelField,
-        *,
-        raw_data: Any,
-        loc: LocStr,
-        values: DictStrAny,
+def validate_data_by_model(
+    model_field: RapidyModelField,
+    *,
+    raw_data: Any,
+    loc: LocStr,
+    values: DictStrAny,
 ) -> Tuple[Optional[Any], List[Any]]:
     if raw_data is None:
         if model_field.required:
-            return values, [RequiredFieldIsMissing().get_error_info(loc=loc)]
+            return values, [RequiredFieldIsMissingError().get_error_info(loc=loc)]
 
         return model_field.get_default(), []
 

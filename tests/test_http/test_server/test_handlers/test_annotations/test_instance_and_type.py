@@ -1,9 +1,9 @@
 from http import HTTPStatus
 from typing import Any
+from typing_extensions import Annotated
 
 import pytest
 from aiohttp.pytest_plugin import AiohttpClient
-from typing_extensions import Annotated
 
 from rapidy import web
 from rapidy.endpoint_handlers.attr_extractor import ParameterNotInstanceError
@@ -27,14 +27,15 @@ async def default_def_handler_param_not_instance(attr: Any = Body) -> None:
 
 
 @pytest.mark.parametrize(
-    'handler', [
+    'handler',
+    [
         pytest.param(annotated_def_handler, id='annotated-def'),
         pytest.param(default_def_handler, id='default-def'),
     ],
 )
 async def test_check_annotation(
-        aiohttp_client: AiohttpClient,
-        handler: Any,
+    aiohttp_client: AiohttpClient,
+    handler: Any,
 ) -> None:
     app = web.Application()
     app.add_routes([web.post('/', handler)])
@@ -45,7 +46,8 @@ async def test_check_annotation(
 
 
 @pytest.mark.parametrize(
-    'handler', [
+    'handler',
+    [
         pytest.param(annotated_def_handler_param_not_instance, id='annotated-def'),
         pytest.param(default_def_handler_param_not_instance, id='default-def'),
     ],

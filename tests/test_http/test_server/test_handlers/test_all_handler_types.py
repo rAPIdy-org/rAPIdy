@@ -1,14 +1,13 @@
 from dataclasses import dataclass, field
 from http import HTTPStatus
 from typing import Any, Dict
+from typing_extensions import Annotated, Final
 
 import pytest
 from aiohttp import MultipartWriter
 from aiohttp.helpers import content_disposition_header
 from pydantic import BaseModel
-from pytest import param
 from pytest_aiohttp.plugin import AiohttpClient
-from typing_extensions import Annotated, Final
 
 from rapidy import web
 from rapidy.enums import ContentType, HeaderName
@@ -31,10 +30,10 @@ BOUNDARY: Final[str] = '92101efb88714b6c9f43f7f06c6b58c7'
 
 
 def _create_multipart_headers(
-        part_name: str,
-        content_type: str = 'text/plain',
-        content_disposition_quote_fields: bool = True,
-        content_disposition_charset: str = 'utf-8',
+    part_name: str,
+    content_type: str = 'text/plain',
+    content_disposition_quote_fields: bool = True,
+    content_disposition_charset: str = 'utf-8',
 ) -> Dict[str, str]:
     return {
         HeaderName.content_disposition: content_disposition_header(
@@ -260,17 +259,17 @@ test_cases = (
 )
 
 create_method_parameters = [
-    param(_create_method_annotated_attr_def, id='attr-definition-as-annotated'),
-    param(_create_method_default_attr_def, id='attr-definition-as-default'),
+    pytest.param(_create_method_annotated_attr_def, id='attr-definition-as-annotated'),
+    pytest.param(_create_method_default_attr_def, id='attr-definition-as-default'),
 ]
 create_method_as_decorated_route_func_parameters = [
-    param(_create_route_method_annotated_attr_def, id='attr-definition-as-annotated'),
-    param(_create_route_method_annotated_attr_def, id='attr-definition-as-default'),
+    pytest.param(_create_route_method_annotated_attr_def, id='attr-definition-as-annotated'),
+    pytest.param(_create_route_method_annotated_attr_def, id='attr-definition-as-default'),
 ]
 create_view_parameters = [
-    param(_create_class_handler_as_annotated_def, id='attr-definition-as-annotated'),
-    param(_create_class_handler_as_default_def, id='attr-definition-as-default'),
-    param(_create_class_extended_handler_success, id='extended-view'),
+    pytest.param(_create_class_handler_as_annotated_def, id='attr-definition-as-annotated'),
+    pytest.param(_create_class_handler_as_default_def, id='attr-definition-as-default'),
+    pytest.param(_create_class_extended_handler_success, id='extended-view'),
 ]
 
 
@@ -278,7 +277,9 @@ create_view_parameters = [
 @pytest.mark.parametrize('handler_creation_func', create_method_parameters)
 async def test_success_func_def(aiohttp_client: AiohttpClient, test_case: TestCase, handler_creation_func: Any) -> None:
     handler = handler_creation_func(
-        validation_type=test_case.annotation, type_=test_case.type_, expected_data=test_case.expected_data,
+        validation_type=test_case.annotation,
+        type_=test_case.type_,
+        expected_data=test_case.expected_data,
     )
 
     app = Application()
@@ -290,7 +291,9 @@ async def test_success_func_def(aiohttp_client: AiohttpClient, test_case: TestCa
 @pytest.mark.parametrize('test_case', [pytest.param(test_case, id=test_case.id) for test_case in test_cases])
 @pytest.mark.parametrize('handler_creation_func', create_method_as_decorated_route_func_parameters)
 async def test_success_func_def_with_routes_deco(
-        aiohttp_client: AiohttpClient, test_case: TestCase, handler_creation_func: Any,
+    aiohttp_client: AiohttpClient,
+    test_case: TestCase,
+    handler_creation_func: Any,
 ) -> None:
     routes = RouteTableDef()
 
@@ -305,7 +308,9 @@ async def test_success_func_def_with_routes_deco(
 @pytest.mark.parametrize('test_case', [pytest.param(test_case, id=test_case.id) for test_case in test_cases])
 @pytest.mark.parametrize('handler_creation_func', create_view_parameters)
 async def test_success_class_def_as_view(
-        aiohttp_client: AiohttpClient, test_case: TestCase, handler_creation_func: Any,
+    aiohttp_client: AiohttpClient,
+    test_case: TestCase,
+    handler_creation_func: Any,
 ) -> None:
     handler = handler_creation_func(test_case.annotation, test_case.type_, test_case.expected_data)
 
@@ -318,7 +323,9 @@ async def test_success_class_def_as_view(
 @pytest.mark.parametrize('test_case', [pytest.param(test_case, id=test_case.id) for test_case in test_cases])
 @pytest.mark.parametrize('handler_creation_func', create_view_parameters)
 async def test_success_class_def_as_subapp(
-        aiohttp_client: AiohttpClient, test_case: TestCase, handler_creation_func: Any,
+    aiohttp_client: AiohttpClient,
+    test_case: TestCase,
+    handler_creation_func: Any,
 ) -> None:
     handler = handler_creation_func(test_case.annotation, test_case.type_, test_case.expected_data)
 
@@ -335,10 +342,10 @@ async def test_success_class_def_as_subapp(
 
 
 async def _test(
-        aiohttp_client: AiohttpClient,
-        app: web.Application,
-        request_kw: Dict[str, Any] = {},
-        base_path: str = '/',
+    aiohttp_client: AiohttpClient,
+    app: web.Application,
+    request_kw: Dict[str, Any] = {},
+    base_path: str = '/',
 ) -> None:
     client = await aiohttp_client(app)
     resp = await client.post(base_path + 'attr', **request_kw)

@@ -70,7 +70,7 @@ from aiohttp.web_exceptions import (
 
 from rapidy.typedefs import ValidationErrorList
 
-__all = [
+__all__ = [
     'HTTPException',
     'HTTPError',
     'HTTPRedirection',
@@ -132,26 +132,24 @@ __all = [
 ]
 
 if AIOHTTP_VERSION_TUPLE >= (3, 9, 0):
-    __all.extend([
+    __all__ += [
         'HTTPMove',
         'NotAppKeyWarning',
-    ])
-
-__all__ = tuple(__all)
+    ]
 
 
 class HTTPValidationFailure(HTTPUnprocessableEntity):
     validation_failure_field_name: str = 'errors'
 
     def __init__(
-            self,
-            errors: ValidationErrorList,
-            *,
-            headers: Optional[LooseHeaders] = None,
-            reason: Optional[str] = None,
-            body: Any = None,
-            text: Optional[str] = None,
-            content_type: Optional[str] = None,
+        self,
+        errors: ValidationErrorList,
+        *,
+        headers: Optional[LooseHeaders] = None,
+        reason: Optional[str] = None,
+        body: Any = None,
+        text: Optional[str] = None,
+        content_type: Optional[str] = None,
     ) -> None:
         self._errors = normalize_errors(errors)
         if text is None:
@@ -167,4 +165,5 @@ class HTTPValidationFailure(HTTPUnprocessableEntity):
 
     @property
     def validation_errors(self) -> ValidationErrorList:
+        """Get all validation errors."""
         return self._errors

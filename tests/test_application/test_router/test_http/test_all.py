@@ -13,12 +13,18 @@ async def test_all(aiohttp_client: AiohttpClient, path: str, method_name: str) -
     method_func = getattr(http_route_module, method_name)
 
     @method_func(PATH_1)
-    async def app_handler1() -> None: pass
-    async def app_handler2() -> None: pass
+    async def app_handler1() -> None:
+        pass
+
+    async def app_handler2() -> None:
+        pass
 
     @method_func(PATH_1)
-    async def router_handler1() -> None: pass
-    async def router_handler2() -> None: pass
+    async def router_handler1() -> None:
+        pass
+
+    async def router_handler2() -> None:
+        pass
 
     api_router = HTTPRouter(
         '/api',

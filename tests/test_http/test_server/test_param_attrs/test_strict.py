@@ -8,13 +8,12 @@ strict_false_test_cases = create_test_cases('1')
 
 
 @pytest.mark.parametrize(
-    'test_case', [
-        pytest.param(test_case, id=test_case.id) for test_case in strict_true_test_cases
-    ],
+    'test_case',
+    [pytest.param(test_case, id=test_case.id) for test_case in strict_true_test_cases],
 )
 async def test_strict_fields_strict(
-        aiohttp_client: AiohttpClient,
-        test_case: TestCase,
+    aiohttp_client: AiohttpClient,
+    test_case: TestCase,
 ) -> None:
     await base_test(
         aiohttp_client=aiohttp_client,
@@ -25,13 +24,12 @@ async def test_strict_fields_strict(
 
 
 @pytest.mark.parametrize(
-    'test_case', [
-        pytest.param(test_case, id=test_case.id) for test_case in strict_false_test_cases
-    ],
+    'test_case',
+    [pytest.param(test_case, id=test_case.id) for test_case in strict_false_test_cases],
 )
 async def test_strict_fields_no_strict(
-        aiohttp_client: AiohttpClient,
-        test_case: TestCase,
+    aiohttp_client: AiohttpClient,
+    test_case: TestCase,
 ) -> None:
     await base_test(
         aiohttp_client=aiohttp_client,

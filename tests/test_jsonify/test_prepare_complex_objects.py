@@ -107,11 +107,11 @@ def test_complex() -> None:
     prepared_frozenset = prepared_obj.pop('test_frozenset')
     prepared_deque = prepared_obj.pop('test_deque')
     assert (
-        set(prepared_list) ==
-        set(prepared_set) ==
-        set(prepared_frozenset) ==
-        set(prepared_deque) ==
-        set(prepared_iterable_objects)
+        set(prepared_list)
+        == set(prepared_set)
+        == set(prepared_frozenset)
+        == set(prepared_deque)
+        == set(prepared_iterable_objects)
     )
 
     assert prepared_obj == expected_prepared_obj

@@ -29,13 +29,13 @@ base_model_obj = _TestBaseModel(
 
 
 def create_expected_base_model_obj(
-        *,
-        include: Any = None,
-        exclude: bool = False,
-        by_alias: bool = True,
-        exclude_unset_field: bool = False,
-        exclude_default_field: bool = False,
-        exclude_none_field: bool = False,
+    *,
+    include: Any = None,
+    exclude: bool = False,
+    by_alias: bool = True,
+    exclude_unset_field: bool = False,
+    exclude_default_field: bool = False,
+    exclude_none_field: bool = False,
 ) -> DictStrAny:
     base_model_obj: DictStrAny = {}
 
@@ -100,11 +100,14 @@ def test_dict_dataclass_exclude_nested_model() -> None:
             'test_model': create_expected_base_model_obj(exclude=True),
         },
         'test_model': expected_base_model_obj,
-    },
-    assert jsonify(
-        obj_to_prepare,
-        exclude={'test_dataclass': {'test_model': {EXCLUDED_FIELD_NAME}}},
-    ) == expected_obj
+    }
+    assert (
+        jsonify(
+            obj_to_prepare,
+            exclude={'test_dataclass': {'test_model': {EXCLUDED_FIELD_NAME}}},
+        )
+        == expected_obj
+    )
 
 
 @pytest.mark.parametrize('by_alias', [True, False])

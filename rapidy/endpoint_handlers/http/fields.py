@@ -47,12 +47,12 @@ class StreamReaderModelField(ABCRapidyModelField):
         return Undefined
 
     def validate(
-            self,
-            value: Any,
-            values: Dict[str, Any],
-            *,
-            loc: LocStr,
-            cls: Optional[ModelOrDc] = None,  # noqa: WPS117
+        self,
+        value: Any,
+        values: Dict[str, Any],
+        *,
+        loc: LocStr,
+        cls: Optional[ModelOrDc] = None,
     ) -> ValidateReturn:
         raise NotImplementedError
 

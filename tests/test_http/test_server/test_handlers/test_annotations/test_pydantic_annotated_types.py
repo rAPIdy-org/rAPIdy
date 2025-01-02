@@ -1,10 +1,10 @@
 from typing import Any
+from typing_extensions import Annotated
 from uuid import UUID, uuid4
 
 import pytest
 from pydantic import UUID4
 from pytest_aiohttp.plugin import AiohttpClient
-from typing_extensions import Annotated
 
 from rapidy import web
 
@@ -25,7 +25,8 @@ async def default_def_handler(user_id: UUID4 = web.PathParam()) -> None:
 
 
 @pytest.mark.parametrize(
-    'handler', [
+    'handler',
+    [
         annotated_def_handler,
         default_def_handler,
     ],

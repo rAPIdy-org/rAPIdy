@@ -56,7 +56,6 @@ aiohttp = "3.9.5"
 pydantic = ">=1.7.4,!=1.8,!=1.8.1,!=1.8.2,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0"
 yarl = "<1.13.0"  # FIXME: 1.13.0 - aiohttp backwards compatibility broken
 
-
 [tool.poetry.group.test.dependencies]
 pytest = "7.*"
 pytest-aiohttp = "^1.0.5"
@@ -64,88 +63,92 @@ pytest-cov = "^4.1.0"
 pytest-httpserver = "^1.0.8"
 
 
-[build-system]
-requires = ["poetry-core>=1.3.0"]
-build-backend = "poetry.core.masonry.api"
+[tool.ruff]
+src = ["rapidy", "tests"]
+line-length = 120
+indent-width = 4
+target-version = "py38"
 
-
-[tool.flake8]
-exclude = [
-    "tests/*",
-    "benchmarks/*",
+[tool.ruff.lint]
+select = [
+    "ALL",
 ]
-max-line-length = 120
-max-complexity = 10
 ignore = [
-    "D",       #  Ignore all doc
-    "P101",    #  format string does contain unindexed parameters
-    "RST203",  #  Definition list ends without a blank line; unexpected unindent.
-    "S101",    #  Use of assert detected. The enclosed code will be removed when compiling to optimised byte code.
-    "WPS100",  #  Found wrong module name
-    "WPS110",  #  Found wrong variable name: X
-    "WPS111",  #  Found too short name: d < X
-    "WPS113",  #  Found same alias import: X
-    "WPS114",  #  Found underscored number name pattern: X_1
-    "WPS115",  #  Found upper-case constant in a class: X
-    "WPS201",  #  Found module with too many imports: X > 12
-    "WPS202",  #  Found too many module members: X > 7
-    "WPS203",  #  Found module with too many imported names: X > 50
-    "WPS204",  #  Found overused expression: X; used 5 > 4
-    "WPS210",  #  Found too many local variables: X > 5
-    "WPS211",  #  Found too many arguments: X > 5
-    "WPS214",  #  Found too many methods: X > 7
-    "WPS217",  #  Found too many await expressions: X > 5
-    "WPS220",  #  Found overly complex annotation: X > 3
-    "WPS226",  #  Found string literal over-use: X > 3
-    "WPS231",  #  Found function with too much cognitive complexity: X > 12
-    "WPS232",  #  Found module cognitive complexity that is too high: X > 8
-    "WPS234",  #  Found too deep nesting
-    "WPS235",  #  Found too many imported names from a module: X > 8
-    "WPS238",  #  Found too many raises in a function: X > 3
-    "WPS237",  #  Found a too complex `f` string
-    "WPS305",  #  Found `f` string
-    "WPS306",  #  Found class without a base class: X
-    "WPS318",  #  Found extra indentation
-    "WPS320",  #  Found multi-line function type annotation
-    "WPS326",  #  Found implicit string concatenation
-    "WPS337",  #  Found multiline conditions
-    "WPS402",  #  Found `noqa` comments overuse: X
-    "WPS410",  #  Found wrong metadata variable: __all__
-    "WPS420",  #  Found wrong keyword
-    "WPS421",  #  Found wrong function call: vars
-    "WPS428",  #  Found statement that has no effect
-    "WPS430",  #  Found nested function: X
-    "WPS436",  #  Found protected module import: X
-    "WPS437",  #  Found protected attribute usage: _X
-    "WPS450",  #  Found protected object import: X
-    "WPS451",  #  Found positional-only argument
-    "WPS454",  #  Found wrong `raise` exception type: X
-    "WPS462",  #  Wrong multiline string usage
-    "WPS467",  #  Found bare raise keyword
-    "WPS473",  #  Found too many empty lines in `def`: X > 23
-    "WPS510",  #  Found `in` used with a non-set container
-    "WPS529",  #  Found implicit `.get()` dict usage
-    "WPS600",  #  Found subclassing a builtin: X
-    "WPS602",  #  Found using `@staticmethod`
-    "WPS604",  #  Found incorrect node inside `class` body
-    "WPS609",  #  Found direct magic attribute usage: __x__
-    "W503",    #  line break before binary operator
+    "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed in `**handler_kwargs`
+    "D100",     # Missing docstring in public module
+    "D104",     # Missing docstring in public package
+    "EM101",    # Exception must not use a string literal, assign to variable first
+    "FA100",    # Add `from __future__ import annotations` to simplify `typing.Dict`
+    "FA102",    # Missing `from __future__ import annotations`, but uses PEP 604 union
+    "PLR0911",  # Too many return statements (X > 6)
+    "PLR0913",  # Too many arguments in function definition (X > 5)
+    "RUF022",   # `__all__` is not sorted - fixme later
+    "RUF023",   # `X.__slots__` is not sorted - fixme later
+    "TC001",    # Move application import `X` into a type-checking block
+    "TC003",    # Move standard library import `X` into a type-checking block
+    "TD001",    # Invalid TODO tag: `FIXME`
 ]
-per-file-ignores = [
-    'rapidy/__init__.py: N813 WPS412 WPS413 WPS433 WPS442',
-    'rapidy/routing/http/routers.py: N801',
-    'rapidy/_base_exceptions.py: WPS336',
-    'rapidy/_client_errors.py: C901 WPS433 WPS440',
-    'rapidy/web_app.py: WPS404',
-    'rapidy/version.py: WPS116',
-    'rapidy/web.py: F401 WPS112 WPS232 WPS433',
-    'rapidy/web_exceptions.py: D400 F401 WPS112 WPS433',
-    'rapidy/typedefs.py: WPS433 WPS113 WPS440',
-    'rapidy/mypy/__init__.py: WPS412',
-    'rapidy/mypy/*: WPS433',
-    'rapidy/mypy/_type_helpers.py: WPS221 WPS602',
-    'rapidy/parameters/http.py: WPS612',
+
+[tool.ruff.lint.flake8-quotes]
+inline-quotes = "single"
+
+[tool.ruff.lint.flake8-type-checking]
+exempt-modules = ["typing", "typing_extensions"]
+
+[tool.ruff.lint.per-file-ignores]
+"rapidy/web.py" = ["F401"]
+"rapidy/annotation_checkers.py" = ["D"]
+"rapidy/web_exceptions.py" = ["D", "F401"]
+"rapidy/fields/model_fields.py" = ["D"]
+"rapidy/fields/field_info.py" = ["D"]
+"rapidy/endpoint_handlers/validation.py" = ["D", "PLR0911"]
+"rapidy/endpoint_handlers/*" = ["D"]
+"rapidy/version.py" = ["D"]
+"rapidy/mypy/*" = ["D", "S101"]
+"rapidy/routing/http/routers.py" = ["D", "N801"]
+"rapidy/parameters/http.py" = ["D"]
+"rapidy/endpoint_handlers/http/request/data_extractors.py" = ["D"]
+"rapidy/endpoint_handlers/http/request/data_validators.py" = ["D"]
+"tests*" = [
+    "ANN001",
+    "ARG",
+    "B006",
+    "B008",
+    "BLE001",
+    "D",
+    "DTZ001",
+    "FBT001",
+    "FBT002",   # Boolean default positional argument in function definition
+    "PT006",
+    "PT007",    # Wrong values type in `pytest.mark.parametrize` expected `list` of `tuple`
+    "PLR2004",  # Magic value used in comparison, consider replacing `X` with a constant variable
+    "S101",
+    "S105",
+    "TD001",    # Invalid TODO tag: `FIXME`
+    "TC003",    # Move standard library import `X` into a type-checking block - fixme?
+    "UP035",    # Import from `X` instead: `X`
 ]
+
+
+
+[tool.ruff.lint.isort]
+known-local-folder = ["rapidy", "tests"]
+extra-standard-library = ["typing_extensions"]
+section-order = ["future", "standard-library", "first-party", "third-party", "local-folder"]
+combine-as-imports = true
+force-wrap-aliases = true
+order-by-type = false
+
+[tool.ruff.lint.pydocstyle]
+# Google docstyle
+# See https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html
+# and http://google.github.io/styleguide/pyguide.html
+# https://gist.github.com/redlotus/3bc387c2591e3e908c9b63b97b11d24e
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
 
 [tool.mypy]
 pretty = true
@@ -166,13 +169,6 @@ allow_subclassing_any = true
 allow_untyped_decorators = true
 disable_error_code = "var-annotated, has-type, no-redef, empty-body"
 
-[tool.isort]
-multi_line_output = 3
-include_trailing_comma = true
-use_parentheses = true
-line_length = 120
-order_by_type = false
-combine_as_imports = true
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
@@ -199,3 +195,8 @@ exclude_also = [
     "class .*\\bProtocol\\):",
     "@(abc\\.)?abstractmethod",
 ]
+
+
+[build-system]
+requires = ["poetry-core>=1.3.0"]
+build-backend = "poetry.core.masonry.api"

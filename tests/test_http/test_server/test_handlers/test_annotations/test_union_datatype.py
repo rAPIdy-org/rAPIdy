@@ -19,7 +19,8 @@ class SchemaB(BaseModel):
 
 
 @pytest.mark.parametrize(
-    'annotation, param_type, params, expected_type_pydantic_v1, expected_type_pydantic_v2', (
+    'annotation, param_type, params, expected_type_pydantic_v1, expected_type_pydantic_v2',
+    (
         (Union[int, str], QueryParam, {'p': 1}, int, str),
         (Union[int, str], QueryParam, {'p': '1'}, int, str),
         (Union[int, str], QueryParam, {'p': '1s'}, str, str),
@@ -28,12 +29,12 @@ class SchemaB(BaseModel):
     ),
 )
 async def test_union_datatype(
-        annotation: Any,
-        param_type: Any,
-        aiohttp_client: AiohttpClient,
-        params: Dict[str, Any],
-        expected_type_pydantic_v1: Type[Any],
-        expected_type_pydantic_v2: Type[Any],
+    annotation: Any,
+    param_type: Any,
+    aiohttp_client: AiohttpClient,
+    params: Dict[str, Any],
+    expected_type_pydantic_v1: Type[Any],
+    expected_type_pydantic_v2: Type[Any],
 ) -> None:
     async def handler(p: annotation = param_type()) -> web.Response:
         if PYDANTIC_IS_V1:

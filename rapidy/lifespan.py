@@ -3,7 +3,6 @@ import inspect
 from contextlib import AbstractAsyncContextManager, asynccontextmanager, AsyncExitStack
 from functools import partial
 from typing import Any, AsyncGenerator, Awaitable, Callable, List, Optional, TYPE_CHECKING, Union
-
 from typing_extensions import TypeAlias
 
 from rapidy.annotation_checkers import is_async_callable
@@ -35,12 +34,12 @@ LifespanHook: TypeAlias = Union[
 
 class Lifespan:
     def __init__(
-            self,
-            app: 'Application',
-            on_startup: List[LifespanHook],
-            on_shutdown: List[LifespanHook],
-            on_cleanup: List[LifespanHook],
-            lifespan_managers: List[LifespanCTX],
+        self,
+        app: 'Application',
+        on_startup: List[LifespanHook],
+        on_shutdown: List[LifespanHook],
+        on_cleanup: List[LifespanHook],
+        lifespan_managers: List[LifespanCTX],
     ) -> None:
         self._app = app
         self._lifespan_status_queue: Optional[asyncio.Queue[Any]] = None
@@ -66,7 +65,7 @@ class Lifespan:
 
             for manager in self.lifespan_managers:
                 if not isinstance(manager, AbstractAsyncContextManager):
-                    manager = manager(self._app)
+                    manager = manager(self._app)  # noqa: PLW2901
 
                 await exit_stack.enter_async_context(manager)
 

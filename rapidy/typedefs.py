@@ -1,16 +1,16 @@
 import enum
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Type, TYPE_CHECKING, Union
+from typing_extensions import TypeAlias
 
 from aiohttp.abc import AbstractView
 from aiohttp.web_urldispatcher import View
 from pydantic import BaseModel
-from typing_extensions import TypeAlias
 
 from rapidy.constants import PYDANTIC_IS_V1
 from rapidy.routing.http.base import BaseHTTPRouter
 
 if TYPE_CHECKING:
-    from rapidy.lifespan import LifespanCTX, LifespanHook
+    from rapidy.lifespan import LifespanCTX, LifespanHook  # noqa: TC004
     from rapidy.web_request import Request
     from rapidy.web_response import StreamResponse
 
@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 
 
 __all__ = (
+    'Deprecated',
     'Middleware',
     'CallNext',
     'Handler',
@@ -53,7 +54,7 @@ HTTPRouterType = Union[
 ]
 
 # validation types
-LocStr = Union[Tuple[Union[int, str], ...], str]  # noqa: WPS221
+LocStr = Union[Tuple[Union[int, str], ...], str]
 ModelOrDc = Type[Union[BaseModel, 'Dataclass']]
 ResultValidate = DictStrAny
 ValidationErrorList: TypeAlias = List[DictStrAny]
@@ -63,17 +64,13 @@ ValidateReturn: TypeAlias = Tuple[Optional[ResultValidate], Optional[ValidationE
 NoArgAnyCallable: TypeAlias = Callable[[], Any]
 
 if PYDANTIC_IS_V1:
-    from pydantic.error_wrappers import ErrorWrapper as ErrorWrapper
-    from pydantic.fields import (
-        Required as Required,
-        Undefined as Undefined,
-        UndefinedType as UndefinedType,
-        Validator as Validator,
-    )
     from typing_extensions import deprecated as Deprecated  # noqa: N812
 
+    from pydantic.error_wrappers import ErrorWrapper
+    from pydantic.fields import Required, Undefined, UndefinedType, Validator
+
 else:
-    from pydantic.fields import Deprecated  # type: ignore[no-redef]  # noqa: F401
+    from pydantic.fields import Deprecated  # type: ignore[no-redef]
     from pydantic_core import PydanticUndefined, PydanticUndefinedType
 
     Required = PydanticUndefined
@@ -81,10 +78,11 @@ else:
     UndefinedType = PydanticUndefinedType
     Validator = Any  # type: ignore[assignment,unused-ignore]
 
-    class ErrorWrapper(Exception):  # type: ignore[no-redef]  # noqa: N818 WPS440
+    class ErrorWrapper(Exception):  # type: ignore[no-redef]  # noqa: N818
         pass
 
-Unset = enum.Enum('Unset', 'unset').unset  # type: ignore
+
+Unset = enum.Enum('Unset', 'unset').unset  # type: ignore[attr-defined]
 
 # json
 JSONEncoder = Callable[[Any], str]

@@ -26,13 +26,13 @@ base_model_obj = _TestBaseModel(
 
 
 def create_expected_base_model_obj(
-        *,
-        include: Any = None,
-        exclude: bool = False,
-        by_alias: bool = True,
-        exclude_unset_field: bool = False,
-        exclude_default_field: bool = False,
-        exclude_none_field: bool = False,
+    *,
+    include: Any = None,
+    exclude: bool = False,
+    by_alias: bool = True,
+    exclude_unset_field: bool = False,
+    exclude_default_field: bool = False,
+    exclude_none_field: bool = False,
 ) -> DictStrAny:
     base_model_obj: DictStrAny = {}
 

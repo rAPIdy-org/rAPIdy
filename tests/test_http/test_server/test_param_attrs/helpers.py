@@ -1,9 +1,9 @@
 from http import HTTPStatus
 from typing import Any, Dict, List, Optional, Type
+from typing_extensions import Annotated
 
 from aiohttp.pytest_plugin import AiohttpClient
 from attrs import define
-from typing_extensions import Annotated
 
 from rapidy import web
 from rapidy.parameters.http import Body, Cookie, Header, QueryParam, RequestParamFieldInfo
@@ -20,10 +20,10 @@ class TestCase:
 
 
 def create_test_cases(
-        correct_value: Any,
-        incorrect_value: Optional[Any] = None,
-        skip_only_str_params: bool = False,
-        data_key: str = 'data',
+    correct_value: Any,
+    incorrect_value: Optional[Any] = None,
+    skip_only_str_params: bool = False,
+    data_key: str = 'data',
 ) -> List[TestCase]:
     cases = [
         TestCase(
@@ -31,7 +31,6 @@ def create_test_cases(
             param=Body,
             client_kwargs={'json': correct_value},
         ),
-
     ]
     if incorrect_value:
         cases.append(
@@ -44,23 +43,25 @@ def create_test_cases(
         )
 
     if not skip_only_str_params:
-        cases.extend([
-            TestCase(
-                id='success-header',
-                param=Header,
-                client_kwargs={'headers': {data_key: str(correct_value)}},
-            ),
-            TestCase(
-                id='success-cookie',
-                param=Cookie,
-                client_kwargs={'cookies': {data_key: correct_value}},
-            ),
-            TestCase(
-                id='success-query-param',
-                param=QueryParam,
-                client_kwargs={'params': {data_key: correct_value}},
-            ),
-        ])
+        cases.extend(
+            [
+                TestCase(
+                    id='success-header',
+                    param=Header,
+                    client_kwargs={'headers': {data_key: str(correct_value)}},
+                ),
+                TestCase(
+                    id='success-cookie',
+                    param=Cookie,
+                    client_kwargs={'cookies': {data_key: correct_value}},
+                ),
+                TestCase(
+                    id='success-query-param',
+                    param=QueryParam,
+                    client_kwargs={'params': {data_key: correct_value}},
+                ),
+            ],
+        )
         if incorrect_value:
             cases.extend(
                 [
@@ -89,16 +90,20 @@ def create_test_cases(
 
 
 def create_handlers(annotation: Any, param: RequestParamFieldInfo) -> List[Handler]:
-    async def handler1(data: Annotated[annotation, param]) -> None: pass
-    async def handler2(data: annotation = param) -> None: pass
+    async def handler1(data: Annotated[annotation, param]) -> None:
+        pass
+
+    async def handler2(data: annotation = param) -> None:
+        pass
+
     return [handler1, handler2]
 
 
 async def base_test(
-        aiohttp_client: AiohttpClient,
-        annotation: Any,
-        param: RequestParamFieldInfo,
-        test_case: TestCase,
+    aiohttp_client: AiohttpClient,
+    annotation: Any,
+    param: RequestParamFieldInfo,
+    test_case: TestCase,
 ) -> None:
     handlers = create_handlers(annotation=annotation, param=param)
 
