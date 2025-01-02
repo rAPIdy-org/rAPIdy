@@ -1,0 +1,17 @@
+< HTTP/1.1 422 Unprocessable Entity ...
+{
+    "errors": [
+        {
+            "loc": ["body", "username"],
+            "type": "string_too_short",
+            "msg": "Строка должна содержать как минимум 3 символа",
+            "ctx": {"min_length": 3}
+        },
+        {
+            "type": "string_too_short",
+            "loc": ["body", "password"],
+            "msg": "Строка должна содержать как минимум 8 символов",
+            "ctx": {"min_length": 8}
+        }
+    ]
+}

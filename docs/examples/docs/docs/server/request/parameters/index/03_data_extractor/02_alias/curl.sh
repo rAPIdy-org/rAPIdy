@@ -1,0 +1,3 @@
+curl -G -v -d "TestQueryParamName=123456789" http://127.0.0.1:8080
+# < HTTP/1.1 200 OK ...
+# 123456789

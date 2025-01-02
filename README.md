@@ -1,6 +1,8 @@
+# TODO: его тоже изменить
+
 <p align="center">
     <a href="https://github.com/daniil-grois/rAPIdy" target="blank">
-        <img src="docs/assets/logo-teal.png" alt="rAPIdy">
+        <img src="https://rapidy.dev/assets/logo-teal.png" alt="rAPIdy">
     </a>
 </p>
 
@@ -70,15 +72,14 @@ class-based routing
 # 📦 Installation & Setup
 
 Install rAPIdy via pip:
-```python
+```shell
 pip install rapidy
 ```
 
 ---
 
 # 📄 Documentation
-> [!TIP]
-> **Mkdocs Coming Soon:** Now
+Documentation: https://rapidy.dev
 
 ---
 

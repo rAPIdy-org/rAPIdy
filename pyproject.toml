@@ -5,6 +5,7 @@ description = "rAPIdy - write quickly - write beautifully"
 authors = [
     "Daniil Grois <daniil.grois@gmail.com>",
     "Lev Zaplatin <lev@zaplatin.dev>",
+    "Nikita Tolstoy <nikitka.tolstoy@gmail.com>"
 ]
 keywords = [
     "rAPIdy",
@@ -18,6 +19,7 @@ keywords = [
     "http server",
     "Daniil Grois",
     "Lev Zaplatin",
+    "Nikita Tolstoy",
 ]
 license = "MIT License"
 readme = "README.md"
@@ -63,11 +65,19 @@ pytest-aiohttp = ">=1.0.5"
 pytest-cov = "^4.1.0"
 pytest-httpserver = ">=1.0.8"
 
+[tool.poetry.group.docs.dependencies]
+mkdocs = "^1.6.1"
+mike = "^2.1.3"
+mkdocs-static-i18n = "^1.3.0"
+mdx-include = "^1.4.2"
+mkdocs-material = "^9.6.3"
+
 [tool.ruff]
 src = ["rapidy", "tests"]
 line-length = 120
 indent-width = 4
-target-version = "py38"
+target-version = "py39"
+exclude = ["docs/*"]
 
 [tool.ruff.lint]
 select = [
@@ -91,6 +101,8 @@ ignore = [
     "TD002",    # Missing author in TODO
     "TD003",    # Missing issue link on the line following this TODO
     "TD005",    # Missing issue description after `TODO`
+    "UP006",    # Use `x` instead of `X` for type annotation
+    "UP035",    # Import from `X` instead: `X`
 ]
 
 [tool.ruff.lint.flake8-quotes]
@@ -129,7 +141,6 @@ exempt-modules = ["typing", "typing_extensions"]
     "S101",
     "S105",
     "SLF001",   # Private member accessed: `X`
-    "UP035",    # Import from `X` instead: `X`
 ]
 
 
@@ -152,6 +163,7 @@ convention = "google"
 [tool.ruff.format]
 quote-style = "single"
 indent-style = "space"
+exclude = ["docs/*"]
 
 [tool.mypy]
 pretty = true

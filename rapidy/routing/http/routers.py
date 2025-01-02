@@ -366,8 +366,7 @@ class HTTPRouter(BaseHTTPRouter):
                 >>> )
             middlewares: A list of middleware applied to the router.
             client_max_size: Client`s maximum size in a request, in bytes.
-            lifespan: A list of callables returning async context managers,
-                      wrapping the lifespan of the application.
+            lifespan: List of asynchronous context managers that support application lifecycle management.
                 >>> @asynccontextmanager
                 >>> async def lifespan_ctx(rapidy: Rapidy) -> AsyncGenerator[None, None]:
                 >>>     try:
@@ -375,7 +374,6 @@ class HTTPRouter(BaseHTTPRouter):
                 >>>             yield
                 >>>     finally:
                 >>>         await shutdown_func()
-
                 You can set this in two ways:
                 >>> rapidy = Rapidy(lifespan=[lifespan_ctx, ...], ...)
                 or
@@ -598,11 +596,6 @@ class get(HTTPMethodRouteHandler):
                 Resource path spec.
             allow_head:
                 If allow_head is True (default) the route for method HEAD is added with the same handler as for GET.
-                If name is provided the name for HEAD route is suffixed with '-head'.
-                For example
-                >>> @get(path, handler, name='route')
-                >>> def handler(request): ...
-                call adds two routes: first for GET with name 'route' and second for HEAD with name 'route-head'.
             status_code (int):
                 The default status code to be used for the response.
             response_validate:
