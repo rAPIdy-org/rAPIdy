@@ -104,7 +104,8 @@ class Resource(AioHTTPResource, ABC):
     ) -> 'ResourceRoute':
         """Add a route to an overridden aiohttp Resource."""
         for route_obj in self._routes:
-            if route_obj.method == method or route_obj.method == METH_ANY:  # noqa: PLR1714
+            route_method = route_obj.method if isinstance(route_obj, ResourceRoute) else route_obj  # aiohttp > 3.11
+            if route_method == method in (method, METH_ANY):
                 raise RuntimeError(  # aiohttp code  # pragma: no cover  # noqa: TRY003
                     'Added route will never be executed, '  # noqa: EM102
                     f'method {route_obj.method} is already '
