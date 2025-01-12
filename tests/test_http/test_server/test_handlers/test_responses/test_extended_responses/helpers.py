@@ -107,21 +107,35 @@ def create_app_use_rapidy_router_as_handler(
     from rapidy.routing.http import routers
 
     method = get_bound_method_by_http_method_name(routers, web_method)
-    return web.Application(http_route_handlers=[method.handler(PATH, handler, **handler_kwargs)])
+    return web.Application(http_route_handlers=[method.reg(PATH, handler, **handler_kwargs)])
 
 
-def create_all_type_apps(
+view_supported_app_def = (
+    create_app_use_route_table_def,
+    create_app_use_simple_method_func,
+    create_app_use_app_router,
+)
+all_app_def = (
+    *view_supported_app_def,
+    create_app_use_rapidy_router,
+    create_app_use_rapidy_router_as_handler,
+)
+
+
+def create_view_supported_apps(
     handler: Any,
     web_method: str,
     **handler_kwargs: Any,
 ) -> Tuple[web.Application, ...]:
-    return (
-        create_app_use_route_table_def(handler, web_method, **handler_kwargs),
-        create_app_use_simple_method_func(handler, web_method, **handler_kwargs),
-        create_app_use_app_router(handler, web_method, **handler_kwargs),
-        create_app_use_rapidy_router(handler, web_method, **handler_kwargs),
-        create_app_use_rapidy_router_as_handler(handler, web_method, **handler_kwargs),
-    )
+    return tuple(app_def(handler, web_method, **handler_kwargs) for app_def in view_supported_app_def)
+
+
+def create_all_apps(
+    handler: Any,
+    web_method: str,
+    **handler_kwargs: Any,
+) -> Tuple[web.Application, ...]:
+    return tuple(app_def(handler, web_method, **handler_kwargs) for app_def in all_app_def)
 
 
 def create_all_function_handler_apps(
@@ -133,7 +147,7 @@ def create_all_function_handler_apps(
     async def handler() -> handler_return_type:
         return return_value
 
-    return create_all_type_apps(handler, web_method, **handler_kwargs)
+    return create_all_apps(handler, web_method, **handler_kwargs)
 
 
 def create_all_view_handler_apps(
@@ -161,8 +175,8 @@ def create_all_view_handler_apps(
         async def options(self) -> handler_return_type:
             return return_value
 
-    app_with_routes_as_method = create_all_type_apps(Handler, web_method, **handler_kwargs)
-    app_with_routes_as_view = create_all_type_apps(Handler, 'view', **handler_kwargs)
+    app_with_routes_as_method = create_view_supported_apps(Handler, web_method, **handler_kwargs)
+    app_with_routes_as_view = create_view_supported_apps(Handler, 'view', **handler_kwargs)
     return *app_with_routes_as_method, *app_with_routes_as_view
 
 

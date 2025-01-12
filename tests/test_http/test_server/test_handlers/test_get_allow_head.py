@@ -16,7 +16,7 @@ def create_app_routing_handler_use_deco(allow_head: bool) -> Rapidy:
 
 
 def create_app_routing_handler_use_cls_method(allow_head: bool) -> Rapidy:
-    return Rapidy(http_route_handlers=[get.handler('/', handler, allow_head=allow_head)])
+    return Rapidy(http_route_handlers=[get.reg('/', handler, allow_head=allow_head)])
 
 
 def create_app_web_method(allow_head: bool) -> Rapidy:

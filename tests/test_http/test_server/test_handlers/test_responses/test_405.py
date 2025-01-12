@@ -24,7 +24,7 @@ async def test_class_handler_405(aiohttp_client: AiohttpClient) -> None:
             return web.Response()
 
     app = web.Application()
-    app.add_routes([web.post('/', ViewHandler)])
+    app.add_routes([web.get('/', ViewHandler)])
 
     client = await aiohttp_client(app)
     resp = await client.post('/')

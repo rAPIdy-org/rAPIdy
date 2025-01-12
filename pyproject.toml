@@ -43,7 +43,6 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.8",
 ]
 packages = [
   {include = "rapidy"},
@@ -54,7 +53,6 @@ packages = [
 python = ">=3.9"
 aiohttp = ">=3.8.1"
 pydantic = ">=1.7.4,!=1.8,!=1.8.1,!=1.8.2,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0"
-#yarl = "<1.13.0"  # FIXME: 1.13.0 - aiohttp backwards compatibility broken
 
 [tool.poetry.group.test.dependencies]
 pytest = "7.*"
@@ -87,6 +85,7 @@ ignore = [
     "TC001",    # Move application import `X` into a type-checking block
     "TC003",    # Move standard library import `X` into a type-checking block
     "TD001",    # Invalid TODO tag: `FIXME`
+    "TD003",    # Missing issue link on the line following this TODO
 ]
 
 [tool.ruff.lint.flake8-quotes]
@@ -124,8 +123,6 @@ exempt-modules = ["typing", "typing_extensions"]
     "PLR2004",  # Magic value used in comparison, consider replacing `X` with a constant variable
     "S101",
     "S105",
-    "TD001",    # Invalid TODO tag: `FIXME`
-    "TC003",    # Move standard library import `X` into a type-checking block - fixme?
     "UP035",    # Import from `X` instead: `X`
 ]
 

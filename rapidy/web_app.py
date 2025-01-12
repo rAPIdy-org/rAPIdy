@@ -17,7 +17,7 @@ from rapidy.endpoint_handlers.http.handlers import middleware_validation_wrapper
 from rapidy.enums import HeaderName
 from rapidy.lifespan import Lifespan, LifespanCTX, LifespanHook
 from rapidy.routing.http.base import BaseHTTPRouter
-from rapidy.typedefs import HTTPRouterType, Middleware
+from rapidy.typedefs import BaseHTTPRouterType, Middleware
 from rapidy.version import SERVER_INFO
 from rapidy.web_middlewares import get_middleware_attr_data, is_aiohttp_new_style_middleware, is_rapidy_middleware
 from rapidy.web_response import StreamResponse
@@ -33,19 +33,27 @@ InnerDeco = Callable[[], Coroutine[Any, Any, None]]
 
 class RouterTypeError(RapidyException):
     message = """
-    `route_handler` must be a subclass of HTTPRouter
-    If you are using `web.View` - make sure it is under the `@view` / `@get` / `@post` /... decorator.
+    `route_handler` must be a subclass of `BaseHTTPRouter`
 
-    >>>
-    >>> from rapidy.http import get, view
-    >>>
-    >>> @view("/")  # <-- view deco
-    >>> class MyView(web.View):
-    >>>     async def get(self) -> None: pass
-    >>>
-    >>> @get("/")  # <-- get deco
-    >>> class MyView(web.View):
-    >>>     async def get(self) -> None: pass
+    Examples:
+    >>> from rapidy.http import get, controller, PathParam
+
+    >>> @get("/{user_id}")  # <-- `get` deco
+    >>> async def some_get(self, user_id: str = PathParam()) -> None:
+    >>>    pass
+
+    >>> @controller("/")  # <-- `controller` deco
+    >>> class SomeController§(web.View):
+    >>>     @get("/{user_id}")  # <-- `get` deco
+    >>>     async def some_get(self, user_id: str = PathParam()) -> None:
+    >>>         pass
+
+    >>> api_router = HTTPRouter(
+    >>>     '/api',
+    >>>     route_handlers=[
+    >>>     ],
+    >>> )
+    )
     """
 
 
@@ -81,7 +89,7 @@ class Application(AiohttpApplication):
         on_shutdown: Optional[List[LifespanHook]] = None,
         on_cleanup: Optional[List[LifespanHook]] = None,
         # routes
-        http_route_handlers: Iterable[HTTPRouterType] = (),
+        http_route_handlers: Iterable[BaseHTTPRouterType] = (),
     ) -> None:
         """Create an `rapidy` Application instance.
 
@@ -191,7 +199,7 @@ class Application(AiohttpApplication):
                 >>>     '/api',
                 >>>     route_handlers=[
                 >>>         router_handler1,
-                >>>         get.handler('/router_path2', router_handler2),
+                >>>         get.reg('/router_path2', router_handler2),
                 >>>     ],
                 >>> )
                 >>>
@@ -199,7 +207,7 @@ class Application(AiohttpApplication):
                 >>>     http_route_handlers=[
                 >>>         api_router,  # add router
                 >>>         app_handler1,
-                >>>         get.handler('/app_path2', app_handler2),
+                >>>         get.reg('/app_path2', app_handler2),
                 >>>     ]
                 >>> )
         """
@@ -228,16 +236,14 @@ class Application(AiohttpApplication):
 
         self.add_http_routers(http_route_handlers)
 
-    def add_http_router(self, http_router: HTTPRouterType) -> None:
+    def add_http_router(self, http_router: BaseHTTPRouterType) -> None:
         """Add http router."""
-        # mypy is bullshit - class decorators that change type don't work
-        # we need to do this check to protect the developers
         if not isinstance(http_router, BaseHTTPRouter):
             raise RouterTypeError
 
-        http_router.register(application=self)
+        http_router.route_register(application=self)
 
-    def add_http_routers(self, route_handlers: Iterable[HTTPRouterType]) -> None:
+    def add_http_routers(self, route_handlers: Iterable[BaseHTTPRouterType]) -> None:
         """Add http routers."""
         for route_handler in route_handlers:
             self.add_http_router(route_handler)

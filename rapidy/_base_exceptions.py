@@ -1,6 +1,8 @@
 from abc import ABC
 from typing import Any, Final, Optional
 
+from rapidy.routing.http.helper_types import HandlerPartial
+
 BORDER_LEN: Final[int] = 30
 
 
@@ -30,6 +32,9 @@ class RapidyHandlerException(RapidyException, ABC):
         attr_name: Optional[str] = None,
         **format_fields: str,
     ) -> 'RapidyHandlerException':
+        if isinstance(handler, HandlerPartial):
+            handler = handler.handler
+
         msg = f'{cls.message}\nHandler path: `{handler.__code__.co_filename}`\nHandler name: `{handler.__name__}`'
         if attr_name:
             msg = f'{msg}\nAttribute name: `{attr_name}`'

@@ -101,7 +101,7 @@ else:
         return [{**err, 'loc': loc + err.get('loc', ())} for err in errors]
 
     def error_dict_pop_useless_keys(error: Dict[str, Any]) -> None:
-        # TODO: need advice - not sure about this  # noqa: FIX002 TD002 TD003
+        # TODO: need advice - not sure about this  # noqa: FIX002, TD002
         error.pop('url', None)
         error.pop('input', None)
 

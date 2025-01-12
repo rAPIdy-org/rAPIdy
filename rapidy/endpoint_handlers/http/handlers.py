@@ -1,19 +1,35 @@
 from concurrent.futures import Executor
 from functools import partial, wraps
-from typing import Any, Optional, Type, TYPE_CHECKING, Union
+from typing import Any, cast, Optional, Type, TYPE_CHECKING, Union
 
 from aiohttp.hdrs import METH_ALL
 
+from rapidy._base_exceptions import RapidyHandlerException
 from rapidy.encoders import CustomEncoder, Exclude, Include
 from rapidy.endpoint_handlers.http.controller import controller_factory
-from rapidy.enums import Charset, ContentType
-from rapidy.typedefs import CallNext, Handler, JSONEncoder, Middleware
+from rapidy.enums import Charset, ContentType, MethodName
+from rapidy.typedefs import CallNext, Handler, JSONEncoder, Middleware, UnsetType
 from rapidy.web_middlewares import middleware as middleware_deco
 from rapidy.web_response import Response, StreamResponse
 
 if TYPE_CHECKING:
     from rapidy.web_request import Request
     from rapidy.web_urldispatcher import View
+
+
+class AllowHeadError(RapidyHandlerException):
+    message = (
+        'Cannot automatically define the `head` method in `View` because the `get` method is not defined.'
+        '\nThis is internal `rAPIdy` error, please open the issue - https://github.com/rAPIdy-org/rAPIdy/issues/new'
+    )
+
+
+class MethodNotFoundInViewError(RapidyHandlerException):
+    message = 'Failed to register View - method named `{method_name}` was not found.'
+
+
+class MethodAlreadyRegisteredError(ValueError):
+    pass
 
 
 def handler_validation_wrapper(
@@ -87,9 +103,10 @@ def handler_validation_wrapper(
     return inner
 
 
-def view_validation_wrapper(
+def view_validation_wrapper(  # noqa: C901
     view: Type['View'],
     *,
+    method: MethodName,
     response_validate: bool,
     response_type: Optional[Type[Any]],
     response_content_type: Union[str, ContentType, None],
@@ -105,12 +122,28 @@ def view_validation_wrapper(
     response_exclude_defaults: bool,
     response_exclude_none: bool,
     response_custom_encoder: Optional[CustomEncoder],
-) -> 'View':
+) -> Type['View']:
     handler_controllers = {}
+    view_http_methods = {handler_attr for handler_attr in dir(view) if handler_attr.upper() in METH_ALL}
+    # NOTE! `view` does not support parameter inheritance.
 
-    for method in (handler_attr for handler_attr in dir(view) if handler_attr.upper() in METH_ALL):
-        method_handler: Handler = getattr(view, method)
-        handler_controllers[method.lower()] = controller_factory(
+    if method != MethodName.any:
+        method_name = method.value.lower()
+        if method not in view_http_methods and method == MethodName.head:
+            # aiohttp `View` does not support `allow_head` attr in `get`, but `rAPIdy` does.
+            get_method = getattr(view, MethodName.get.lower())
+            if not get_method:
+                raise AllowHeadError
+
+            setattr(view, method_name, get_method)
+
+        try:
+            method_handler: Handler = getattr(view, method_name)
+        except AttributeError as method_not_found_error:
+            raise MethodNotFoundInViewError(method_name=method_name) from method_not_found_error
+
+        # FIXME(daniil.grois): duplicate code  # noqa: FIX001
+        handler_controllers[method_name] = controller_factory(
             method_handler,
             response_validate=response_validate,
             response_type=response_type,
@@ -127,6 +160,40 @@ def view_validation_wrapper(
             response_custom_encoder=response_custom_encoder,
             response_json_encoder=response_json_encoder,
         )
+
+    else:
+        for method_name in view_http_methods:
+            # FIXME(daniil.grois):  # noqa: FIX001
+            #  rapidy always re-creates a controller wrapper over each handler
+            #  even if some methods have already been defined beforehand
+            #  NOTE: only affects the creation of unnecessary objects
+            #  >>> app = web.Application()
+            #  >>> app.router.add_get('/test/{foo}', FooView)
+            #  >>> app.router.add_view('/test', FooView)  # recreate all controllers
+
+            # FIXME(daniil.grois): duplicate code  # noqa: FIX001
+            try:
+                method_handler: Handler = getattr(view, method_name)  # type: ignore[no-redef]
+            except AttributeError as method_not_found_error:
+                raise MethodNotFoundInViewError(method_name=method_name) from method_not_found_error
+
+            handler_controllers[method_name] = controller_factory(
+                method_handler,
+                response_validate=response_validate,
+                response_type=response_type,
+                response_content_type=response_content_type,
+                response_charset=response_charset,
+                response_zlib_executor=response_zlib_executor,
+                response_zlib_executor_size=response_zlib_executor_size,
+                response_include_fields=response_include_fields,
+                response_exclude_fields=response_exclude_fields,
+                response_by_alias=response_by_alias,
+                response_exclude_unset=response_exclude_unset,
+                response_exclude_defaults=response_exclude_defaults,
+                response_exclude_none=response_exclude_none,
+                response_custom_encoder=response_custom_encoder,
+                response_json_encoder=response_json_encoder,
+            )
 
     @wraps(view)
     async def inner(request: 'Request') -> StreamResponse:
@@ -174,14 +241,14 @@ def view_validation_wrapper(
 
         return await instance_view
 
-    return inner
+    return cast(Type['View'], inner)
 
 
 def middleware_validation_wrapper(
     middleware: Middleware,
     *,
     response_validate: bool,
-    response_type: Optional[Type[Any]],
+    response_type: Union[Type[Any], None, UnsetType],
     response_content_type: Union[str, ContentType, None],
     response_charset: Union[str, Charset],
     response_zlib_executor: Optional[Executor],

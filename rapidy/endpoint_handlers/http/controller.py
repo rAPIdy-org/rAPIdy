@@ -15,7 +15,7 @@ from rapidy.endpoint_handlers.http.request.data_validators import (
     ResultValidator,
 )
 from rapidy.enums import ContentType
-from rapidy.typedefs import Handler, JSONEncoder, ValidationErrorList
+from rapidy.typedefs import Handler, JSONEncoder, UnsetType, ValidationErrorList
 from rapidy.web_exceptions import HTTPValidationFailure
 from rapidy.web_request import Request
 from rapidy.web_response import Response, StreamResponse
@@ -139,7 +139,7 @@ def controller_factory(
     request_attr_can_declare: bool = False,
     # response
     response_validate: bool,
-    response_type: Optional[Type[Any]],
+    response_type: Union[Type[Any], None, UnsetType],
     response_content_type: Union[str, ContentType, None],
     response_charset: str,
     response_zlib_executor: Optional[Executor],

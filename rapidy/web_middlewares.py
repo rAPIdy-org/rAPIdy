@@ -11,7 +11,7 @@ from aiohttp.web_middlewares import (
 from rapidy.constants import DEFAULT_JSON_ENCODER
 from rapidy.encoders import CustomEncoder, Exclude, Include
 from rapidy.enums import Charset, ContentType
-from rapidy.typedefs import CallNext, JSONEncoder, Middleware, Unset
+from rapidy.typedefs import CallNext, JSONEncoder, Middleware, Unset, UnsetType
 
 __all__ = (
     'middleware',
@@ -24,7 +24,7 @@ TMiddleware = TypeVar('TMiddleware', bound=Middleware)
 
 class MiddlewareAttrData(NamedTuple):
     response_validate: bool
-    response_type: Optional[Type[Any]]
+    response_type: Union[Type[Any], None, UnsetType]
     response_content_type: Union[str, ContentType, None]
     response_charset: Union[str, Charset]
     response_zlib_executor: Optional[Executor]
@@ -47,7 +47,7 @@ def middleware(middleware: TMiddleware) -> TMiddleware: ...
 def middleware(
     *,
     response_validate: bool = True,
-    response_type: Optional[Type[Any]] = Unset,  # type: ignore[has-type]
+    response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
     response_content_type: Union[str, ContentType, None] = None,
     response_charset: Union[str, Charset] = Charset.utf8,
     response_zlib_executor: Optional[Executor] = None,
@@ -67,7 +67,7 @@ def middleware(
     middleware: Optional[TMiddleware] = None,
     *,
     response_validate: bool = True,
-    response_type: Optional[Type[Any]] = Unset,  # type: ignore[has-type]
+    response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
     response_content_type: Union[str, ContentType, None] = None,
     response_charset: Union[str, Charset] = Charset.utf8,
     response_zlib_executor: Optional[Executor] = None,

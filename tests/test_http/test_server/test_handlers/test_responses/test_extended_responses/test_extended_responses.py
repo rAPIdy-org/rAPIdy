@@ -113,7 +113,7 @@ class TestCaseResponseBodyType(BaseModel):
 
 
 test_body_types_cases = (
-    # TODO: more body types  # noqa: TD002 TD003 FIX002
+    # TODO: more body types  # noqa: TD002, FIX002
     TestCaseResponseBodyType(
         id='json',
         content_type=ContentType.json,
