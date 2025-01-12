@@ -14,7 +14,7 @@ from rapidy.typedefs import HandlerOrView, HTTPRouterType, JSONEncoder, Middlewa
 from rapidy.web_app import Application
 
 __all__ = (
-    'HTTPRouterType',
+    'HTTPRouter',
     'get',
     'post',
     'put',

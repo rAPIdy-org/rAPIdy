@@ -10,7 +10,7 @@ from rapidy.parameters.http import (
     QueryParam,
     QueryParams,
 )
-from rapidy.routing.http.routers import delete, get, head, HTTPRouterType, options, patch, post, put, view
+from rapidy.routing.http.routers import delete, get, head, HTTPRouter, options, patch, post, put, view
 from rapidy.web_exceptions import (
     HTTPAccepted,
     HTTPBadGateway,
@@ -78,7 +78,7 @@ from rapidy.web_urldispatcher import View
 
 __all__ = (
     # routers
-    'HTTPRouterType',
+    'HTTPRouter',
     'get',
     'post',
     'put',
