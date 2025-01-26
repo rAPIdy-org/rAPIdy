@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   pre-commit:
-    runs-on: ["self-hosted", "Ubuntu-latest"]
+    runs-on: ["ubuntu-latest"]
     strategy:
       fail-fast: false
       max-parallel: 50
@@ -54,7 +54,7 @@ jobs:
         uses: pre-commit/action@v3.0.0
 
   test:
-    runs-on: ["self-hosted", "Ubuntu-latest"]
+    runs-on: ["ubuntu-latest"]
     needs: ["pre-commit"]
     strategy:
       fail-fast: false
@@ -65,45 +65,19 @@ jobs:
           - "3.11"
           - "3.10"
           - "3.9"
-          - "3.8"
+#          - "3.8"
         pydantic-version:
           - "pydantic-v1"
           - "pydantic-v2"
         aiohttp-version:
-          - "3.10.9"
-          - "3.10.8"
-          - "3.10.7"
-          - "3.10.6"
-          - "3.10.5"
-          - "3.10.4"
-          - "3.10.3"
-          - "3.10.2"
-          - "3.10.1"
-          - "3.10.0"
+          # only last minors
+          - "3.11.11"
+          - "3.10.11"
           - "3.9.5"
-          - "3.9.4"
-          - "3.9.3"
-          - "3.9.2"
-          - "3.9.1"
-          - "3.9.0"
           - "3.8.6"
-          - "3.8.5"
-          - "3.8.4"
-          - "3.8.3"
-          - "3.8.1"
         exclude:
           - python-version: "3.12"
-            aiohttp-version: "3.8.1"
-          - python-version: "3.12"
-            aiohttp-version: "3.8.3"
-          - python-version: "3.12"
-            aiohttp-version: "3.8.4"
-          - python-version: "3.12"
-            aiohttp-version: "3.8.5"
-          - python-version: "3.12"
             aiohttp-version: "3.8.6"
-          - python-version: "3.11"
-            aiohttp-version: "3.8.1"
     steps:
       - name: Dump github context
         env:
@@ -153,7 +127,7 @@ jobs:
           name: coverage
 
   test-mypy:
-    runs-on: ["self-hosted", "Ubuntu-latest"]
+    runs-on: ["ubuntu-latest"]
     needs: [ "pre-commit" ]
     strategy:
       fail-fast: false
@@ -228,7 +202,7 @@ jobs:
 
   coverage-combine:
     needs: [ "test", "test-mypy" ]
-    runs-on: ["self-hosted", "Ubuntu-latest"]
+    runs-on: ["ubuntu-latest"]
     steps:
       - name: Dump github context
         env:
@@ -265,7 +239,7 @@ jobs:
     if: always()
     needs:
       - coverage-combine
-    runs-on: ["self-hosted", "Ubuntu-latest"]
+    runs-on: ["ubuntu-latest"]
     steps:
       - name: Dump github context
         env:

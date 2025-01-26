@@ -298,4 +298,3 @@ class RequestBody(BaseModel):
 
 class ResponseBody(BaseModel):
     hello: str = 'rapidy'
-
