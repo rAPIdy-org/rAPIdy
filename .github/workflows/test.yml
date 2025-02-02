@@ -98,11 +98,27 @@ jobs:
       - name: Install dependencies
         run: poetry install
 
-      - name: Install Pydantic
-        run: poetry add "pydantic>=${{ matrix.pydantic-version == 'pydantic-v1' && '1.10.0,<2.0.0' || '2.0.2,<3.0.0' }}"
+      - name: Install Pydantic v1
+        if: matrix.pydantic-version == 'pydantic-v1'
+        run: poetry add "pydantic>=1.10.0,<2.0.0"
+
+      - name: Install Pydantic v2
+        if: matrix.pydantic-version == 'pydantic-v2'
+        run: poetry add "pydantic>=2.0.2,<3.0.0"
 
       - name: Install aiohttp
         run: poetry add "aiohttp==${{ matrix.aiohttp-version }}"
+
+      - name: Install Yarl
+        run: |
+          poetry add semver
+          python -c "
+          import semver
+          result = semver.compare('${{ matrix.aiohttp-version }}', '3.11.0')
+          if result == -1:
+              import subprocess
+              subprocess.check_call(['poetry', 'add', 'yarl<1.13.0'])
+          "
 
       - name: Create coverage dir
         run: mkdir coverage
