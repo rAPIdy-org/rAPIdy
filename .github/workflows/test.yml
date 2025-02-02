@@ -112,7 +112,7 @@ jobs:
       - name: Install Yarl
         run: |
           poetry add semver
-          python -c "
+          poetry run python -c "
           import semver
           result = semver.compare('${{ matrix.aiohttp-version }}', '3.11.0')
           if result == -1:
