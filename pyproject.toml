@@ -53,6 +53,7 @@ packages = [
 python = ">=3.9"
 aiohttp = ">=3.8.1"
 pydantic = ">=1.7.4,!=1.8,!=1.8.1,!=1.8.2,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0"
+yarl = "<1.13.0"  # FIXME: 1.13.0 - aiohttp backwards compatibility broken
 
 [tool.poetry.group.test.dependencies]
 pytest = "7.*"
