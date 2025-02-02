@@ -62,7 +62,8 @@ app = Rapidy(http_route_handlers=[hello])
 - Built-in Validation – Uses pydantic for request validation
 - Simple & Flexible – Supports both rAPIdy-style handler definitions and traditional aiohttp function-based and
 class-based routing
-- Middleware Support – Easily extend functionality with middleware, including built-in validation for HTTP parameters (headers, cookies, and body).
+- Middleware Support – Easily extend functionality with middleware, including built-in validation for HTTP parameters
+(headers, cookies, and body).
 
 ---
 
@@ -694,6 +695,16 @@ plugins = [
 ]
 # ...
 ```
+
+---
+
+# 🛤️ Roadmap
+
+We're actively improving rAPIdy to make it more powerful and efficient. Stay up-to-date with our latest milestones and
+future plans by checking out the detailed roadmap below.
+
+You can find the full and detailed roadmap on our GitHub page:
+[ROADMAP.md](https://github.com/daniil-grois/rAPIdy/blob/main/ROADMAP.md)
 
 ---
 

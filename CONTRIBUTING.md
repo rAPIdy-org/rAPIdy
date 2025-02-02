@@ -47,7 +47,7 @@ Thank you for considering contributing to this project! Your help is greatly app
 
 ## Testing
 
-This project supports **aiohttp**, and **pydantic**, so ensure your changes are compatible with all frameworks where 
+This project supports **aiohttp**, and **pydantic**, so ensure your changes are compatible with all frameworks where
 applicable.
 
 - Use **pytest** for testing:
