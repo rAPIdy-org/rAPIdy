@@ -110,6 +110,7 @@ jobs:
         run: poetry add "aiohttp==${{ matrix.aiohttp-version }}"
 
       - name: Install Yarl
+        # FIXME: 1.13.0 - aiohttp backwards compatibility broken
         run: |
           poetry add semver
           poetry run python -c "
@@ -120,6 +121,9 @@ jobs:
               subprocess.check_call(['poetry', 'add', 'yarl<1.13.0'])
           "
 
+      - name: Install Mypy
+        run: poetry add mypy
+
       - name: Create coverage dir
         run: mkdir coverage
 
@@ -127,7 +131,7 @@ jobs:
         env:
           CONTEXT: ${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.pydantic-version }}-${{ matrix.aiohttp-version }}
           COVERAGE_FILE: coverage/.coverage.${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.pydantic-version }}-${{ matrix.aiohttp-version }}
-        run: poetry run coverage run -m pytest --ignore=./tests/test_mypy ./tests
+        run: poetry run coverage run -m pytest ./tests
 
       - name: Store coverage file
         uses: actions/upload-artifact@v4
@@ -137,7 +141,7 @@ jobs:
           include-hidden-files: true
 
   coverage-combine:
-    needs: ["test"]
+    needs: [ "test" ]
     runs-on: ["ubuntu-latest"]
     steps:
       - name: Checkout git repository
