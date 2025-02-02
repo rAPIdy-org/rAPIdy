@@ -23,10 +23,12 @@ from aiohttp.web_urldispatcher import (
     View,
 )
 
+from rapidy.annotation_checkers import lenient_issubclass
 from rapidy.encoders import CustomEncoder, Exclude, Include
 from rapidy.endpoint_handlers.http.handlers import handler_validation_wrapper, view_validation_wrapper
-from rapidy.enums import Charset, ContentType
-from rapidy.typedefs import Handler, HandlerOrView, Unset
+from rapidy.enums import Charset, ContentType, MethodName
+from rapidy.routing.http.helper_types import HandlerPartial
+from rapidy.typedefs import Handler, HandlerOrView, Unset, UnsetType
 
 __all__ = [
     'UrlDispatcher',
@@ -53,20 +55,21 @@ def wrap_handler(
 ) -> Union[Handler, View]:
     return wrapper(
         handler,
-        response_validate=kwargs['response_validate'],
-        response_type=kwargs['response_type'],
-        response_content_type=kwargs['response_content_type'],
-        response_charset=kwargs['response_charset'],
-        response_zlib_executor=kwargs['response_zlib_executor'],
-        response_zlib_executor_size=kwargs['response_zlib_executor_size'],
-        response_include_fields=kwargs['response_include_fields'],
-        response_exclude_fields=kwargs['response_exclude_fields'],
-        response_by_alias=kwargs['response_by_alias'],
-        response_exclude_unset=kwargs['response_exclude_unset'],
-        response_exclude_defaults=kwargs['response_exclude_defaults'],
-        response_exclude_none=kwargs['response_exclude_none'],
-        response_custom_encoder=kwargs['response_custom_encoder'],
-        response_json_encoder=kwargs['response_json_encoder'],
+        response_validate=kwargs.pop('response_validate'),
+        response_type=kwargs.pop('response_type'),
+        response_content_type=kwargs.pop('response_content_type'),
+        response_charset=kwargs.pop('response_charset'),
+        response_zlib_executor=kwargs.pop('response_zlib_executor'),
+        response_zlib_executor_size=kwargs.pop('response_zlib_executor_size'),
+        response_include_fields=kwargs.pop('response_include_fields'),
+        response_exclude_fields=kwargs.pop('response_exclude_fields'),
+        response_by_alias=kwargs.pop('response_by_alias'),
+        response_exclude_unset=kwargs.pop('response_exclude_unset'),
+        response_exclude_defaults=kwargs.pop('response_exclude_defaults'),
+        response_exclude_none=kwargs.pop('response_exclude_none'),
+        response_custom_encoder=kwargs.pop('response_custom_encoder'),
+        response_json_encoder=kwargs.pop('response_json_encoder'),
+        **kwargs,
     )
 
 
@@ -83,10 +86,15 @@ class ResourceRoute(AioHTTPResourceRoute, ABC):
         **kwargs: Any,
     ) -> None:
         """Initialize overridden aiohttp ResourceRoute."""
-        if isinstance(handler, FunctionType):
+        if isinstance(handler, (FunctionType, HandlerPartial)):
             handler = wrap_handler(handler=handler, wrapper=handler_validation_wrapper, **kwargs)
-        elif issubclass(handler, View):  # type: ignore[arg-type]
-            handler = wrap_handler(handler=handler, wrapper=view_validation_wrapper, **kwargs)
+        elif lenient_issubclass(handler, View):
+            handler = wrap_handler(
+                handler=handler,
+                wrapper=view_validation_wrapper,
+                method=MethodName(method),
+                **kwargs,
+            )
 
         super().__init__(method=method, handler=handler, expect_handler=expect_handler, resource=resource)
 
@@ -108,7 +116,7 @@ class Resource(AioHTTPResource, ABC):
             if route_method == method in (method, METH_ANY):
                 raise RuntimeError(  # aiohttp code  # pragma: no cover  # noqa: TRY003
                     'Added route will never be executed, '  # noqa: EM102
-                    f'method {route_obj.method} is already '
+                    f'method {route_method} is already '
                     'registered',
                 )
 
@@ -187,7 +195,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         name: Optional[str] = None,
         allow_head: bool = True,
         response_validate: bool = True,
-        response_type: Optional[Type[Any]] = Unset,  # type: ignore[has-type]
+        response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
         response_content_type: Union[str, ContentType, None] = None,
         response_charset: Union[str, Charset] = Charset.utf8,
         response_zlib_executor: Optional[Executor] = None,
@@ -308,7 +316,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         *,
         name: Optional[str] = None,
         response_validate: bool = True,
-        response_type: Optional[Type[Any]] = Unset,  # type: ignore[has-type]
+        response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
         response_content_type: Union[str, ContentType, None] = None,
         response_charset: Union[str, Charset] = Charset.utf8,
         response_zlib_executor: Optional[Executor] = None,
@@ -405,7 +413,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         *,
         name: Optional[str] = None,
         response_validate: bool = True,
-        response_type: Optional[Type[Any]] = Unset,  # type: ignore[has-type]
+        response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
         response_content_type: Union[str, ContentType, None] = None,
         response_charset: Union[str, Charset] = Charset.utf8,
         response_zlib_executor: Optional[Executor] = None,
@@ -502,7 +510,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         *,
         name: Optional[str] = None,
         response_validate: bool = True,
-        response_type: Optional[Type[Any]] = Unset,  # type: ignore[has-type]
+        response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
         response_content_type: Union[str, ContentType, None] = None,
         response_charset: Union[str, Charset] = Charset.utf8,
         response_zlib_executor: Optional[Executor] = None,
@@ -599,7 +607,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         *,
         name: Optional[str] = None,
         response_validate: bool = True,
-        response_type: Optional[Type[Any]] = Unset,  # type: ignore[has-type]
+        response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
         response_content_type: Union[str, ContentType, None] = None,
         response_charset: Union[str, Charset] = Charset.utf8,
         response_zlib_executor: Optional[Executor] = None,
@@ -696,7 +704,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         *,
         name: Optional[str] = None,
         response_validate: bool = True,
-        response_type: Optional[Type[Any]] = Unset,  # type: ignore[has-type]
+        response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
         response_content_type: Union[str, ContentType, None] = None,
         response_charset: Union[str, Charset] = Charset.utf8,
         response_zlib_executor: Optional[Executor] = None,
@@ -793,7 +801,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         *,
         name: Optional[str] = None,
         response_validate: bool = True,
-        response_type: Optional[Type[Any]] = Unset,  # type: ignore[has-type]
+        response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
         response_content_type: Union[str, ContentType, None] = None,
         response_charset: Union[str, Charset] = Charset.utf8,
         response_zlib_executor: Optional[Executor] = None,
@@ -890,7 +898,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         *,
         name: Optional[str] = None,
         response_validate: bool = True,
-        response_type: Optional[Type[Any]] = Unset,  # type: ignore[has-type]
+        response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
         response_content_type: Union[str, ContentType, None] = None,
         response_charset: Union[str, Charset] = Charset.utf8,
         response_zlib_executor: Optional[Executor] = None,

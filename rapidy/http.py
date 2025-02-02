@@ -10,7 +10,7 @@ from rapidy.parameters.http import (
     QueryParam,
     QueryParams,
 )
-from rapidy.routing.http.routers import delete, get, head, HTTPRouter, options, patch, post, put, view
+from rapidy.routing.http.routers import controller, delete, get, head, HTTPRouter, options, patch, post, put
 from rapidy.web_exceptions import (
     HTTPAccepted,
     HTTPBadGateway,
@@ -74,7 +74,6 @@ from rapidy.web_exceptions import (
 from rapidy.web_middlewares import middleware, normalize_path_middleware
 from rapidy.web_request import BaseRequest, FileField, Request
 from rapidy.web_response import Response, StreamResponse
-from rapidy.web_urldispatcher import View
 
 __all__ = (
     # routers
@@ -84,11 +83,9 @@ __all__ = (
     'put',
     'patch',
     'delete',
-    'view',
+    'controller',
     'head',
     'options',
-    # view
-    'View',
     # request_params
     'Body',
     'Cookie',

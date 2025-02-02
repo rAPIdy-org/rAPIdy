@@ -15,7 +15,7 @@ from rapidy.endpoint_handlers.validation import validate_data_by_model, Validato
 from rapidy.enums import HTTPRequestParamType
 from rapidy.fields.model_fields import create_model_field_by_annotation, RapidyModelField
 from rapidy.parameters.http import RequestParamFieldInfo
-from rapidy.typedefs import Handler, ResultValidate, Unset, ValidateReturn
+from rapidy.typedefs import Handler, ResultValidate, Unset, UnsetType, ValidateReturn
 from rapidy.web_request import Request
 
 
@@ -158,7 +158,7 @@ class ResultValidator(Validator[Any]):
         handler: Handler,
         return_annotation: Optional[Type[Any]],
         *,
-        response_type: Optional[Type[Any]],
+        response_type: Union[Type[Any], None, UnsetType],
     ) -> None:
         self._handler = handler
 
@@ -232,7 +232,7 @@ def request_validator_factory(
 def result_validator_factory(
     handler: Handler,
     return_annotation: Optional[Type[Any]],
-    response_type: Optional[Union[Type[Any]]],
+    response_type: Union[Type[Any], None, UnsetType],
 ) -> ResultValidator:
     return ResultValidator(
         handler=handler,

@@ -4,7 +4,7 @@ from typing import Any, Callable, Tuple, Union
 from typing_extensions import Annotated, get_args, get_origin
 
 from rapidy.constants import PYDANTIC_IS_V1
-from rapidy.typedefs import Unset
+from rapidy.typedefs import Unset, UnsetType
 from rapidy.version import PY_VERSION_TUPLE
 
 if PYDANTIC_IS_V1:
@@ -65,7 +65,7 @@ def is_empty(obj: Any) -> bool:
     return obj is inspect.Signature.empty
 
 
-def is_not_none_and_unset(field_value: Any) -> bool:
+def is_not_none_and_unset(field_value: Union[Any, UnsetType]) -> bool:
     return field_value is not None and field_value is not Unset
 
 

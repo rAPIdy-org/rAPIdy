@@ -8,8 +8,8 @@ from rapidy import (
     Rapidy,
 )
 from rapidy.http import get
-from rapidy.routing.http.routers import HTTPRouteHandler, HTTPRouter, IncorrectHandlerTypeError
-from tests.test_application.test_router.test_http.helpers import parametrize_method_names, PATH_1, PATH_2
+from rapidy.routing.http.routers import HandlerIsNotAsyncFuncTypeError, HTTPRouteHandler, HTTPRouter, MissingPathError
+from tests.test_http.test_router.helpers import parametrize_method_names, PATH_1, PATH_2
 
 
 async def handler() -> None:
@@ -46,7 +46,7 @@ def create_routing_handler_using_cls_method(method_name: str, path: str) -> HTTP
         ],
     )
     """
-    return getattr(http_route_module, method_name).handler(path, handler)
+    return getattr(http_route_module, method_name).reg(path, handler)
 
 
 handler_fabrics_parametrize = pytest.mark.parametrize(
@@ -141,11 +141,19 @@ async def test_nested_router(
     assert resp.status == 200
 
 
-async def test_incorrect_route_handler(aiohttp_client: AiohttpClient) -> None:
-    @get('/')  # type: ignore[arg-type]
-    def wrong_handler() -> None:
+async def test_incorrect_route_handler() -> None:
+    with pytest.raises(HandlerIsNotAsyncFuncTypeError):
+
+        @get('/')  # type: ignore[arg-type]
+        def wrong_handler() -> None:
+            pass
+
+
+async def test_path_empty() -> None:
+    @get()
+    async def handler() -> None:
         pass
 
     app = Rapidy()
-    with pytest.raises(IncorrectHandlerTypeError):
-        app.add_http_routers([wrong_handler])
+    with pytest.raises(MissingPathError):
+        app.add_http_routers([handler])

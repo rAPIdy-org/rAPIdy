@@ -1,16 +1,15 @@
-import enum
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Type, TYPE_CHECKING, Union
-from typing_extensions import TypeAlias
+from enum import Enum
+from typing import Any, Awaitable, Callable, Dict, Final, List, Optional, Tuple, Type, TYPE_CHECKING, Union
+from typing_extensions import Literal, TypeAlias
 
 from aiohttp.abc import AbstractView
-from aiohttp.web_urldispatcher import View
 from pydantic import BaseModel
 
 from rapidy.constants import PYDANTIC_IS_V1
-from rapidy.routing.http.base import BaseHTTPRouter
 
 if TYPE_CHECKING:
     from rapidy.lifespan import LifespanCTX, LifespanHook  # noqa: TC004
+    from rapidy.routing.http.base import BaseHTTPRouter
     from rapidy.web_request import Request
     from rapidy.web_response import StreamResponse
 
@@ -34,6 +33,8 @@ __all__ = (
     'ValidateReturn',
     'JSONEncoder',
     'JSONDecoder',
+    'Unset',
+    'UnsetType',
 )
 
 # support types
@@ -48,10 +49,9 @@ CallNext: TypeAlias = Callable[['Request'], Awaitable['StreamResponse']]
 # inner types
 HandlerOrView: TypeAlias = Union[Handler, Type[AbstractView]]
 RouterDeco = Callable[[HandlerOrView], HandlerOrView]
-HTTPRouterType = Union[
-    BaseHTTPRouter,
-    Type[View],  # mypy is bullshit - class decorators that change type don't work
-]
+
+ControllerHTTPRouterType = Any  # Not `any` of course, but `mypy` doesn't recognise the `controller` class decorator
+BaseHTTPRouterType = Union['BaseHTTPRouter', ControllerHTTPRouterType]
 
 # validation types
 LocStr = Union[Tuple[Union[int, str], ...], str]
@@ -82,7 +82,15 @@ else:
         pass
 
 
-Unset = enum.Enum('Unset', 'unset').unset  # type: ignore[attr-defined]
+class _Unset(Enum):
+    """A sentinel enum used as placeholder."""
+
+    UNSET = 0
+
+
+Unset: Final = _Unset.UNSET
+UnsetType = Literal[_Unset.UNSET]
+
 
 # json
 JSONEncoder = Callable[[Any], str]

@@ -293,7 +293,7 @@ def _prepare_to_json(  # noqa: PLR0912 C901
     custom_encoder: Optional[CustomEncoder],
     byte_preparation_charset: 'str',
 ) -> Any:
-    custom_encoder = custom_encoder or {}  # TODO: tests  # noqa: FIX002 TD002 TD003
+    custom_encoder = custom_encoder or {}  # TODO: tests  # noqa: FIX002, TD002
     if custom_encoder:
         if type(obj) in custom_encoder:
             return custom_encoder[type(obj)](obj)
@@ -506,7 +506,7 @@ def prepare_dict(
 
     for key, value in obj.items():
         if (value is not None or not exclude_none) and key in allowed_keys:
-            # FIXME: partially does not support nested BaseModel (fastapi legacy)  # noqa: FIX001 TD002 TD003
+            # FIXME: partially does not support nested BaseModel (fastapi legacy)  # noqa: FIX001, TD002
             encoded_key = _prepare_to_json(
                 key,
                 include=None,
