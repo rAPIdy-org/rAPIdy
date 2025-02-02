@@ -54,12 +54,14 @@ python = ">=3.9"
 aiohttp = ">=3.8.1"
 pydantic = ">=1.7.4,!=1.8,!=1.8.1,!=1.8.2,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0"
 
+[tool.poetry.group.dev.dependencies]
+pre-commit = "^4.1.0"
+
 [tool.poetry.group.test.dependencies]
 pytest = "7.*"
 pytest-aiohttp = ">=1.0.5"
 pytest-cov = "^4.1.0"
 pytest-httpserver = ">=1.0.8"
-
 
 [tool.ruff]
 src = ["rapidy", "tests"]
