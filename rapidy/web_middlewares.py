@@ -23,6 +23,25 @@ TMiddleware = TypeVar('TMiddleware', bound=Middleware)
 
 
 class MiddlewareAttrData(NamedTuple):
+    """A class that holds attributes for middleware configuration.
+
+    Attributes:
+        response_validate (bool): Whether the handler response should be validated.
+        response_type (Union[Type[Any], None, UnsetType]): The handler response type.
+        response_content_type (Union[str, ContentType, None]): The Content-Type header.
+        response_charset (Union[str, Charset]): The charset for encoding and decoding response.
+        response_zlib_executor (Optional[Executor]): Executor for zlib compression.
+        response_zlib_executor_size (Optional[int]): Size to trigger zlib compression.
+        response_include_fields (Optional[Include]): Fields to include for Pydantic models.
+        response_exclude_fields (Optional[Exclude]): Fields to exclude for Pydantic models.
+        response_by_alias (bool): Whether to use alias names in the response.
+        response_exclude_unset (bool): Whether to exclude unset fields in the response.
+        response_exclude_defaults (bool): Whether to exclude default fields in the response.
+        response_exclude_none (bool): Whether to exclude fields with None values in the response.
+        response_custom_encoder (Optional[CustomEncoder]): Custom encoder for Pydantic models.
+        response_json_encoder (JSONEncoder): JSON encoder callable for the response.
+    """
+
     response_validate: bool
     response_type: Union[Type[Any], None, UnsetType]
     response_content_type: Union[str, ContentType, None]
@@ -81,50 +100,37 @@ def middleware(
     response_custom_encoder: Optional[CustomEncoder] = None,
     response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
 ) -> Union[TMiddleware, Callable[[Any], TMiddleware]]:
-    """`rapidy` middleware decorator.
+    """Create a `rapidy` middleware decorator.
+
+    This function allows the creation of a middleware in the `rapidy` framework with various customizable options
+    like response validation, content type handling, and more.
 
     Args:
-        middleware:
-            Function to wrap.
-        response_validate:
-            Flag determines whether the handler response should be validated.
-        response_type:
-            Handler response type.
-            This attribute is used to create the response model.
-            If this attribute is defined, it overrides the handler return annotation logic.
-        response_content_type:
-            Attribute defines the `Content-Type` header and performs post-processing of the endpoint handler return.
-        response_charset:
-            The `charset` that will be used to encode and decode handler result data.
-        response_zlib_executor:
-            Executor to use for zlib compression
-        response_zlib_executor_size:
-            Length in bytes which will trigger zlib compression of body to happen in an executor
-        response_include_fields:
-            Pydantic's `include` parameter, passed to Pydantic models to set the fields to include.
-        response_exclude_fields:
-            Pydantic's `exclude` parameter, passed to Pydantic models to set the fields to exclude.
-        response_by_alias:
-            Pydantic's `by_alias` parameter, passed to Pydantic models to define
-            if the output should use the alias names (when provided) or the Python
-            attribute names. In an API, if you set an alias, it's probably because you
-            want to use it in the result, so you probably want to leave this set to `True`.
-        response_exclude_unset:
-            Pydantic's `exclude_unset` parameter, passed to Pydantic models to define
-            if it should exclude from the output the fields that were not explicitly
-            set (and that only had their default values).
-        response_exclude_defaults:
-            Pydantic's `exclude_defaults` parameter, passed to Pydantic models to define
-            if it should exclude from the output the fields that had the same default
-            value, even when they were explicitly set.
-        response_exclude_none:
-            Pydantic's `exclude_none` parameter, passed to Pydantic models to define
-            if it should exclude from the output any fields that have a `None` value.
-        response_custom_encoder:
-            Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
-        response_json_encoder:
-            Any callable that accepts an object and returns a JSON string.
-            Will be used if dumps=True
+        middleware (Optional[TMiddleware], optional): A middleware function to wrap. Defaults to None.
+        response_validate (bool, optional): Whether the handler's response should be validated. Defaults to True.
+        response_type (Union[Type[Any], None, UnsetType], optional): The handler response type. Defaults to Unset.
+        response_content_type (Union[str, ContentType, None], optional): Defines the `Content-Type` header.
+                                                                         Defaults to None.
+        response_charset (Union[str, Charset], optional): Charset for encoding/decoding response data.
+                                                          Defaults to Charset.utf8.
+        response_zlib_executor (Optional[Executor], optional): Executor to handle zlib compression. Defaults to None.
+        response_zlib_executor_size (Optional[int], optional): Size in bytes for triggering zlib compression.
+                                                               Defaults to None.
+        response_include_fields (Optional[Include], optional): Pydantic's `include` fields parameter. Defaults to None.
+        response_exclude_fields (Optional[Exclude], optional): Pydantic's `exclude` fields parameter. Defaults to None.
+        response_by_alias (bool, optional): Whether to use alias names for model fields in the response.
+                                            Defaults to True.
+        response_exclude_unset (bool, optional): Whether to exclude unset fields. Defaults to False.
+        response_exclude_defaults (bool, optional): Whether to exclude default values from the response.
+                                                    Defaults to False.
+        response_exclude_none (bool, optional): Whether to exclude `None` values from the response. Defaults to False.
+        response_custom_encoder (Optional[CustomEncoder], optional): Custom encoder for Pydantic models.
+                                                                     Defaults to None.
+        response_json_encoder (JSONEncoder, optional): A callable JSON encoder function.
+                                                       Defaults to DEFAULT_JSON_ENCODER.
+
+    Returns:
+        Union[TMiddleware, Callable[[Any], TMiddleware]]: A middleware function or a decorator based on input.
     """
     middleware_attr_data = MiddlewareAttrData(
         response_validate=response_validate,
@@ -157,6 +163,18 @@ def _create_rapidy_middleware(
     middleware: TMiddleware,
     middleware_attr_data: MiddlewareAttrData,
 ) -> TMiddleware:
+    """Helper function to create the rapidy middleware.
+
+    This function is used internally to generate the middleware, set attributes,
+    and wrap it with the implementation.
+
+    Args:
+        middleware (TMiddleware): The middleware function to wrap.
+        middleware_attr_data (MiddlewareAttrData): The configuration attributes for the middleware.
+
+    Returns:
+        TMiddleware: The wrapped middleware function.
+    """
     aiohttp_middleware(middleware)
     middleware.__rapidy_middleware__ = True  # type: ignore[attr-defined]
     middleware.__attr_data__ = middleware_attr_data  # type: ignore[attr-defined]
@@ -169,12 +187,36 @@ def _create_rapidy_middleware(
 
 
 def get_middleware_attr_data(middleware: TMiddleware) -> MiddlewareAttrData:
+    """Retrieve the middleware attribute data.
+
+    Args:
+        middleware (TMiddleware): The middleware function.
+
+    Returns:
+        MiddlewareAttrData: The configuration data associated with the middleware.
+    """
     return middleware.__attr_data__  # type: ignore[attr-defined]
 
 
 def is_aiohttp_new_style_middleware(middleware: Middleware) -> bool:
+    """Check if the middleware is using the new style for aiohttp.
+
+    Args:
+        middleware (Middleware): The middleware function.
+
+    Returns:
+        bool: True if the middleware is using the new aiohttp style, False otherwise.
+    """
     return getattr(middleware, '__middleware_version__', 0) == 1
 
 
 def is_rapidy_middleware(middleware: Middleware) -> bool:
+    """Check if the middleware is a rapidy middleware.
+
+    Args:
+        middleware (Middleware): The middleware function.
+
+    Returns:
+        bool: True if the middleware is a rapidy middleware, False otherwise.
+    """
     return getattr(middleware, '__rapidy_middleware__', False) is True

@@ -13,38 +13,54 @@ from rapidy.typedefs import Handler, Required, Undefined
 
 
 class DefaultError(RapidyHandlerException, ABC):
-    """"""
+    """Base error class for handler-related errors."""
 
 
 class ParameterNotInstanceError(RapidyHandlerException):
+    """Raised when a Rapidy parameter is not an instance."""
+
     message = 'Rapidy parameter must be an instance.'
 
 
 class ParameterCannotUseDefaultError(DefaultError):
+    """Raised when a parameter cannot have a default value."""
+
     message = '`{class_name}` with type `{annotation}` cannot have a default value.'
 
 
 class ParameterCannotUseDefaultFactoryError(DefaultError):
+    """Raised when a parameter cannot use a default factory."""
+
     message = '`{class_name}` with type `{annotation}` cannot have a default_factory.'
 
 
 class SpecifyBothDefaultAndDefaultFactoryError(DefaultError):
+    """Raised when both default value and default factory are specified."""
+
     message = '`{class_name}` with type `{annotation}` cannot contain `default` and `default_factory` together.'
 
 
 class CannotBeOptionalError(DefaultError):
+    """Raised when a parameter cannot be optional."""
+
     message = '`{class_name}` with type `{annotation}` cannot be optional.'
 
 
 class SpecifyBothDefaultAndOptionalError(DefaultError):
+    """Raised when a parameter cannot be both optional and have a default value."""
+
     message = '`{class_name}` with type `{annotation}` cannot be optional if it contains a default value.'
 
 
 class SpecifyBothDefaultFactoryAndOptionalError(DefaultError):
+    """Raised when a parameter cannot be both optional and have a default factory."""
+
     message = '`{class_name}` with type `{annotation}` cannot be optional if it contains a default factory.'
 
 
 class DefaultDefineTwiceError(DefaultError):
+    """Raised when a default value is defined twice."""
+
     message = 'Cannot specify a default value using Param(<default_value>, ...) and `=` together.'
 
 
@@ -57,6 +73,19 @@ def create_data_attr(
     # only to create context with exception
     handler: Handler,
 ) -> DataAttr:
+    """Creates a DataAttr instance based on the provided attribute and field information.
+
+    Args:
+        attribute (inspect.Parameter): The attribute to create the data attribute from.
+        attribute_idx (int): The index of the attribute in the handler's signature.
+        type_annotation (Any): The type annotation of the attribute.
+        raw_field_info (RapidyFieldInfo): The raw field information for the attribute.
+        annotation_def_as_annotated (bool): Flag indicating if the annotation is defined as annotated.
+        handler (Handler): The handler to associate with the attribute.
+
+    Returns:
+        DataAttr: The created DataAttr instance.
+    """
     prepared_field_info = prepare_attribute_field_info(
         attribute=attribute,
         type_annotation=type_annotation,
@@ -74,6 +103,14 @@ def create_data_attr(
 
 
 def check_default_value_for_field_exists(field_info: RapidyFieldInfo) -> bool:
+    """Checks if a default value exists for a field.
+
+    Args:
+        field_info (RapidyFieldInfo): The field information to check.
+
+    Returns:
+        bool: True if a default value exists, otherwise False.
+    """
     return not (field_info.default is Undefined or field_info.default is Required)
 
 
@@ -87,6 +124,20 @@ def raise_if_field_cannot_default(
     handler: Handler,
     attribute: inspect.Parameter,
 ) -> None:
+    """Raises an error if a field cannot have a default value based on its configuration.
+
+    Args:
+        field_info (RapidyFieldInfo): The field information to check.
+        default_exists (bool): Whether the field has a default value.
+        default_is_none (bool): Whether the default value is None.
+        param_is_optional (bool): Whether the parameter is optional.
+        handler (Handler): The handler to associate with the error.
+        attribute (inspect.Parameter): The attribute that caused the error.
+
+    Raises:
+        Various errors depending on the situation, such as `CannotBeOptionalError`,
+        `ParameterCannotUseDefaultError`, etc.
+    """
     if not field_info.can_default and param_is_optional:
         raise CannotBeOptionalError.create(
             annotation=attribute.annotation,
@@ -145,6 +196,16 @@ def get_default_definition_attr_default(
     handler: Handler,
     attribute: inspect.Parameter,
 ) -> Any:
+    """Gets the default value for an attribute based on its field information and the handler.
+
+    Args:
+        field_info (RapidyFieldInfo): The field information.
+        handler (Handler): The handler to associate with the default value.
+        attribute (inspect.Parameter): The attribute to get the default value for.
+
+    Returns:
+        Any: The default value for the attribute.
+    """
     param_is_optional = is_optional(attribute.annotation)
 
     raise_if_field_cannot_default(
@@ -170,6 +231,17 @@ def get_annotated_definition_attr_default(
     # only to create context with exception
     handler: Handler,
 ) -> Any:
+    """Gets the default value for an annotated attribute.
+
+    Args:
+        attribute (inspect.Parameter): The attribute to get the default value for.
+        type_annotation (Any): The type annotation for the attribute.
+        field_info (RapidyFieldInfo): The field information for the attribute.
+        handler (Handler): The handler to associate with the default value.
+
+    Returns:
+        Any: The default value for the attribute.
+    """
     default_value_for_param_exists = not is_empty(attribute.default)
     default_value_for_field_exists = check_default_value_for_field_exists(field_info)
 
@@ -210,6 +282,18 @@ def prepare_attribute_field_info(
     # only to create context with exception
     handler: Handler,
 ) -> RapidyFieldInfo:
+    """Prepares field information for an attribute, including handling default values and annotations.
+
+    Args:
+        attribute (inspect.Parameter): The attribute to prepare the field info for.
+        type_annotation (Any): The type annotation for the attribute.
+        field_info (RapidyFieldInfo): The field information.
+        annotation_def_as_annotated (bool): Whether the annotation is defined as annotated.
+        handler (Handler): The handler to associate with the attribute.
+
+    Returns:
+        RapidyFieldInfo: The prepared field information.
+    """
     field_info = copy_field_info(field_info=field_info, annotation=attribute.annotation)
     if annotation_def_as_annotated:
         prepared_default = get_annotated_definition_attr_default(
@@ -235,6 +319,14 @@ def prepare_attribute_field_info(
 
 
 def is_rapidy_type(type_: Any) -> bool:
+    """Checks if a given type is a subclass of RapidyFieldInfo.
+
+    Args:
+        type_ (Any): The type to check.
+
+    Returns:
+        bool: True if the type is a subclass of RapidyFieldInfo, otherwise False.
+    """
     try:
         return isinstance(type_, type) and issubclass(type_, RapidyFieldInfo)
     except Exception:  # noqa: BLE001
@@ -243,12 +335,28 @@ def is_rapidy_type(type_: Any) -> bool:
 
 @define(slots=True)
 class HandlerRawInfo:
+    """Represents raw information about a handler's attributes.
+
+    Attributes:
+        return_annotation (Any): The return annotation of the handler.
+        attrs (List[Attr]): A list of regular attributes for the handler.
+        data_attrs (List[DataAttr]): A list of data attributes for the handler.
+    """
+
     return_annotation: Any
     attrs: List[Attr] = Factory(list)
     data_attrs: List[DataAttr] = Factory(list)
 
 
 def get_handler_raw_info(handler: Handler) -> HandlerRawInfo:
+    """Gets the raw information about a handler's attributes and return annotation.
+
+    Args:
+        handler (Handler): The handler to retrieve the information for.
+
+    Returns:
+        HandlerRawInfo: The raw information about the handler's attributes.
+    """
     endpoint_signature = inspect.signature(handler)
     endpoint_signature_data = endpoint_signature.parameters
     return_annotation = endpoint_signature.return_annotation

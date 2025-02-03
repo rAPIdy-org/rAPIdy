@@ -139,6 +139,24 @@ if AIOHTTP_VERSION_TUPLE >= (3, 9, 0):
 
 
 class HTTPValidationFailure(HTTPUnprocessableEntity):
+    """Exception raised for HTTP validation failure.
+
+    This exception is used to report validation errors in HTTP requests. It inherits from
+    `HTTPUnprocessableEntity` and returns a detailed error message in JSON format.
+
+    Attributes:
+        validation_failure_field_name (str): The name of the field that holds validation errors.
+        _errors (ValidationErrorList): List of validation errors.
+
+    Args:
+        errors (ValidationErrorList): A list of validation errors.
+        headers (Optional[LooseHeaders], optional): Custom headers for the HTTP response. Defaults to None.
+        reason (Optional[str], optional): Reason phrase for the HTTP response. Defaults to None.
+        body (Any, optional): The body content of the HTTP response. Defaults to None.
+        text (Optional[str], optional): The text content of the HTTP response. Defaults to None.
+        content_type (Optional[str], optional): The content type of the HTTP response. Defaults to 'application/json'.
+    """
+
     validation_failure_field_name: str = 'errors'
 
     def __init__(
@@ -165,5 +183,9 @@ class HTTPValidationFailure(HTTPUnprocessableEntity):
 
     @property
     def validation_errors(self) -> ValidationErrorList:
-        """Get all validation errors."""
+        """Return the validation errors.
+
+        Returns:
+            ValidationErrorList: The list of validation errors associated with the failure.
+        """
         return self._errors

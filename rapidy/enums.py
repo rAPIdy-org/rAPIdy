@@ -8,21 +8,38 @@ __all__ = [
 
 
 class StrEnum(str, Enum):
+    """Base class for string-based enums.
+
+    This class extends both `str` and `Enum`, allowing the values of the enum members
+    to behave like strings, but also provide the benefits of enum functionality.
+
+    Methods:
+        __str__: Returns the string value of the enum member.
+        __repr__: Returns a string representation of the enum member.
+    """
+
     def __str__(self) -> str:
+        """Return the string representation of the enum value.
+
+        Returns:
+            str: The string value of the enum member.
+        """
         return self.value
 
     def __repr__(self) -> str:
+        """Return the string representation of the enum member.
+
+        Returns:
+            str: The string representation of the enum member.
+        """
         return str(self)
 
 
 class ContentType(StrEnum):
-    """Content-Type header.
+    """Content-Type header values.
 
-    If you couldn't find what you need, but you really want to see it here, form `issue` here:
-        https://github.com/rAPIdy-org/rAPIdy/issues/new
-
-    The main list is provided here:
-        https://www.iana.org/assignments/media-types/media-types.xhtml
+    Defines standard MIME types used in HTTP headers. For a comprehensive list of Content-Type
+    values, refer to the official IANA registry: https://www.iana.org/assignments/media-types/media-types.xhtml
     """
 
     any = '*/*'
@@ -76,10 +93,10 @@ class ContentType(StrEnum):
 
 
 class Charset(StrEnum):
-    """Charset.
+    """Charset values.
 
-    If you couldn't find what you need, but you really want to see it here, form `issue` here:
-        https://github.com/rAPIdy-org/rAPIdy/issues/new
+    Defines character encoding types for HTTP headers. For more encodings, refer to the official IANA
+    charset registry.
     """
 
     utf8 = 'utf-8'
@@ -88,10 +105,10 @@ class Charset(StrEnum):
 
 
 class HeaderName(StrEnum):
-    """Header name.
+    """HTTP Header name values.
 
-    If you couldn't find what you need, but you really want to see it here, form `issue` here:
-        https://github.com/rAPIdy-org/rAPIdy/issues/new
+    Defines common HTTP header names used in requests and responses. These header names are typically
+    included in HTTP requests and responses to communicate information between clients and servers.
     """
 
     accept = 'Accept'
@@ -192,6 +209,13 @@ class HeaderName(StrEnum):
 
 
 class HTTPRequestParamType(StrEnum):
+    """HTTPRequestParamType for HTTP request parameter types.
+
+    Defines various types of parameters that can appear in HTTP requests.
+    Used to categorize the location of parameters in requests, such as
+    whether they are in the path, query string, header, cookie, or body.
+    """
+
     path = 'path'
     query = 'query'
     header = 'header'
@@ -200,6 +224,11 @@ class HTTPRequestParamType(StrEnum):
 
 
 class MethodName(str, Enum):
+    """HTTP method names.
+
+    Defines common HTTP methods used in requests.
+    """
+
     get = 'GET'
     post = 'POST'
     put = 'PUT'

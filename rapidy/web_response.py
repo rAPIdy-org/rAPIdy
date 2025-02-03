@@ -34,6 +34,7 @@ DEFAULT_JSON_TYPES: Tuple[Type[Any], ...] = (
     DefaultDict,
     Counter,
 )
+
 DEFAULT_TEXT_PLAIN_TYPES: Tuple[Type[Any], ...] = (
     str,
     Enum,
@@ -45,15 +46,43 @@ DEFAULT_TEXT_PLAIN_TYPES: Tuple[Type[Any], ...] = (
 
 
 class ResponseDuplicateBodyError(RapidyException):
+    """Exception raised when both 'body' and 'text' are provided together."""
+
     message = '`body` and `text` are not allowed together'
 
 
 class ResponseEncodeError(RapidyException):
+    """Exception raised when an error occurs during encoding."""
+
     message = 'Encoding errors: \n {errors}'
 
 
 class Response(AioHTTPResponse):
-    """Overridden aiohttp Response."""
+    """Override for aiohttp Response class to handle various body types with advanced customization.
+
+    Args:
+        body (Optional[Any], optional): The response body. Defaults to None.
+        text (Optional[Any], optional): The response text body, kept for backwards compatibility. Use `body` instead.
+        reason (Optional[str], optional): The response reason for backwards compatibility. Defaults to None.
+        status (int, optional): HTTP status code for the response. Defaults to 200.
+        headers (Optional[LooseHeaders], optional): Additional headers for the response. Defaults to None.
+        content_type (Union[str, ContentType, None], optional): The response Content-Type header. Defaults to None.
+        charset (Optional[Union[str, Charset]], optional): Character encoding for body data. Defaults to None.
+        zlib_executor (Optional[Executor], optional): Executor for zlib compression. Defaults to None.
+        zlib_executor_size (Optional[int], optional): Size threshold in bytes for zlib compression. Defaults to None.
+        include (Optional[Include], optional): Fields to include during serialization. Defaults to None.
+        exclude (Optional[Exclude], optional): Fields to exclude during serialization. Defaults to None.
+        by_alias (bool, optional): Whether to use aliases during serialization. Defaults to True.
+        exclude_unset (bool, optional): Whether to exclude unset fields during serialization. Defaults to False.
+        exclude_defaults (bool, optional): Whether to exclude fields with default values. Defaults to False.
+        exclude_none (bool, optional): Whether to exclude fields with None values. Defaults to False.
+        custom_encoder (Optional[CustomEncoder], optional): Custom encoder for Pydantic models. Defaults to None.
+        json_encoder (JSONEncoder, optional): JSON encoder function. Defaults to the default encoder.
+
+    Raises:
+        ResponseDuplicateBodyError: If both `body` and `text` are provided.
+        ResponseEncodeError: If an error occurs during the body encoding process.
+    """
 
     def __init__(
         self,
@@ -65,7 +94,6 @@ class Response(AioHTTPResponse):
         charset: Optional[Union[str, Charset]] = None,
         zlib_executor: Optional[Executor] = None,
         zlib_executor_size: Optional[int] = None,
-        # body preparer
         include: Optional[Include] = None,
         exclude: Optional[Exclude] = None,
         by_alias: bool = True,
@@ -74,60 +102,10 @@ class Response(AioHTTPResponse):
         exclude_none: bool = False,
         custom_encoder: Optional[CustomEncoder] = None,
         json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-        # backwards compatibility
         text: Optional[Any] = None,
         reason: Optional[str] = None,
     ) -> None:
-        """Low-level response factory.
-
-        Args:
-            body:
-                Response body.
-            text:
-                Response text body.
-                This attribute is not necessary, it is left for backwards compatibility with `aiohttp`.
-                Please use the `body` attribute.
-            reason:
-                Response reason.
-                This attribute is not necessary, it is left for backwards compatibility with `aiohttp`.
-            status:
-                Response http status code.
-            headers:
-                Additional response headers.
-            content_type:
-                Expected value of the `Content-Type` of the header.
-            charset:
-                The `charset` that will be used to encode and decode body data.
-            zlib_executor:
-                Executor to use for zlib compression
-            zlib_executor_size:
-                Length in bytes which will trigger zlib compression of body to happen in an executor
-            include:
-                Pydantic's `include` parameter, passed to Pydantic models to set the fields to include.
-            exclude:
-                Pydantic's `exclude` parameter, passed to Pydantic models to set the fields to exclude.
-            by_alias:
-                Pydantic's `by_alias` parameter, passed to Pydantic models to define
-                if the output should use the alias names (when provided) or the Python
-                attribute names. In an API, if you set an alias, it's probably because you
-                want to use it in the result, so you probably want to leave this set to `True`.
-            exclude_unset:
-                Pydantic's `exclude_unset` parameter, passed to Pydantic models to define
-                if it should exclude from the output the fields that were not explicitly
-                set (and that only had their default values).
-            exclude_defaults:
-                Pydantic's `exclude_defaults` parameter, passed to Pydantic models to define
-                if it should exclude from the output the fields that had the same default
-                value, even when they were explicitly set.
-            exclude_none:
-                Pydantic's `exclude_none` parameter, passed to Pydantic models to define
-                if it should exclude from the output any fields that have a `None` value.
-            custom_encoder:
-                Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
-            json_encoder:
-                Any callable that accepts an object and returns a JSON string.
-                Will be used if dumps=True.
-        """
+        """Initialize the response object with given parameters."""
         if isinstance(charset, Enum):
             charset = charset.value
 
@@ -135,7 +113,6 @@ class Response(AioHTTPResponse):
             content_type = content_type.value
 
         self._json_encoder = json_encoder
-
         self._include_fields = include
         self._exclude_fields = exclude
         self._by_alias = by_alias
@@ -154,6 +131,7 @@ class Response(AioHTTPResponse):
             zlib_executor_size=zlib_executor_size,
         )
 
+        # Handle 'body' and 'text' together to raise an error if both are present
         body_exists = body is not None
         text_exists = text is not None
 
@@ -168,12 +146,12 @@ class Response(AioHTTPResponse):
 
     @property
     def body(self) -> Optional[Union[bytes, Payload]]:
-        """Read attribute for storing response`s content aka BODY, bytes."""
+        """Return the response body as bytes or payload."""
         return self._super.body
 
     @body.setter
     def body(self, body: Optional[Any]) -> None:
-        """Write attribute for storing response`s content aka BODY, bytes."""
+        """Set the response body as bytes or other appropriate format."""
         if body is None or isinstance(body, bytes):
             self._super.body.fset(self, body)
             return
@@ -182,12 +160,12 @@ class Response(AioHTTPResponse):
 
     @property
     def text(self) -> Optional[Union[bytes, Payload]]:
-        """Read attribute for storing response`s body, represented as str."""
+        """Return the response body as text (string format)."""
         return self._super.text
 
     @text.setter
     def text(self, text: Optional[Any]) -> None:
-        """Write attribute for storing response`s body, represented as str."""
+        """Set the response body as text (string format)."""
         if text is None or isinstance(text, str):
             self._set_text(text)
             return
@@ -195,6 +173,7 @@ class Response(AioHTTPResponse):
         self._set_body(text)
 
     def _set_body(self, body: Optional[Any]) -> None:
+        """Helper function to set the body, handling different content types."""
         current_ctype = self.content_type if self.content_type != ContentType.stream.value else None
         if current_ctype is None:
             current_ctype = self._get_and_set_ctype_by_data(body).value
@@ -211,12 +190,15 @@ class Response(AioHTTPResponse):
             self._process_bytes_body(body)
 
     def _set_text(self, text: Optional[str]) -> None:
+        """Helper function to set text content."""
         self._super.text.fset(self, text)
 
     def _process_json_body(self, body: Any) -> None:
+        """Process the body if it's a JSON type."""
         self._set_text(self._simplify_body(body, charset=self.charset))
 
     def _process_text_body(self, body: Any) -> None:
+        """Process the body if it's a plain text type."""
         if not isinstance(body, str):
             body = self._simplify_body(body, charset=self.charset, dumps=False)
             if not isinstance(body, str):
@@ -225,12 +207,14 @@ class Response(AioHTTPResponse):
         self._set_text(body)
 
     def _process_bytes_body(self, body: Any) -> None:
+        """Process the body if it's binary data."""
         if not isinstance(body, str):
             body = self._simplify_body(body, charset=self.charset)
 
         self.body = body.encode(self.charset)
 
     def _simplify_body(self, obj: Any, *, charset: str, dumps: bool = True) -> str:
+        """Simplify the body by serializing it into a string."""
         try:
             return jsonify(
                 obj,
@@ -249,6 +233,7 @@ class Response(AioHTTPResponse):
             raise ResponseEncodeError(errors=str(encode_exc)) from encode_exc
 
     def _get_and_set_ctype_by_data(self, data: Any) -> ContentType:
+        """Determine and set the Content-Type based on the data type."""
         if isinstance(data, DEFAULT_JSON_TYPES) or dataclasses.is_dataclass(data):
             self.content_type = ContentType.json.value
             return ContentType.json
@@ -260,4 +245,5 @@ class Response(AioHTTPResponse):
 
     @property
     def _super(self) -> Any:
+        """Return the super class for calling the base class methods."""
         return super(self.__class__, self.__class__)

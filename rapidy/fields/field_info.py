@@ -11,6 +11,15 @@ from rapidy.version import PYDANTIC_VERSION_TUPLE
 
 
 class RapidyFieldInfo(FieldInfo):
+    """
+    Extended Pydantic FieldInfo with additional functionality for Rapidy parameters.
+
+    Attributes:
+        name (str): The name of the field.
+        annotation (Any): The field's type annotation.
+        can_default (bool): Whether the field can have a default value. Defaults to True.
+    """
+
     name: str
     annotation: Any
     can_default: bool = True
@@ -46,6 +55,32 @@ class RapidyFieldInfo(FieldInfo):
         validate: bool = True,
         **extra: Any,
     ) -> None:
+        """Initializes a RapidyFieldInfo instance with additional validation and metadata options.
+
+        Args:
+            default (Any): Default value for the field. Defaults to Undefined.
+            annotation (Union[Any, None, UnsetType]): The type annotation for the field.
+            alias (Union[str, None, UnsetType]): Alternative name for serialization and deserialization.
+            alias_priority (Union[int, None, UnsetType]): The priority of alias resolution.
+            validation_alias (Union[str, None, UnsetType]): Alias used during validation.
+            serialization_alias (Union[str, None, UnsetType]): Alias used during serialization.
+            default_factory (Union[NoArgAnyCallable, None, UnsetType]): A callable that returns the default value.
+            title (Union[str, None, UnsetType]): A human-readable title for the field.
+            description (Union[str, None, UnsetType]): A description of the field.
+            gt, ge, lt, le (Union[float, None, UnsetType]): Constraints for numerical fields.
+            min_length, max_length (Union[int, None, UnsetType]): Constraints for string length.
+            pattern (Union[str, None, UnsetType]): A regex pattern for string validation.
+            discriminator (Union[str, None, UnsetType]): Discriminator field for polymorphic models.
+            strict (Union[bool, None, UnsetType]): Whether to enforce strict type validation.
+            multiple_of (Union[float, None, UnsetType]): A constraint for numeric fields.
+            allow_inf_nan (Union[bool, None, UnsetType]): Whether NaN and infinity values are allowed.
+            max_digits, decimal_places (Union[int, None, UnsetType]): Constraints for decimal precision.
+            deprecated (Union[Deprecated, str, bool, None, UnsetType]): Marks the field as deprecated.
+            examples (Union[List[Any], None, UnsetType]): Example values for the field.
+            json_schema_extra (Union[Dict[str, Any], None, UnsetType]): Extra metadata for JSON Schema.
+            validate (bool): Whether to enable field validation. Defaults to True.
+            **extra (Any): Additional parameters.
+        """
         json_schema_extra = json_schema_extra if json_schema_extra is not Unset else {}
 
         self.need_validate = validate
@@ -106,6 +141,15 @@ class RapidyFieldInfo(FieldInfo):
             self._validate()  # check specify both default and default_factory
 
     def _get_pattern(self, pattern: Union[str, None, UnsetType], regex: Optional[str]) -> Any:
+        """Retrieves the appropriate pattern for validation, handling deprecations.
+
+        Args:
+            pattern (Union[str, None, UnsetType]): The pattern value.
+            regex (Optional[str]): The regex pattern (deprecated).
+
+        Returns:
+            Any: The final pattern value.
+        """
         if is_not_none_and_unset(pattern):
             return pattern
 

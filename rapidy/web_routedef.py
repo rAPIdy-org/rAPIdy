@@ -34,17 +34,16 @@ __all__ = (
 
 
 def route(method: str, path: str, handler: HandlerOrView, **kwargs: Any) -> RouteDef:
-    """Create a new RouteDef item for registering web-handler.
+    """Creates a new RouteDef item for registering a web handler.
 
     Args:
-        method:
-            HTTP method name.
-        path:
-            Resource path spec.
-        handler:
-            Route handler.
-        kwargs:
-            Additional internal arguments.
+        method (str): The HTTP method for the route (e.g., 'GET', 'POST').
+        path (str): The resource path specification for the route.
+        handler (HandlerOrView): The handler function or view associated with the route.
+        kwargs (Any): Additional internal arguments to configure the route.
+
+    Returns:
+        RouteDef: The route definition object.
     """
     return RouteDef(method=method, path=path, handler=handler, kwargs=kwargs)
 
@@ -71,73 +70,39 @@ def get(
     response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
     **kwargs: Any,
 ) -> RouteDef:
-    """Create a new RouteDef item for registering GET web-handler.
+    """Creates a new RouteDef item for registering a GET web handler.
 
     Args:
-        path:
-            Resource path spec.
-        handler:
-            Route handler.
-        name:
-            Optional resource name.
-        allow_head:
-            If allow_head is True (default) the route for method HEAD is added with the same handler as for GET.
-            If name is provided the name for HEAD route is suffixed with '-head'.
-            For example
-            >>> @get(path, handler, name='route')
-            >>> def handler(request): ...
-            call adds two routes: first for GET with name 'route' and second for HEAD with name 'route-head'.
-        response_validate:
-            Flag determines whether the handler response should be validated.
-        response_type:
-            Handler response type.
-            This attribute is used to create the response model.
-            If this attribute is defined, it overrides the handler return annotation logic.
-        response_content_type:
-            Attribute defines the `Content-Type` header and performs post-processing of the endpoint handler return.
-        response_charset:
-            The `charset` that will be used to encode and decode handler result data.
-        response_zlib_executor:
-            Executor to use for zlib compression
-        response_zlib_executor_size:
-            Length in bytes which will trigger zlib compression of body to happen in an executor
-        response_include_fields:
-            Pydantic's `include` parameter, passed to Pydantic models to set the fields to include.
-        response_exclude_fields:
-            Pydantic's `exclude` parameter, passed to Pydantic models to set the fields to exclude.
-        response_by_alias:
-            Pydantic's `by_alias` parameter, passed to Pydantic models to define
-            if the output should use the alias names (when provided) or the Python
-            attribute names. In an API, if you set an alias, it's probably because you
-            want to use it in the result, so you probably want to leave this set to `True`.
-        response_exclude_unset:
-            Pydantic's `exclude_unset` parameter, passed to Pydantic models to define
-            if it should exclude from the output the fields that were not explicitly
-            set (and that only had their default values).
-        response_exclude_defaults:
-            Pydantic's `exclude_defaults` parameter, passed to Pydantic models to define
-            if it should exclude from the output the fields that had the same default
-            value, even when they were explicitly set.
-        response_exclude_none:
-            Pydantic's `exclude_none` parameter, passed to Pydantic models to define
-            if it should exclude from the output any fields that have a `None` value.
-        response_custom_encoder:
-            Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
-        response_json_encoder:
-            Any callable that accepts an object and returns a JSON string.
-            Will be used if dumps=True
-        kwargs:
-            Additional internal arguments.
+        path (str): The resource path specification for the route.
+        handler (HandlerOrView): The handler function or view for the route.
+        name (Optional[str]): Optional resource name.
+        allow_head (bool): If True (default), allows a HEAD route with the same handler as GET.
+        response_validate (bool): Determines whether the handler's response should be validated.
+        response_type (Union[Type[Any], None, UnsetType]): The type of response expected.
+        response_content_type (Union[str, ContentType, None]): Defines the `Content-Type` header for the response.
+        response_charset (Union[str, Charset]): Charset used for encoding and decoding the response.
+        response_zlib_executor (Optional[Executor]): Executor for zlib compression.
+        response_zlib_executor_size (Optional[int]): The size threshold for triggering zlib compression.
+        response_include_fields (Optional[Include]): Fields to include during Pydantic model serialization.
+        response_exclude_fields (Optional[Exclude]): Fields to exclude during Pydantic model serialization.
+        response_by_alias (bool): Whether to use aliases for fields during serialization.
+        response_exclude_unset (bool): Whether to exclude unset fields from the response.
+        response_exclude_defaults (bool): Whether to exclude fields with default values from the response.
+        response_exclude_none (bool): Whether to exclude fields with `None` values from the response.
+        response_custom_encoder (Optional[CustomEncoder]): A custom encoder for Pydantic models.
+        response_json_encoder (JSONEncoder): Custom JSON encoder function for serializing the response.
+        kwargs (Any): Additional internal arguments for the route.
+
+    Returns:
+        RouteDef: The route definition object for the GET request.
     """
     return route(
-        # aiohttp attrs
         method=METH_GET,
         path=path,
         handler=handler,
         name=name,
         allow_head=allow_head,
         **kwargs,
-        # rapidy attrs
         response_validate=response_validate,
         response_type=response_type,
         response_content_type=response_content_type,
@@ -176,56 +141,30 @@ def post(
     response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
     **kwargs: Any,
 ) -> RouteDef:
-    """Create a new RouteDef item for registering POST web-handler.
+    """Creates a new RouteDef item for registering a POST web handler.
 
     Args:
-        path:
-            Resource path spec.
-        handler:
-            Route handler.
-        name:
-            Optional resource name.
-        response_validate:
-            Flag determines whether the handler response should be validated.
-        response_type:
-            Handler response type.
-            This attribute is used to create the response model.
-            If this attribute is defined, it overrides the handler return annotation logic.
-        response_content_type:
-            Attribute defines the `Content-Type` header and performs post-processing of the endpoint handler return.
-        response_charset:
-            The `charset` that will be used to encode and decode handler result data.
-        response_zlib_executor:
-            Executor to use for zlib compression
-        response_zlib_executor_size:
-            Length in bytes which will trigger zlib compression of body to happen in an executor
-        response_include_fields:
-            Pydantic's `include` parameter, passed to Pydantic models to set the fields to include.
-        response_exclude_fields:
-            Pydantic's `exclude` parameter, passed to Pydantic models to set the fields to exclude.
-        response_by_alias:
-            Pydantic's `by_alias` parameter, passed to Pydantic models to define
-            if the output should use the alias names (when provided) or the Python
-            attribute names. In an API, if you set an alias, it's probably because you
-            want to use it in the result, so you probably want to leave this set to `True`.
-        response_exclude_unset:
-            Pydantic's `exclude_unset` parameter, passed to Pydantic models to define
-            if it should exclude from the output the fields that were not explicitly
-            set (and that only had their default values).
-        response_exclude_defaults:
-            Pydantic's `exclude_defaults` parameter, passed to Pydantic models to define
-            if it should exclude from the output the fields that had the same default
-            value, even when they were explicitly set.
-        response_exclude_none:
-            Pydantic's `exclude_none` parameter, passed to Pydantic models to define
-            if it should exclude from the output any fields that have a `None` value.
-        response_custom_encoder:
-            Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
-        response_json_encoder:
-            Any callable that accepts an object and returns a JSON string.
-            Will be used if dumps=True
-        kwargs:
-            Additional internal arguments.
+        path (str): The resource path specification for the route.
+        handler (HandlerOrView): The handler function or view for the route.
+        name (Optional[str]): Optional resource name.
+        response_validate (bool): Determines whether the handler's response should be validated.
+        response_type (Union[Type[Any], None, UnsetType]): The type of response expected.
+        response_content_type (Union[str, ContentType, None]): Defines the `Content-Type` header for the response.
+        response_charset (Union[str, Charset]): Charset used for encoding and decoding the response.
+        response_zlib_executor (Optional[Executor]): Executor for zlib compression.
+        response_zlib_executor_size (Optional[int]): The size threshold for triggering zlib compression.
+        response_include_fields (Optional[Include]): Fields to include during Pydantic model serialization.
+        response_exclude_fields (Optional[Exclude]): Fields to exclude during Pydantic model serialization.
+        response_by_alias (bool): Whether to use aliases for fields during serialization.
+        response_exclude_unset (bool): Whether to exclude unset fields from the response.
+        response_exclude_defaults (bool): Whether to exclude fields with default values from the response.
+        response_exclude_none (bool): Whether to exclude fields with `None` values from the response.
+        response_custom_encoder (Optional[CustomEncoder]): A custom encoder for Pydantic models.
+        response_json_encoder (JSONEncoder): Custom JSON encoder function for serializing the response.
+        kwargs (Any): Additional internal arguments for the route.
+
+    Returns:
+        RouteDef: The route definition object for the POST request.
     """
     return route(
         # aiohttp attrs
@@ -276,53 +215,27 @@ def put(
     """Create a new RouteDef item for registering PUT web-handler.
 
     Args:
-        path:
-            Resource path spec.
-        handler:
-            Route handler.
-        name:
-            Optional resource name.
-        response_validate:
-            Flag determines whether the handler response should be validated.
-        response_type:
-            Handler response type.
-            This attribute is used to create the response model.
-            If this attribute is defined, it overrides the handler return annotation logic.
-        response_content_type:
-            Attribute defines the `Content-Type` header and performs post-processing of the endpoint handler return.
-        response_charset:
-            The `charset` that will be used to encode and decode handler result data.
-        response_zlib_executor:
-            Executor to use for zlib compression
-        response_zlib_executor_size:
-            Length in bytes which will trigger zlib compression of body to happen in an executor
-        response_include_fields:
-            Pydantic's `include` parameter, passed to Pydantic models to set the fields to include.
-        response_exclude_fields:
-            Pydantic's `exclude` parameter, passed to Pydantic models to set the fields to exclude.
-        response_by_alias:
-            Pydantic's `by_alias` parameter, passed to Pydantic models to define
-            if the output should use the alias names (when provided) or the Python
-            attribute names. In an API, if you set an alias, it's probably because you
-            want to use it in the result, so you probably want to leave this set to `True`.
-        response_exclude_unset:
-            Pydantic's `exclude_unset` parameter, passed to Pydantic models to define
-            if it should exclude from the output the fields that were not explicitly
-            set (and that only had their default values).
-        response_exclude_defaults:
-            Pydantic's `exclude_defaults` parameter, passed to Pydantic models to define
-            if it should exclude from the output the fields that had the same default
-            value, even when they were explicitly set.
-        response_exclude_none:
-            Pydantic's `exclude_none` parameter, passed to Pydantic models to define
-            if it should exclude from the output any fields that have a `None` value.
-        response_custom_encoder:
-            Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
-        response_json_encoder:
-            Any callable that accepts an object and returns a JSON string.
-            Will be used if dumps=True
-        kwargs:
-            Additional internal arguments.
+        path (str): The resource path specification for the route.
+        handler (HandlerOrView): The handler function or view for the route.
+        name (Optional[str]): Optional resource name.
+        response_validate (bool): Determines whether the handler's response should be validated.
+        response_type (Union[Type[Any], None, UnsetType]): The type of response expected.
+        response_content_type (Union[str, ContentType, None]): Defines the `Content-Type` header for the response.
+        response_charset (Union[str, Charset]): Charset used for encoding and decoding the response.
+        response_zlib_executor (Optional[Executor]): Executor for zlib compression.
+        response_zlib_executor_size (Optional[int]): The size threshold for triggering zlib compression.
+        response_include_fields (Optional[Include]): Fields to include during Pydantic model serialization.
+        response_exclude_fields (Optional[Exclude]): Fields to exclude during Pydantic model serialization.
+        response_by_alias (bool): Whether to use aliases for fields during serialization.
+        response_exclude_unset (bool): Whether to exclude unset fields from the response.
+        response_exclude_defaults (bool): Whether to exclude fields with default values from the response.
+        response_exclude_none (bool): Whether to exclude fields with `None` values from the response.
+        response_custom_encoder (Optional[CustomEncoder]): A custom encoder for Pydantic models.
+        response_json_encoder (JSONEncoder): Custom JSON encoder function for serializing the response.
+        kwargs (Any): Additional internal arguments for the route.
+
+    Returns:
+        RouteDef: The route definition object for the PUT request.
     """
     return route(
         # aiohttp attrs
@@ -373,53 +286,27 @@ def patch(
     """Create a new RouteDef item for registering PATCH web-handler.
 
     Args:
-        path:
-            Resource path spec.
-        handler:
-            Route handler.
-        name:
-            Optional resource name.
-        response_validate:
-            Flag determines whether the handler response should be validated.
-        response_type:
-            Handler response type.
-            This attribute is used to create the response model.
-            If this attribute is defined, it overrides the handler return annotation logic.
-        response_content_type:
-            Attribute defines the `Content-Type` header and performs post-processing of the endpoint handler return.
-        response_charset:
-            The `charset` that will be used to encode and decode handler result data.
-        response_zlib_executor:
-            Executor to use for zlib compression
-        response_zlib_executor_size:
-            Length in bytes which will trigger zlib compression of body to happen in an executor
-        response_include_fields:
-            Pydantic's `include` parameter, passed to Pydantic models to set the fields to include.
-        response_exclude_fields:
-            Pydantic's `exclude` parameter, passed to Pydantic models to set the fields to exclude.
-        response_by_alias:
-            Pydantic's `by_alias` parameter, passed to Pydantic models to define
-            if the output should use the alias names (when provided) or the Python
-            attribute names. In an API, if you set an alias, it's probably because you
-            want to use it in the result, so you probably want to leave this set to `True`.
-        response_exclude_unset:
-            Pydantic's `exclude_unset` parameter, passed to Pydantic models to define
-            if it should exclude from the output the fields that were not explicitly
-            set (and that only had their default values).
-        response_exclude_defaults:
-            Pydantic's `exclude_defaults` parameter, passed to Pydantic models to define
-            if it should exclude from the output the fields that had the same default
-            value, even when they were explicitly set.
-        response_exclude_none:
-            Pydantic's `exclude_none` parameter, passed to Pydantic models to define
-            if it should exclude from the output any fields that have a `None` value.
-        response_custom_encoder:
-            Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
-        response_json_encoder:
-            Any callable that accepts an object and returns a JSON string.
-            Will be used if dumps=True
-        kwargs:
-            Additional internal arguments.
+        path (str): The resource path specification for the route.
+        handler (HandlerOrView): The handler function or view for the route.
+        name (Optional[str]): Optional resource name.
+        response_validate (bool): Determines whether the handler's response should be validated.
+        response_type (Union[Type[Any], None, UnsetType]): The type of response expected.
+        response_content_type (Union[str, ContentType, None]): Defines the `Content-Type` header for the response.
+        response_charset (Union[str, Charset]): Charset used for encoding and decoding the response.
+        response_zlib_executor (Optional[Executor]): Executor for zlib compression.
+        response_zlib_executor_size (Optional[int]): The size threshold for triggering zlib compression.
+        response_include_fields (Optional[Include]): Fields to include during Pydantic model serialization.
+        response_exclude_fields (Optional[Exclude]): Fields to exclude during Pydantic model serialization.
+        response_by_alias (bool): Whether to use aliases for fields during serialization.
+        response_exclude_unset (bool): Whether to exclude unset fields from the response.
+        response_exclude_defaults (bool): Whether to exclude fields with default values from the response.
+        response_exclude_none (bool): Whether to exclude fields with `None` values from the response.
+        response_custom_encoder (Optional[CustomEncoder]): A custom encoder for Pydantic models.
+        response_json_encoder (JSONEncoder): Custom JSON encoder function for serializing the response.
+        kwargs (Any): Additional internal arguments for the route.
+
+    Returns:
+        RouteDef: The route definition object for the PATCH request.
     """
     return route(
         # aiohttp attrs
@@ -470,53 +357,27 @@ def delete(
     """Create a new RouteDef item for registering DELETE web-handler.
 
     Args:
-        path:
-            Resource path spec.
-        handler:
-            Route handler.
-        name:
-            Optional resource name.
-        response_validate:
-            Flag determines whether the handler response should be validated.
-        response_type:
-            Handler response type.
-            This attribute is used to create the response model.
-            If this attribute is defined, it overrides the handler return annotation logic.
-        response_content_type:
-            Attribute defines the `Content-Type` header and performs post-processing of the endpoint handler return.
-        response_charset:
-            The `charset` that will be used to encode and decode handler result data.
-        response_zlib_executor:
-            Executor to use for zlib compression
-        response_zlib_executor_size:
-            Length in bytes which will trigger zlib compression of body to happen in an executor
-        response_include_fields:
-            Pydantic's `include` parameter, passed to Pydantic models to set the fields to include.
-        response_exclude_fields:
-            Pydantic's `exclude` parameter, passed to Pydantic models to set the fields to exclude.
-        response_by_alias:
-            Pydantic's `by_alias` parameter, passed to Pydantic models to define
-            if the output should use the alias names (when provided) or the Python
-            attribute names. In an API, if you set an alias, it's probably because you
-            want to use it in the result, so you probably want to leave this set to `True`.
-        response_exclude_unset:
-            Pydantic's `exclude_unset` parameter, passed to Pydantic models to define
-            if it should exclude from the output the fields that were not explicitly
-            set (and that only had their default values).
-        response_exclude_defaults:
-            Pydantic's `exclude_defaults` parameter, passed to Pydantic models to define
-            if it should exclude from the output the fields that had the same default
-            value, even when they were explicitly set.
-        response_exclude_none:
-            Pydantic's `exclude_none` parameter, passed to Pydantic models to define
-            if it should exclude from the output any fields that have a `None` value.
-        response_custom_encoder:
-            Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
-        response_json_encoder:
-            Any callable that accepts an object and returns a JSON string.
-            Will be used if dumps=True
-        kwargs:
-            Additional internal arguments.
+        path (str): The resource path specification for the route.
+        handler (HandlerOrView): The handler function or view for the route.
+        name (Optional[str]): Optional resource name.
+        response_validate (bool): Determines whether the handler's response should be validated.
+        response_type (Union[Type[Any], None, UnsetType]): The type of response expected.
+        response_content_type (Union[str, ContentType, None]): Defines the `Content-Type` header for the response.
+        response_charset (Union[str, Charset]): Charset used for encoding and decoding the response.
+        response_zlib_executor (Optional[Executor]): Executor for zlib compression.
+        response_zlib_executor_size (Optional[int]): The size threshold for triggering zlib compression.
+        response_include_fields (Optional[Include]): Fields to include during Pydantic model serialization.
+        response_exclude_fields (Optional[Exclude]): Fields to exclude during Pydantic model serialization.
+        response_by_alias (bool): Whether to use aliases for fields during serialization.
+        response_exclude_unset (bool): Whether to exclude unset fields from the response.
+        response_exclude_defaults (bool): Whether to exclude fields with default values from the response.
+        response_exclude_none (bool): Whether to exclude fields with `None` values from the response.
+        response_custom_encoder (Optional[CustomEncoder]): A custom encoder for Pydantic models.
+        response_json_encoder (JSONEncoder): Custom JSON encoder function for serializing the response.
+        kwargs (Any): Additional internal arguments for the route.
+
+    Returns:
+        RouteDef: The route definition object for the DELETE request.
     """
     return route(
         # aiohttp attrs
@@ -567,53 +428,27 @@ def view(
     """Create a new RouteDef item for adding class-based view handler.
 
     Args:
-        path:
-            Resource path spec.
-        handler:
-            Route handler.
-        name:
-            Optional resource name.
-        response_validate:
-            Flag determines whether the handler response should be validated.
-        response_type:
-            Handler response type.
-            This attribute is used to create the response model.
-            If this attribute is defined, it overrides the handler return annotation logic.
-        response_content_type:
-            Attribute defines the `Content-Type` header and performs post-processing of the endpoint handler return.
-        response_charset:
-            The `charset` that will be used to encode and decode handler result data.
-        response_zlib_executor:
-            Executor to use for zlib compression
-        response_zlib_executor_size:
-            Length in bytes which will trigger zlib compression of body to happen in an executor
-        response_include_fields:
-            Pydantic's `include` parameter, passed to Pydantic models to set the fields to include.
-        response_exclude_fields:
-            Pydantic's `exclude` parameter, passed to Pydantic models to set the fields to exclude.
-        response_by_alias:
-            Pydantic's `by_alias` parameter, passed to Pydantic models to define
-            if the output should use the alias names (when provided) or the Python
-            attribute names. In an API, if you set an alias, it's probably because you
-            want to use it in the result, so you probably want to leave this set to `True`.
-        response_exclude_unset:
-            Pydantic's `exclude_unset` parameter, passed to Pydantic models to define
-            if it should exclude from the output the fields that were not explicitly
-            set (and that only had their default values).
-        response_exclude_defaults:
-            Pydantic's `exclude_defaults` parameter, passed to Pydantic models to define
-            if it should exclude from the output the fields that had the same default
-            value, even when they were explicitly set.
-        response_exclude_none:
-            Pydantic's `exclude_none` parameter, passed to Pydantic models to define
-            if it should exclude from the output any fields that have a `None` value.
-        response_custom_encoder:
-            Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
-        response_json_encoder:
-            Any callable that accepts an object and returns a JSON string.
-            Will be used if dumps=True
-        kwargs:
-            Additional internal arguments.
+        path (str): The resource path specification for the route.
+        handler (HandlerOrView): The handler function or view for the route.
+        name (Optional[str]): Optional resource name.
+        response_validate (bool): Determines whether the handler's response should be validated.
+        response_type (Union[Type[Any], None, UnsetType]): The type of response expected.
+        response_content_type (Union[str, ContentType, None]): Defines the `Content-Type` header for the response.
+        response_charset (Union[str, Charset]): Charset used for encoding and decoding the response.
+        response_zlib_executor (Optional[Executor]): Executor for zlib compression.
+        response_zlib_executor_size (Optional[int]): The size threshold for triggering zlib compression.
+        response_include_fields (Optional[Include]): Fields to include during Pydantic model serialization.
+        response_exclude_fields (Optional[Exclude]): Fields to exclude during Pydantic model serialization.
+        response_by_alias (bool): Whether to use aliases for fields during serialization.
+        response_exclude_unset (bool): Whether to exclude unset fields from the response.
+        response_exclude_defaults (bool): Whether to exclude fields with default values from the response.
+        response_exclude_none (bool): Whether to exclude fields with `None` values from the response.
+        response_custom_encoder (Optional[CustomEncoder]): A custom encoder for Pydantic models.
+        response_json_encoder (JSONEncoder): Custom JSON encoder function for serializing the response.
+        kwargs (Any): Additional internal arguments for the route.
+
+    Returns:
+        RouteDef: The route definition object for a class-based view.
     """
     return route(
         # aiohttp attrs
@@ -664,53 +499,27 @@ def head(
     """Create a new RouteDef item for registering HEAD web-handler.
 
     Args:
-        path:
-            Resource path spec.
-        handler:
-            Route handler.
-        name:
-            Optional resource name.
-        response_validate:
-            Flag determines whether the handler response should be validated.
-        response_type:
-            Handler response type.
-            This attribute is used to create the response model.
-            If this attribute is defined, it overrides the handler return annotation logic.
-        response_content_type:
-            Attribute defines the `Content-Type` header and performs post-processing of the endpoint handler return.
-        response_charset:
-            The `charset` that will be used to encode and decode handler result data.
-        response_zlib_executor:
-            Executor to use for zlib compression
-        response_zlib_executor_size:
-            Length in bytes which will trigger zlib compression of body to happen in an executor
-        response_include_fields:
-            Pydantic's `include` parameter, passed to Pydantic models to set the fields to include.
-        response_exclude_fields:
-            Pydantic's `exclude` parameter, passed to Pydantic models to set the fields to exclude.
-        response_by_alias:
-            Pydantic's `by_alias` parameter, passed to Pydantic models to define
-            if the output should use the alias names (when provided) or the Python
-            attribute names. In an API, if you set an alias, it's probably because you
-            want to use it in the result, so you probably want to leave this set to `True`.
-        response_exclude_unset:
-            Pydantic's `exclude_unset` parameter, passed to Pydantic models to define
-            if it should exclude from the output the fields that were not explicitly
-            set (and that only had their default values).
-        response_exclude_defaults:
-            Pydantic's `exclude_defaults` parameter, passed to Pydantic models to define
-            if it should exclude from the output the fields that had the same default
-            value, even when they were explicitly set.
-        response_exclude_none:
-            Pydantic's `exclude_none` parameter, passed to Pydantic models to define
-            if it should exclude from the output any fields that have a `None` value.
-        response_custom_encoder:
-            Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
-        response_json_encoder:
-            Any callable that accepts an object and returns a JSON string.
-            Will be used if dumps=True
-        kwargs:
-            Additional internal arguments.
+        path (str): The resource path specification for the route.
+        handler (HandlerOrView): The handler function or view for the route.
+        name (Optional[str]): Optional resource name.
+        response_validate (bool): Determines whether the handler's response should be validated.
+        response_type (Union[Type[Any], None, UnsetType]): The type of response expected.
+        response_content_type (Union[str, ContentType, None]): Defines the `Content-Type` header for the response.
+        response_charset (Union[str, Charset]): Charset used for encoding and decoding the response.
+        response_zlib_executor (Optional[Executor]): Executor for zlib compression.
+        response_zlib_executor_size (Optional[int]): The size threshold for triggering zlib compression.
+        response_include_fields (Optional[Include]): Fields to include during Pydantic model serialization.
+        response_exclude_fields (Optional[Exclude]): Fields to exclude during Pydantic model serialization.
+        response_by_alias (bool): Whether to use aliases for fields during serialization.
+        response_exclude_unset (bool): Whether to exclude unset fields from the response.
+        response_exclude_defaults (bool): Whether to exclude fields with default values from the response.
+        response_exclude_none (bool): Whether to exclude fields with `None` values from the response.
+        response_custom_encoder (Optional[CustomEncoder]): A custom encoder for Pydantic models.
+        response_json_encoder (JSONEncoder): Custom JSON encoder function for serializing the response.
+        kwargs (Any): Additional internal arguments for the route.
+
+    Returns:
+        RouteDef: The route definition object for the HEAD request.
     """
     return route(
         # aiohttp attrs
@@ -761,53 +570,27 @@ def options(
     """Create a new RouteDef item for registering OPTIONS web-handler.
 
     Args:
-        path:
-            Resource path spec.
-        handler:
-            Route handler.
-        name:
-            Optional resource name.
-        response_validate:
-            Flag determines whether the handler response should be validated.
-        response_type:
-            Handler response type.
-            This attribute is used to create the response model.
-            If this attribute is defined, it overrides the handler return annotation logic.
-        response_content_type:
-            Attribute defines the `Content-Type` header and performs post-processing of the endpoint handler return.
-        response_charset:
-            The `charset` that will be used to encode and decode handler result data.
-        response_zlib_executor:
-            Executor to use for zlib compression
-        response_zlib_executor_size:
-            Length in bytes which will trigger zlib compression of body to happen in an executor
-        response_include_fields:
-            Pydantic's `include` parameter, passed to Pydantic models to set the fields to include.
-        response_exclude_fields:
-            Pydantic's `exclude` parameter, passed to Pydantic models to set the fields to exclude.
-        response_by_alias:
-            Pydantic's `by_alias` parameter, passed to Pydantic models to define
-            if the output should use the alias names (when provided) or the Python
-            attribute names. In an API, if you set an alias, it's probably because you
-            want to use it in the result, so you probably want to leave this set to `True`.
-        response_exclude_unset:
-            Pydantic's `exclude_unset` parameter, passed to Pydantic models to define
-            if it should exclude from the output the fields that were not explicitly
-            set (and that only had their default values).
-        response_exclude_defaults:
-            Pydantic's `exclude_defaults` parameter, passed to Pydantic models to define
-            if it should exclude from the output the fields that had the same default
-            value, even when they were explicitly set.
-        response_exclude_none:
-            Pydantic's `exclude_none` parameter, passed to Pydantic models to define
-            if it should exclude from the output any fields that have a `None` value.
-        response_custom_encoder:
-            Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
-        response_json_encoder:
-            Any callable that accepts an object and returns a JSON string.
-            Will be used if dumps=True
-        kwargs:
-            Additional internal arguments.
+        path (str): The resource path specification for the route.
+        handler (HandlerOrView): The handler function or view for the route.
+        name (Optional[str]): Optional resource name.
+        response_validate (bool): Determines whether the handler's response should be validated.
+        response_type (Union[Type[Any], None, UnsetType]): The type of response expected.
+        response_content_type (Union[str, ContentType, None]): Defines the `Content-Type` header for the response.
+        response_charset (Union[str, Charset]): Charset used for encoding and decoding the response.
+        response_zlib_executor (Optional[Executor]): Executor for zlib compression.
+        response_zlib_executor_size (Optional[int]): The size threshold for triggering zlib compression.
+        response_include_fields (Optional[Include]): Fields to include during Pydantic model serialization.
+        response_exclude_fields (Optional[Exclude]): Fields to exclude during Pydantic model serialization.
+        response_by_alias (bool): Whether to use aliases for fields during serialization.
+        response_exclude_unset (bool): Whether to exclude unset fields from the response.
+        response_exclude_defaults (bool): Whether to exclude fields with default values from the response.
+        response_exclude_none (bool): Whether to exclude fields with `None` values from the response.
+        response_custom_encoder (Optional[CustomEncoder]): A custom encoder for Pydantic models.
+        response_json_encoder (JSONEncoder): Custom JSON encoder function for serializing the response.
+        kwargs (Any): Additional internal arguments for the route.
+
+    Returns:
+        RouteDef: The route definition object for the OPTIONS request.
     """
     return route(
         # aiohttp attrs
@@ -835,23 +618,32 @@ def options(
 
 
 def static(prefix: str, path: PathLike, **kwargs: Any) -> StaticDef:
-    """Create a new StaticDef item."""
+    """Create a new StaticDef item.
+
+    Args:
+        prefix (str): The prefix for the static route.
+        path (PathLike): The path to the static file or directory.
+        kwargs (Any): Additional arguments passed to StaticDef.
+
+    Returns:
+        StaticDef: A new StaticDef item.
+    """
     return StaticDef(prefix, path, kwargs)
 
 
 class RouteTableDef(AioHTTPRouteTableDef):
-    """Overridden aiohttp RouteTableDef."""
+    """Overridden aiohttp RouteTableDef to handle custom route registration."""
 
     def route(self, method: str, path: str, **kwargs: Any) -> RouterDeco:
-        """An internal method for registering handlers.
+        """Register a handler for a given HTTP method and path.
 
         Args:
-            method:
-                HTTP method name.
-            path:
-                Resource path spec.
-            kwargs:
-                Additional internal arguments.
+            method (str): HTTP method (GET, POST, etc.).
+            path (str): The resource path.
+            kwargs (Any): Additional internal arguments passed to RouteDef.
+
+        Returns:
+            RouterDeco: A decorator function to register the route handler.
         """
 
         def inner(handler: HandlerOrView) -> HandlerOrView:
@@ -882,61 +674,33 @@ class RouteTableDef(AioHTTPRouteTableDef):
         response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
         **kwargs: Any,
     ) -> RouterDeco:
-        """Add a new RouteDef item for registering GET web-handler.
+        """Add a new RouteDef item for registering a GET web-handler.
 
         Args:
-            path:
-                Resource path spec.
-            name:
-                Optional resource name.
-            allow_head:
-                If allow_head is True (default) the route for method HEAD is added with the same handler as for GET.
-                If name is provided the name for HEAD route is suffixed with '-head'.
-                For example
-                >>> @get(path, handler, name='route')
-                >>> def handler(request): ...
-                call adds two routes: first for GET with name 'route' and second for HEAD with name 'route-head'.
-            response_validate:
-                Flag determines whether the handler response should be validated.
-            response_type:
-                Handler response type.
-                This attribute is used to create the response model.
-                If this attribute is defined, it overrides the handler return annotation logic.
-            response_content_type:
-                Attribute defines the `Content-Type` header and performs post-processing of the endpoint handler return.
-            response_charset:
-                The `charset` that will be used to encode and decode handler result data.
-            response_zlib_executor:
-                Executor to use for zlib compression
-            response_zlib_executor_size:
-                Length in bytes which will trigger zlib compression of body to happen in an executor
-            response_include_fields:
-                Pydantic's `include` parameter, passed to Pydantic models to set the fields to include.
-            response_exclude_fields:
-                Pydantic's `exclude` parameter, passed to Pydantic models to set the fields to exclude.
-            response_by_alias:
-                Pydantic's `by_alias` parameter, passed to Pydantic models to define
-                if the output should use the alias names (when provided) or the Python
-                attribute names. In an API, if you set an alias, it's probably because you
-                want to use it in the result, so you probably want to leave this set to `True`.
-            response_exclude_unset:
-                Pydantic's `exclude_unset` parameter, passed to Pydantic models to define
-                if it should exclude from the output the fields that were not explicitly
-                set (and that only had their default values).
-            response_exclude_defaults:
-                Pydantic's `exclude_defaults` parameter, passed to Pydantic models to define
-                if it should exclude from the output the fields that had the same default
-                value, even when they were explicitly set.
-            response_exclude_none:
-                Pydantic's `exclude_none` parameter, passed to Pydantic models to define
-                if it should exclude from the output any fields that have a `None` value.
-            response_custom_encoder:
-                Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
-            response_json_encoder:
-                Any callable that accepts an object and returns a JSON string.
-                Will be used if dumps=True
-            kwargs:
-                Additional internal arguments.
+            path (str): Resource path spec.
+            name (Optional[str]): An optional resource name.
+            allow_head (bool): If True (default), a HEAD route will also be created for the same handler.
+            response_validate (bool): Whether the response should be validated (default is True).
+            response_type (Union[Type[Any], None, UnsetType]): The type of the response.
+                                                               Overrides return type annotation if set.
+            response_content_type (Union[str, ContentType, None]): The `Content-Type` header for the response.
+            response_charset (Union[str, Charset]): The charset for encoding/decoding response data.
+            response_zlib_executor (Optional[Executor]): Executor for zlib compression of response body.
+            response_zlib_executor_size (Optional[int]): Threshold for triggering zlib compression.
+            response_include_fields (Optional[Include]): Pydantic's `include` parameter
+                                                         to include specific fields in response.
+            response_exclude_fields (Optional[Exclude]): Pydantic's `exclude` parameter
+                                                         to exclude specific fields in response.
+            response_by_alias (bool): Whether to use alias names instead of attribute names in the response.
+            response_exclude_unset (bool): Exclude fields with default values from the response.
+            response_exclude_defaults (bool): Exclude fields that have default values even if explicitly set.
+            response_exclude_none (bool): Exclude fields with a `None` value from the response.
+            response_custom_encoder (Optional[CustomEncoder]): A custom encoder for specific field types.
+            response_json_encoder (JSONEncoder): A JSON encoder to serialize the response.
+            kwargs (Any): Additional internal arguments.
+
+        Returns:
+            RouterDeco: A decorator function to register the GET route handler.
         """
         return self.route(
             # aiohttp attrs
@@ -983,54 +747,32 @@ class RouteTableDef(AioHTTPRouteTableDef):
         response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
         **kwargs: Any,
     ) -> RouterDeco:
-        """Add a new RouteDef item for registering POST web-handler.
+        """Add a new RouteDef item for registering a POST web-handler.
 
         Args:
-            path:
-                Resource path spec.
-            name:
-                Optional resource name.
-            response_validate:
-                Flag determines whether the handler response should be validated.
-            response_type:
-                Handler response type.
-                This attribute is used to create the response model.
-                If this attribute is defined, it overrides the handler return annotation logic.
-            response_content_type:
-                Attribute defines the `Content-Type` header and performs post-processing of the endpoint handler return.
-            response_charset:
-                The `charset` that will be used to encode and decode handler result data.
-            response_zlib_executor:
-                Executor to use for zlib compression
-            response_zlib_executor_size:
-                Length in bytes which will trigger zlib compression of body to happen in an executor
-            response_include_fields:
-                Pydantic's `include` parameter, passed to Pydantic models to set the fields to include.
-            response_exclude_fields:
-                Pydantic's `exclude` parameter, passed to Pydantic models to set the fields to exclude.
-            response_by_alias:
-                Pydantic's `by_alias` parameter, passed to Pydantic models to define
-                if the output should use the alias names (when provided) or the Python
-                attribute names. In an API, if you set an alias, it's probably because you
-                want to use it in the result, so you probably want to leave this set to `True`.
-            response_exclude_unset:
-                Pydantic's `exclude_unset` parameter, passed to Pydantic models to define
-                if it should exclude from the output the fields that were not explicitly
-                set (and that only had their default values).
-            response_exclude_defaults:
-                Pydantic's `exclude_defaults` parameter, passed to Pydantic models to define
-                if it should exclude from the output the fields that had the same default
-                value, even when they were explicitly set.
-            response_exclude_none:
-                Pydantic's `exclude_none` parameter, passed to Pydantic models to define
-                if it should exclude from the output any fields that have a `None` value.
-            response_custom_encoder:
-                Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
-            response_json_encoder:
-                Any callable that accepts an object and returns a JSON string.
-                Will be used if dumps=True
-            kwargs:
-                Additional internal arguments.
+            path (str): Resource path spec.
+            name (Optional[str]): An optional resource name.
+            response_validate (bool): Whether the response should be validated (default is True).
+            response_type (Union[Type[Any], None, UnsetType]): The type of the response.
+                                                               Overrides return type annotation if set.
+            response_content_type (Union[str, ContentType, None]): The `Content-Type` header for the response.
+            response_charset (Union[str, Charset]): The charset for encoding/decoding response data.
+            response_zlib_executor (Optional[Executor]): Executor for zlib compression of response body.
+            response_zlib_executor_size (Optional[int]): Threshold for triggering zlib compression.
+            response_include_fields (Optional[Include]): Pydantic's `include` parameter
+                                                         to include specific fields in response.
+            response_exclude_fields (Optional[Exclude]): Pydantic's `exclude` parameter
+                                                         to exclude specific fields in response.
+            response_by_alias (bool): Whether to use alias names instead of attribute names in the response.
+            response_exclude_unset (bool): Exclude fields with default values from the response.
+            response_exclude_defaults (bool): Exclude fields that have default values even if explicitly set.
+            response_exclude_none (bool): Exclude fields with a `None` value from the response.
+            response_custom_encoder (Optional[CustomEncoder]): A custom encoder for specific field types.
+            response_json_encoder (JSONEncoder): A JSON encoder to serialize the response.
+            kwargs (Any): Additional internal arguments.
+
+        Returns:
+            RouterDeco: A decorator function to register the POST route handler.
         """
         return self.route(
             # aiohttp attrs
@@ -1076,54 +818,32 @@ class RouteTableDef(AioHTTPRouteTableDef):
         response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
         **kwargs: Any,
     ) -> RouterDeco:
-        """Add a new RouteDef item for registering PUT web-handler.
+        """Add a new RouteDef item for registering a PUT web-handler.
 
         Args:
-            path:
-                Resource path spec.
-            name:
-                Optional resource name.
-            response_validate:
-                Flag determines whether the handler response should be validated.
-            response_type:
-                Handler response type.
-                This attribute is used to create the response model.
-                If this attribute is defined, it overrides the handler return annotation logic.
-            response_content_type:
-                Attribute defines the `Content-Type` header and performs post-processing of the endpoint handler return.
-            response_charset:
-                The `charset` that will be used to encode and decode handler result data.
-            response_zlib_executor:
-                Executor to use for zlib compression
-            response_zlib_executor_size:
-                Length in bytes which will trigger zlib compression of body to happen in an executor
-            response_include_fields:
-                Pydantic's `include` parameter, passed to Pydantic models to set the fields to include.
-            response_exclude_fields:
-                Pydantic's `exclude` parameter, passed to Pydantic models to set the fields to exclude.
-            response_by_alias:
-                Pydantic's `by_alias` parameter, passed to Pydantic models to define
-                if the output should use the alias names (when provided) or the Python
-                attribute names. In an API, if you set an alias, it's probably because you
-                want to use it in the result, so you probably want to leave this set to `True`.
-            response_exclude_unset:
-                Pydantic's `exclude_unset` parameter, passed to Pydantic models to define
-                if it should exclude from the output the fields that were not explicitly
-                set (and that only had their default values).
-            response_exclude_defaults:
-                Pydantic's `exclude_defaults` parameter, passed to Pydantic models to define
-                if it should exclude from the output the fields that had the same default
-                value, even when they were explicitly set.
-            response_exclude_none:
-                Pydantic's `exclude_none` parameter, passed to Pydantic models to define
-                if it should exclude from the output any fields that have a `None` value.
-            response_custom_encoder:
-                Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
-            response_json_encoder:
-                Any callable that accepts an object and returns a JSON string.
-                Will be used if dumps=True
-            kwargs:
-                Additional internal arguments.
+            path (str): Resource path spec.
+            name (Optional[str]): An optional resource name.
+            response_validate (bool): Whether the response should be validated (default is True).
+            response_type (Union[Type[Any], None, UnsetType]): The type of the response.
+                                                               Overrides return type annotation if set.
+            response_content_type (Union[str, ContentType, None]): The `Content-Type` header for the response.
+            response_charset (Union[str, Charset]): The charset for encoding/decoding response data.
+            response_zlib_executor (Optional[Executor]): Executor for zlib compression of response body.
+            response_zlib_executor_size (Optional[int]): Threshold for triggering zlib compression.
+            response_include_fields (Optional[Include]): Pydantic's `include` parameter
+                                                         to include specific fields in response.
+            response_exclude_fields (Optional[Exclude]): Pydantic's `exclude` parameter
+                                                         to exclude specific fields in response.
+            response_by_alias (bool): Whether to use alias names instead of attribute names in the response.
+            response_exclude_unset (bool): Exclude fields with default values from the response.
+            response_exclude_defaults (bool): Exclude fields that have default values even if explicitly set.
+            response_exclude_none (bool): Exclude fields with a `None` value from the response.
+            response_custom_encoder (Optional[CustomEncoder]): A custom encoder for specific field types.
+            response_json_encoder (JSONEncoder): A JSON encoder to serialize the response.
+            kwargs (Any): Additional internal arguments.
+
+        Returns:
+            RouterDeco: A decorator function to register the PUT route handler.
         """
         return self.route(
             # aiohttp attrs
@@ -1169,54 +889,32 @@ class RouteTableDef(AioHTTPRouteTableDef):
         response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
         **kwargs: Any,
     ) -> RouterDeco:
-        """Add a new RouteDef item for registering PATCH web-handler.
+        """Add a new RouteDef item for registering a PATCH web-handler.
 
         Args:
-            path:
-                Resource path spec.
-            name:
-                Optional resource name.
-            response_validate:
-                Flag determines whether the handler response should be validated.
-            response_type:
-                Handler response type.
-                This attribute is used to create the response model.
-                If this attribute is defined, it overrides the handler return annotation logic.
-            response_content_type:
-                Attribute defines the `Content-Type` header and performs post-processing of the endpoint handler return.
-            response_charset:
-                The `charset` that will be used to encode and decode handler result data.
-            response_zlib_executor:
-                Executor to use for zlib compression
-            response_zlib_executor_size:
-                Length in bytes which will trigger zlib compression of body to happen in an executor
-            response_include_fields:
-                Pydantic's `include` parameter, passed to Pydantic models to set the fields to include.
-            response_exclude_fields:
-                Pydantic's `exclude` parameter, passed to Pydantic models to set the fields to exclude.
-            response_by_alias:
-                Pydantic's `by_alias` parameter, passed to Pydantic models to define
-                if the output should use the alias names (when provided) or the Python
-                attribute names. In an API, if you set an alias, it's probably because you
-                want to use it in the result, so you probably want to leave this set to `True`.
-            response_exclude_unset:
-                Pydantic's `exclude_unset` parameter, passed to Pydantic models to define
-                if it should exclude from the output the fields that were not explicitly
-                set (and that only had their default values).
-            response_exclude_defaults:
-                Pydantic's `exclude_defaults` parameter, passed to Pydantic models to define
-                if it should exclude from the output the fields that had the same default
-                value, even when they were explicitly set.
-            response_exclude_none:
-                Pydantic's `exclude_none` parameter, passed to Pydantic models to define
-                if it should exclude from the output any fields that have a `None` value.
-            response_custom_encoder:
-                Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
-            response_json_encoder:
-                Any callable that accepts an object and returns a JSON string.
-                Will be used if dumps=True
-            kwargs:
-                Additional internal arguments.
+            path (str): Resource path spec.
+            name (Optional[str]): An optional resource name.
+            response_validate (bool): Whether the response should be validated (default is True).
+            response_type (Union[Type[Any], None, UnsetType]): The type of the response.
+                                                               Overrides return type annotation if set.
+            response_content_type (Union[str, ContentType, None]): The `Content-Type` header for the response.
+            response_charset (Union[str, Charset]): The charset for encoding/decoding response data.
+            response_zlib_executor (Optional[Executor]): Executor for zlib compression of response body.
+            response_zlib_executor_size (Optional[int]): Threshold for triggering zlib compression.
+            response_include_fields (Optional[Include]): Pydantic's `include` parameter
+                                                         to include specific fields in response.
+            response_exclude_fields (Optional[Exclude]): Pydantic's `exclude` parameter
+                                                         to exclude specific fields in response.
+            response_by_alias (bool): Whether to use alias names instead of attribute names in the response.
+            response_exclude_unset (bool): Exclude fields with default values from the response.
+            response_exclude_defaults (bool): Exclude fields that have default values even if explicitly set.
+            response_exclude_none (bool): Exclude fields with a `None` value from the response.
+            response_custom_encoder (Optional[CustomEncoder]): A custom encoder for specific field types.
+            response_json_encoder (JSONEncoder): A JSON encoder to serialize the response.
+            kwargs (Any): Additional internal arguments.
+
+        Returns:
+            RouterDeco: A decorator function to register the PATCH route handler.
         """
         return self.route(
             # aiohttp attrs
@@ -1262,151 +960,37 @@ class RouteTableDef(AioHTTPRouteTableDef):
         response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
         **kwargs: Any,
     ) -> RouterDeco:
-        """Add a new RouteDef item for registering DELETE web-handler.
+        """Add a new RouteDef item for registering a DELETE web-handler.
 
         Args:
-            path:
-                Resource path spec.
-            name:
-                Optional resource name.
-            response_validate:
-                Flag determines whether the handler response should be validated.
-            response_type:
-                Handler response type.
-                This attribute is used to create the response model.
-                If this attribute is defined, it overrides the handler return annotation logic.
-            response_content_type:
-                Attribute defines the `Content-Type` header and performs post-processing of the endpoint handler return.
-            response_charset:
-                The `charset` that will be used to encode and decode handler result data.
-            response_zlib_executor:
-                Executor to use for zlib compression
-            response_zlib_executor_size:
-                Length in bytes which will trigger zlib compression of body to happen in an executor
-            response_include_fields:
-                Pydantic's `include` parameter, passed to Pydantic models to set the fields to include.
-            response_exclude_fields:
-                Pydantic's `exclude` parameter, passed to Pydantic models to set the fields to exclude.
-            response_by_alias:
-                Pydantic's `by_alias` parameter, passed to Pydantic models to define
-                if the output should use the alias names (when provided) or the Python
-                attribute names. In an API, if you set an alias, it's probably because you
-                want to use it in the result, so you probably want to leave this set to `True`.
-            response_exclude_unset:
-                Pydantic's `exclude_unset` parameter, passed to Pydantic models to define
-                if it should exclude from the output the fields that were not explicitly
-                set (and that only had their default values).
-            response_exclude_defaults:
-                Pydantic's `exclude_defaults` parameter, passed to Pydantic models to define
-                if it should exclude from the output the fields that had the same default
-                value, even when they were explicitly set.
-            response_exclude_none:
-                Pydantic's `exclude_none` parameter, passed to Pydantic models to define
-                if it should exclude from the output any fields that have a `None` value.
-            response_custom_encoder:
-                Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
-            response_json_encoder:
-                Any callable that accepts an object and returns a JSON string.
-                Will be used if dumps=True
-            kwargs:
-                Additional internal arguments.
+            path (str): Resource path spec.
+            name (Optional[str]): An optional resource name.
+            response_validate (bool): Whether the response should be validated (default is True).
+            response_type (Union[Type[Any], None, UnsetType]): The type of the response.
+                                                               Overrides return type annotation if set.
+            response_content_type (Union[str, ContentType, None]): The `Content-Type` header for the response.
+            response_charset (Union[str, Charset]): The charset for encoding/decoding response data.
+            response_zlib_executor (Optional[Executor]): Executor for zlib compression of response body.
+            response_zlib_executor_size (Optional[int]): Threshold for triggering zlib compression.
+            response_include_fields (Optional[Include]): Pydantic's `include` parameter
+                                                         to include specific fields in response.
+            response_exclude_fields (Optional[Exclude]): Pydantic's `exclude` parameter
+                                                         to exclude specific fields in response.
+            response_by_alias (bool): Whether to use alias names instead of attribute names in the response.
+            response_by_alias (bool): Whether to use alias names instead of attribute names in the response.
+            response_exclude_unset (bool): Exclude fields with default values from the response.
+            response_exclude_defaults (bool): Exclude fields that have default values even if explicitly set.
+            response_exclude_none (bool): Exclude fields with a `None` value from the response.
+            response_custom_encoder (Optional[CustomEncoder]): A custom encoder for specific field types.
+            response_json_encoder (JSONEncoder): A JSON encoder to serialize the response.
+            kwargs (Any): Additional internal arguments.
+
+        Returns:
+            RouterDeco: A decorator function to register the DELETE route handler.
         """
         return self.route(
             # aiohttp attrs
             METH_DELETE,
-            path,
-            name=name,
-            **kwargs,
-            # rapidy attrs
-            response_validate=response_validate,
-            response_type=response_type,
-            response_content_type=response_content_type,
-            response_charset=response_charset,
-            response_zlib_executor=response_zlib_executor,
-            response_zlib_executor_size=response_zlib_executor_size,
-            response_include_fields=response_include_fields,
-            response_exclude_fields=response_exclude_fields,
-            response_by_alias=response_by_alias,
-            response_exclude_unset=response_exclude_unset,
-            response_exclude_defaults=response_exclude_defaults,
-            response_exclude_none=response_exclude_none,
-            response_custom_encoder=response_custom_encoder,
-            response_json_encoder=response_json_encoder,
-        )
-
-    def view(
-        self,
-        path: str,
-        *,
-        name: Optional[str] = None,
-        response_validate: bool = True,
-        response_type: Union[Type[Any], None, UnsetType] = Unset,
-        response_content_type: Union[str, ContentType, None] = None,
-        response_charset: Union[str, Charset] = Charset.utf8,
-        response_zlib_executor: Optional[Executor] = None,
-        response_zlib_executor_size: Optional[int] = None,
-        response_include_fields: Optional[Include] = None,
-        response_exclude_fields: Optional[Exclude] = None,
-        response_by_alias: bool = True,
-        response_exclude_unset: bool = False,
-        response_exclude_defaults: bool = False,
-        response_exclude_none: bool = False,
-        response_custom_encoder: Optional[CustomEncoder] = None,
-        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-        **kwargs: Any,
-    ) -> RouterDeco:
-        """Add a new RouteDef item for adding class-based view handler.
-
-        Args:
-            path:
-                Resource path spec.
-            name:
-                Optional resource name.
-            response_validate:
-                Flag determines whether the handler response should be validated.
-            response_type:
-                Handler response type.
-                This attribute is used to create the response model.
-                If this attribute is defined, it overrides the handler return annotation logic.
-            response_content_type:
-                Attribute defines the `Content-Type` header and performs post-processing of the endpoint handler return.
-            response_charset:
-                The `charset` that will be used to encode and decode handler result data.
-            response_zlib_executor:
-                Executor to use for zlib compression
-            response_zlib_executor_size:
-                Length in bytes which will trigger zlib compression of body to happen in an executor
-            response_include_fields:
-                Pydantic's `include` parameter, passed to Pydantic models to set the fields to include.
-            response_exclude_fields:
-                Pydantic's `exclude` parameter, passed to Pydantic models to set the fields to exclude.
-            response_by_alias:
-                Pydantic's `by_alias` parameter, passed to Pydantic models to define
-                if the output should use the alias names (when provided) or the Python
-                attribute names. In an API, if you set an alias, it's probably because you
-                want to use it in the result, so you probably want to leave this set to `True`.
-            response_exclude_unset:
-                Pydantic's `exclude_unset` parameter, passed to Pydantic models to define
-                if it should exclude from the output the fields that were not explicitly
-                set (and that only had their default values).
-            response_exclude_defaults:
-                Pydantic's `exclude_defaults` parameter, passed to Pydantic models to define
-                if it should exclude from the output the fields that had the same default
-                value, even when they were explicitly set.
-            response_exclude_none:
-                Pydantic's `exclude_none` parameter, passed to Pydantic models to define
-                if it should exclude from the output any fields that have a `None` value.
-            response_custom_encoder:
-                Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
-            response_json_encoder:
-                Any callable that accepts an object and returns a JSON string.
-                Will be used if dumps=True
-            kwargs:
-                Additional internal arguments.
-        """
-        return self.route(
-            # aiohttp attrs
-            METH_ANY,
             path,
             name=name,
             **kwargs,
@@ -1448,54 +1032,33 @@ class RouteTableDef(AioHTTPRouteTableDef):
         response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
         **kwargs: Any,
     ) -> RouterDeco:
-        """Add a new RouteDef item for registering HEAD web-handler.
+        """Add a new RouteDef item for registering a HEAD web-handler.
 
         Args:
-            path:
-                Resource path spec.
-            name:
-                Optional resource name.
-            response_validate:
-                Flag determines whether the handler response should be validated.
-            response_type:
-                Handler response type.
-                This attribute is used to create the response model.
-                If this attribute is defined, it overrides the handler return annotation logic.
-            response_content_type:
-                Attribute defines the `Content-Type` header and performs post-processing of the endpoint handler return.
-            response_charset:
-                The `charset` that will be used to encode and decode handler result data.
-            response_zlib_executor:
-                Executor to use for zlib compression
-            response_zlib_executor_size:
-                Length in bytes which will trigger zlib compression of body to happen in an executor
-            response_include_fields:
-                Pydantic's `include` parameter, passed to Pydantic models to set the fields to include.
-            response_exclude_fields:
-                Pydantic's `exclude` parameter, passed to Pydantic models to set the fields to exclude.
-            response_by_alias:
-                Pydantic's `by_alias` parameter, passed to Pydantic models to define
-                if the output should use the alias names (when provided) or the Python
-                attribute names. In an API, if you set an alias, it's probably because you
-                want to use it in the result, so you probably want to leave this set to `True`.
-            response_exclude_unset:
-                Pydantic's `exclude_unset` parameter, passed to Pydantic models to define
-                if it should exclude from the output the fields that were not explicitly
-                set (and that only had their default values).
-            response_exclude_defaults:
-                Pydantic's `exclude_defaults` parameter, passed to Pydantic models to define
-                if it should exclude from the output the fields that had the same default
-                value, even when they were explicitly set.
-            response_exclude_none:
-                Pydantic's `exclude_none` parameter, passed to Pydantic models to define
-                if it should exclude from the output any fields that have a `None` value.
-            response_custom_encoder:
-                Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
-            response_json_encoder:
-                Any callable that accepts an object and returns a JSON string.
-                Will be used if dumps=True
-            kwargs:
-                Additional internal arguments.
+            path (str): Resource path spec.
+            name (Optional[str]): An optional resource name.
+            response_validate (bool): Whether the response should be validated (default is True).
+            response_type (Union[Type[Any], None, UnsetType]): The type of the response.
+                                                               Overrides return type annotation if set.
+            response_content_type (Union[str, ContentType, None]): The `Content-Type` header for the response.
+            response_charset (Union[str, Charset]): The charset for encoding/decoding response data.
+            response_zlib_executor (Optional[Executor]): Executor for zlib compression of response body.
+            response_zlib_executor_size (Optional[int]): Threshold for triggering zlib compression.
+            response_include_fields (Optional[Include]): Pydantic's `include` parameter
+                                                         to include specific fields in response.
+            response_exclude_fields (Optional[Exclude]): Pydantic's `exclude` parameter
+                                                         to exclude specific fields in response.
+            response_by_alias (bool): Whether to use alias names instead of attribute names in the response.
+            response_by_alias (bool): Whether to use alias names instead of attribute names in the response.
+            response_exclude_unset (bool): Exclude fields with default values from the response.
+            response_exclude_defaults (bool): Exclude fields that have default values even if explicitly set.
+            response_exclude_none (bool): Exclude fields with a `None` value from the response.
+            response_custom_encoder (Optional[CustomEncoder]): A custom encoder for specific field types.
+            response_json_encoder (JSONEncoder): A JSON encoder to serialize the response.
+            kwargs (Any): Additional internal arguments.
+
+        Returns:
+            RouterDeco: A decorator function to register the HEAD route handler.
         """
         return self.route(
             # aiohttp attrs
@@ -1541,58 +1104,106 @@ class RouteTableDef(AioHTTPRouteTableDef):
         response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
         **kwargs: Any,
     ) -> RouterDeco:
-        """Add a new RouteDef item for registering OPTIONS web-handler.
+        """Add a new RouteDef item for registering a OPTIONS web-handler.
 
         Args:
-            path:
-                Resource path spec.
-            name:
-                Optional resource name.
-            response_validate:
-                Flag determines whether the handler response should be validated.
-            response_type:
-                Handler response type.
-                This attribute is used to create the response model.
-                If this attribute is defined, it overrides the handler return annotation logic.
-            response_content_type:
-                Attribute defines the `Content-Type` header and performs post-processing of the endpoint handler return.
-            response_charset:
-                The `charset` that will be used to encode and decode handler result data.
-            response_zlib_executor:
-                Executor to use for zlib compression
-            response_zlib_executor_size:
-                Length in bytes which will trigger zlib compression of body to happen in an executor
-            response_include_fields:
-                Pydantic's `include` parameter, passed to Pydantic models to set the fields to include.
-            response_exclude_fields:
-                Pydantic's `exclude` parameter, passed to Pydantic models to set the fields to exclude.
-            response_by_alias:
-                Pydantic's `by_alias` parameter, passed to Pydantic models to define
-                if the output should use the alias names (when provided) or the Python
-                attribute names. In an API, if you set an alias, it's probably because you
-                want to use it in the result, so you probably want to leave this set to `True`.
-            response_exclude_unset:
-                Pydantic's `exclude_unset` parameter, passed to Pydantic models to define
-                if it should exclude from the output the fields that were not explicitly
-                set (and that only had their default values).
-            response_exclude_defaults:
-                Pydantic's `exclude_defaults` parameter, passed to Pydantic models to define
-                if it should exclude from the output the fields that had the same default
-                value, even when they were explicitly set.
-            response_exclude_none:
-                Pydantic's `exclude_none` parameter, passed to Pydantic models to define
-                if it should exclude from the output any fields that have a `None` value.
-            response_custom_encoder:
-                Pydantic's `custom_encoder` parameter, passed to Pydantic models to define a custom encoder.
-            response_json_encoder:
-                Any callable that accepts an object and returns a JSON string.
-                Will be used if dumps=True
-            kwargs:
-                Additional internal arguments.
+            path (str): Resource path spec.
+            name (Optional[str]): An optional resource name.
+            response_validate (bool): Whether the response should be validated (default is True).
+            response_type (Union[Type[Any], None, UnsetType]): The type of the response.
+                                                               Overrides return type annotation if set.
+            response_content_type (Union[str, ContentType, None]): The `Content-Type` header for the response.
+            response_charset (Union[str, Charset]): The charset for encoding/decoding response data.
+            response_zlib_executor (Optional[Executor]): Executor for zlib compression of response body.
+            response_zlib_executor_size (Optional[int]): Threshold for triggering zlib compression.
+            response_include_fields (Optional[Include]): Pydantic's `include` parameter
+                                                         to include specific fields in response.
+            response_exclude_fields (Optional[Exclude]): Pydantic's `exclude` parameter
+                                                         to exclude specific fields in response.
+            response_by_alias (bool): Whether to use alias names instead of attribute names in the response.
+            response_by_alias (bool): Whether to use alias names instead of attribute names in the response.
+            response_exclude_unset (bool): Exclude fields with default values from the response.
+            response_exclude_defaults (bool): Exclude fields that have default values even if explicitly set.
+            response_exclude_none (bool): Exclude fields with a `None` value from the response.
+            response_custom_encoder (Optional[CustomEncoder]): A custom encoder for specific field types.
+            response_json_encoder (JSONEncoder): A JSON encoder to serialize the response.
+            kwargs (Any): Additional internal arguments.
+
+        Returns:
+            RouterDeco: A decorator function to register the OPTIONS route handler.
         """
         return self.route(
             # aiohttp attrs
             METH_OPTIONS,
+            path,
+            name=name,
+            **kwargs,
+            # rapidy attrs
+            response_validate=response_validate,
+            response_type=response_type,
+            response_content_type=response_content_type,
+            response_charset=response_charset,
+            response_zlib_executor=response_zlib_executor,
+            response_zlib_executor_size=response_zlib_executor_size,
+            response_include_fields=response_include_fields,
+            response_exclude_fields=response_exclude_fields,
+            response_by_alias=response_by_alias,
+            response_exclude_unset=response_exclude_unset,
+            response_exclude_defaults=response_exclude_defaults,
+            response_exclude_none=response_exclude_none,
+            response_custom_encoder=response_custom_encoder,
+            response_json_encoder=response_json_encoder,
+        )
+
+    def view(
+        self,
+        path: str,
+        *,
+        name: Optional[str] = None,
+        response_validate: bool = True,
+        response_type: Union[Type[Any], None, UnsetType] = Unset,
+        response_content_type: Union[str, ContentType, None] = None,
+        response_charset: Union[str, Charset] = Charset.utf8,
+        response_zlib_executor: Optional[Executor] = None,
+        response_zlib_executor_size: Optional[int] = None,
+        response_include_fields: Optional[Include] = None,
+        response_exclude_fields: Optional[Exclude] = None,
+        response_by_alias: bool = True,
+        response_exclude_unset: bool = False,
+        response_exclude_defaults: bool = False,
+        response_exclude_none: bool = False,
+        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        **kwargs: Any,
+    ) -> RouterDeco:
+        """Add a new RouteDef item for registering ANY methods for a class-based view.
+
+        Args:
+            path (str): Resource path spec.
+            name (Optional[str]): An optional resource name.
+            response_validate (bool): Whether the response should be validated (default is True).
+            response_type (Union[Type[Any], None, UnsetType]): The type of the response.
+                                                               Overrides return type annotation if set.
+            response_content_type (Union[str, ContentType, None]): The `Content-Type` header for the response.
+            response_charset (Union[str, Charset]): The charset for encoding/decoding response data.
+            response_zlib_executor (Optional[Executor]): Executor for zlib compression of response body.
+            response_zlib_executor_size (Optional[int]): Threshold for triggering zlib compression.
+            response_include_fields (Optional[Include]): Pydantic's `include` parameter
+                                                         to include specific fields in response.
+            response_exclude_fields (Optional[Exclude]): Pydantic's `exclude` parameter
+                                                         to exclude specific fields in response.
+            response_by_alias (bool): Whether to use alias names instead of attribute names in the response.
+            response_by_alias (bool): Whether to use alias names instead of attribute names in the response.
+            response_exclude_unset (bool): Exclude fields with default values from the response.
+            response_exclude_defaults (bool): Exclude fields that have default values even if explicitly set.
+            response_exclude_none (bool): Exclude fields with a `None` value from the response.
+            response_custom_encoder (Optional[CustomEncoder]): A custom encoder for specific field types.
+            response_json_encoder (JSONEncoder): A JSON encoder to serialize the response.
+            kwargs (Any): Additional internal arguments.
+        """
+        return self.route(
+            # aiohttp attrs
+            METH_ANY,
             path,
             name=name,
             **kwargs,

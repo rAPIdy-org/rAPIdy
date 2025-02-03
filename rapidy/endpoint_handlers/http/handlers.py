@@ -18,6 +18,11 @@ if TYPE_CHECKING:
 
 
 class AllowHeadError(RapidyHandlerException):
+    """Exception raised when the `head` method cannot be automatically defined in `View`.
+
+    This occurs when the `get` method is not defined, which is required for `head` to be derived.
+    """
+
     message = (
         'Cannot automatically define the `head` method in `View` because the `get` method is not defined.'
         '\nThis is internal `rAPIdy` error, please open the issue - https://github.com/rAPIdy-org/rAPIdy/issues/new'
@@ -25,11 +30,17 @@ class AllowHeadError(RapidyHandlerException):
 
 
 class MethodNotFoundInViewError(RapidyHandlerException):
+    """Exception raised when a method is not found in the `View` class.
+
+    Attributes:
+        message (str): The error message describing the issue.
+    """
+
     message = 'Failed to register View - method named `{method_name}` was not found.'
 
 
 class MethodAlreadyRegisteredError(ValueError):
-    pass
+    """Exception raised when a method is already registered."""
 
 
 def handler_validation_wrapper(
@@ -51,6 +62,28 @@ def handler_validation_wrapper(
     response_exclude_none: bool,
     response_custom_encoder: Optional[CustomEncoder],
 ) -> Handler:
+    """Wraps the handler with validation and response preparation.
+
+    Args:
+        handler (Handler): The request handler to wrap.
+        response_validate (bool): Whether to validate the response.
+        response_type (Optional[Type[Any]]): The expected response type.
+        response_content_type (Union[str, ContentType, None]): The response content type.
+        response_charset (Union[str, Charset]): The charset for the response.
+        response_zlib_executor (Optional[Executor]): Executor for zlib compression.
+        response_zlib_executor_size (Optional[int]): Size for zlib compression.
+        response_json_encoder (JSONEncoder): JSON encoder for the response.
+        response_include_fields (Optional[Include]): Fields to include in the response.
+        response_exclude_fields (Optional[Exclude]): Fields to exclude from the response.
+        response_by_alias (bool): Whether to use alias for the response.
+        response_exclude_unset (bool): Whether to exclude unset fields.
+        response_exclude_defaults (bool): Whether to exclude default values.
+        response_exclude_none (bool): Whether to exclude fields with `None` values.
+        response_custom_encoder (Optional[CustomEncoder]): Custom encoder for the response.
+
+    Returns:
+        Handler: The wrapped handler function.
+    """
     handler_controller = controller_factory(
         handler,
         request_attr_can_declare=True,
@@ -72,6 +105,14 @@ def handler_validation_wrapper(
 
     @wraps(handler)
     async def inner(request: 'Request') -> StreamResponse:
+        """Inner function to handle the request, validate, and create a response.
+
+        Args:
+            request (Request): The HTTP request object.
+
+        Returns:
+            StreamResponse: The response to be sent back.
+        """
         pre_response: Optional[Response] = None
 
         validated_data = await handler_controller.validate_request(request)
@@ -123,6 +164,29 @@ def view_validation_wrapper(  # noqa: C901
     response_exclude_none: bool,
     response_custom_encoder: Optional[CustomEncoder],
 ) -> Type['View']:
+    """Wraps the view with validation for HTTP methods and response preparation.
+
+    Args:
+        view (Type['View']): The view class to wrap.
+        method (MethodName): The HTTP method to validate.
+        response_validate (bool): Whether to validate the response.
+        response_type (Optional[Type[Any]]): The expected response type.
+        response_content_type (Union[str, ContentType, None]): The response content type.
+        response_charset (Union[str, Charset]): The charset for the response.
+        response_zlib_executor (Optional[Executor]): Executor for zlib compression.
+        response_zlib_executor_size (Optional[int]): Size for zlib compression.
+        response_json_encoder (JSONEncoder): JSON encoder for the response.
+        response_include_fields (Optional[Include]): Fields to include in the response.
+        response_exclude_fields (Optional[Exclude]): Fields to exclude from the response.
+        response_by_alias (bool): Whether to use alias for the response.
+        response_exclude_unset (bool): Whether to exclude unset fields.
+        response_exclude_defaults (bool): Whether to exclude default values.
+        response_exclude_none (bool): Whether to exclude fields with `None` values.
+        response_custom_encoder (Optional[CustomEncoder]): Custom encoder for the response.
+
+    Returns:
+        Type['View']: The wrapped view class.
+    """
     handler_controllers = {}
     view_http_methods = {handler_attr for handler_attr in dir(view) if handler_attr.upper() in METH_ALL}
     # NOTE! `view` does not support parameter inheritance.
@@ -197,6 +261,14 @@ def view_validation_wrapper(  # noqa: C901
 
     @wraps(view)
     async def inner(request: 'Request') -> StreamResponse:
+        """Inner function to handle the request and create a response.
+
+        Args:
+            request (Request): The HTTP request object.
+
+        Returns:
+            StreamResponse: The response to be sent back.
+        """
         pre_response: Optional[Response] = None
 
         instance_view = view(request)
@@ -263,6 +335,29 @@ def middleware_validation_wrapper(
     response_exclude_none: bool,
     response_custom_encoder: Optional[CustomEncoder],
 ) -> Middleware:
+    """Wraps a middleware with validation and response preparation.
+
+    Args:
+        middleware (Middleware): The middleware to wrap.
+        response_validate (bool): Whether to validate the response.
+        response_type (Union[Type[Any], None, UnsetType]): The expected response type.
+        response_content_type (Union[str, ContentType, None]): The response content type.
+        response_charset (Union[str, Charset]): The charset for the response.
+        response_zlib_executor (Optional[Executor]): Executor for zlib compression.
+        response_zlib_executor_size (Optional[int]): Size for zlib compression.
+        response_json_encoder (JSONEncoder): JSON encoder for the response.
+        response_include_fields (Optional[Include]): Fields to include in the response.
+        response_exclude_fields (Optional[Exclude]): Fields to exclude from the response.
+        response_by_alias (bool): Whether to use alias for the response.
+        response_exclude_unset (bool): Whether to exclude unset fields.
+        response_exclude_defaults (bool): Whether to exclude default values.
+        response_exclude_none (bool): Whether to exclude fields with `None` values.
+        response_custom_encoder (Optional[CustomEncoder]): Custom encoder for the response.
+
+    Returns:
+        Middleware: The wrapped middleware function.
+    """
+
     handler_controller = controller_factory(
         middleware,
         response_validate=response_validate,

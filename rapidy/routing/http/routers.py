@@ -29,22 +29,50 @@ __all__ = (
 
 
 def is_dunder_name(name: str) -> bool:
+    """Check if the name is a dunder (double underscore) name.
+
+    Args:
+        name: The name to check.
+
+    Returns:
+        bool: True if the name is a dunder name, False otherwise.
+    """
     return len(name) > 4 and name[:2] == name[-2:] == '__' and name[2] != '_' and name[-3] != '_'  # noqa: PLR2004
 
 
 class MissingPathError(RapidyHandlerException):
+    """Exception raised when a handler does not contain a `path` attribute."""
+
     message = 'Handler must contain `path` attribute.'
 
 
 class HandlerIsNotAsyncFuncTypeError(RapidyException):
+    """Exception raised when a handler is not an async function."""
+
     message = 'Handler must be an async function. Current type: `{type_handler}`'
 
 
 def is_controller(handler: Any) -> bool:
+    """Check if the handler is a controller.
+
+    Args:
+        handler: The handler to check.
+
+    Returns:
+        bool: True if the handler is a controller, False otherwise.
+    """
     return isinstance(handler, controller)
 
 
 class HTTPRouteHandler(BaseHTTPRouter, ABC):
+    """Base class for HTTP route handlers.
+
+    Attributes:
+        _method_name: The HTTP method name.
+        _set_route_kwargs: Dictionary of route kwargs that have been explicitly set.
+        _route_kwargs: Dictionary of route kwargs with default values.
+    """
+
     _method_name: MethodName
 
     _set_route_kwargs: dict[str, Any]
@@ -70,7 +98,26 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         response_json_encoder: Union[JSONEncoder, UnsetType] = Unset,
         **kwargs: Any,
     ) -> None:
-        """Method is required to detect overridden values."""
+        """Initialize the HTTPRouteHandler.
+
+        Args:
+            path: The path for the route.
+            response_validate: Flag to determine if the response should be validated.
+            response_type: The type of the response.
+            response_content_type: The content type of the response.
+            response_charset: The charset of the response.
+            response_zlib_executor: Executor for zlib compression.
+            response_zlib_executor_size: Size threshold for zlib compression.
+            response_include_fields: Fields to include in the response.
+            response_exclude_fields: Fields to exclude from the response.
+            response_by_alias: Whether to use alias names in the response.
+            response_exclude_unset: Whether to exclude unset fields from the response.
+            response_exclude_defaults: Whether to exclude fields with default values.
+            response_exclude_none: Whether to exclude fields with None values.
+            response_custom_encoder: Custom encoder for the response.
+            response_json_encoder: JSON encoder for the response.
+            **kwargs: Additional keyword arguments.
+        """
         raw_kwargs = {
             'response_validate': response_validate,
             'response_type': response_type,
@@ -111,9 +158,25 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
         **kwargs: Any,
     ) -> None:
-        """True __init__ method.
+        """Initialize the route handler with default values.
 
-        Method is necessary for convenient management of default values.
+        Args:
+            path: The path for the route.
+            response_validate: Flag to determine if the response should be validated.
+            response_type: The type of the response.
+            response_content_type: The content type of the response.
+            response_charset: The charset of the response.
+            response_zlib_executor: Executor for zlib compression.
+            response_zlib_executor_size: Size threshold for zlib compression.
+            response_include_fields: Fields to include in the response.
+            response_exclude_fields: Fields to exclude from the response.
+            response_by_alias: Whether to use alias names in the response.
+            response_exclude_unset: Whether to exclude unset fields from the response.
+            response_exclude_defaults: Whether to exclude fields with default values.
+            response_exclude_none: Whether to exclude fields with None values.
+            response_custom_encoder: Custom encoder for the response.
+            response_json_encoder: JSON encoder for the response.
+            **kwargs: Additional keyword arguments.
         """
         self._route_kwargs = {
             'response_validate': response_validate,
@@ -233,6 +296,13 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
 
 
 class HTTPRouter(BaseHTTPRouter):
+    """HTTP router for grouping route handlers.
+
+    Attributes:
+        path: The base path for the router.
+        application: The application instance.
+    """
+
     __slots__ = (
         'path',
         'application',
@@ -253,13 +323,11 @@ class HTTPRouter(BaseHTTPRouter):
         """Create an `rapidy` HTTPRouter instance.
 
         Args:
-            path:
-                HTTPRouter base path.
-            route_handlers:
-                A iterable of `rapidy.routing.http.base.BaseHTTPRouter`.
-                All passed handlers will be registered in the application.
-                >>> from rapidy import web
-                >>> from rapidy.http import get, HTTPRouterType
+            path: HTTPRouter base path.
+            route_handlers: A iterable of `rapidy.routing.http.base.BaseHTTPRouter`.
+                            All passed handlers will be registered in the application.
+                >>> from rapidy import Rapidy
+                >>> from rapidy.http import get, HTTPRouter
                 >>>
                 >>> @get('/app_path1')
                 >>> async def app_handler1() -> None: pass
@@ -271,7 +339,7 @@ class HTTPRouter(BaseHTTPRouter):
                 >>>
                 >>> async def router_handler2() -> None: pass
                 >>>
-                >>> api_router = HTTPRouterType(
+                >>> api_router = HTTPRouter(
                 >>>     '/api',
                 >>>     route_handlers=[
                 >>>         router_handler1,
@@ -279,23 +347,19 @@ class HTTPRouter(BaseHTTPRouter):
                 >>>     ],
                 >>> )
                 >>>
-                >>> app = web.Application(
+                >>> rapidy = Rapidy(
                 >>>     http_route_handlers=[
                 >>>         api_router,  # add router
                 >>>         app_handler1,
                 >>>         get.reg('/app_path2', app_handler2),
                 >>>     ]
                 >>> )
-            middlewares:
-                List of middleware factories.
-            client_max_size:
-                Client`s maximum size in a request, in bytes.
-                If a POST request exceeds this value, it raises an HTTPRequestEntityTooLarge exception.
-            lifespan:
-                A list of callables returning async context managers,
-                wrapping the lifespan of the application.
+            middlewares: A list of middleware applied to the router.
+            client_max_size: Client`s maximum size in a request, in bytes.
+            lifespan: A list of callables returning async context managers,
+                      wrapping the lifespan of the application.
                 >>> @asynccontextmanager
-                >>> async def lifespan_ctx(app: web.Application) -> AsyncGenerator[None, None]:
+                >>> async def lifespan_ctx(rapidy: Rapidy) -> AsyncGenerator[None, None]:
                 >>>     try:
                 >>>         await startup_func()
                 >>>             yield
@@ -303,13 +367,12 @@ class HTTPRouter(BaseHTTPRouter):
                 >>>         await shutdown_func()
 
                 You can set this in two ways:
-                >>> app = web.Application(lifespan=[lifespan_ctx, ...], ...)
+                >>> rapidy = Rapidy(lifespan=[lifespan_ctx, ...], ...)
                 or
-                >>> app.lifespan.append(lifespan_ctx)
-            on_startup:
-                A sequence of `rapidy.typedefs.LifespanHook` called during application startup.
-                Developers may use this to run background tasks in the event loop
-                along with the application`s request handler just after the application start-up.
+                >>> rapidy.lifespan.append(lifespan_ctx)
+            on_startup: A sequence of `rapidy.typedefs.LifespanHook` called during application startup.
+                        Developers may use this to run background tasks in the event loop
+                        along with the application`s request handler just after the application start-up.
                 >>> def on_startup(app):
                 >>>     pass
 
@@ -323,13 +386,12 @@ class HTTPRouter(BaseHTTPRouter):
                 >>>     pass
 
                 You can set this in two ways:
-                >>> app = web.Application(on_startup=[on_startup, ...], ...)
+                >>> rapidy = Rapidy(on_startup=[on_startup, ...], ...)
                 or
-                >>> app.lifespan.on_startup.append(on_startup)
-            on_shutdown:
-                A sequence of `rapidy.types.LifespanHook` called during application shutdown.
-                Developers may use this for gracefully closing long running connections,
-                e.g. websockets and data streaming.
+                >>> rapidy.lifespan.on_startup.append(on_startup)
+            on_shutdown: A sequence of `rapidy.types.LifespanHook` called during application shutdown.
+                         Developers may use this for gracefully closing long running connections,
+                         e.g. websockets and data streaming.
                 >>> def on_shutdown(app):
                 >>>     pass
 
@@ -342,13 +404,12 @@ class HTTPRouter(BaseHTTPRouter):
                 >>> async def on_shutdown():
                 >>>     pass
                 You can set this in two ways:
-                >>> app = web.Application(on_shutdown=[on_shutdown, ...], ...)
+                >>> rapidy = Rapidy(on_shutdown=[on_shutdown, ...], ...)
                 or
-                >>> app.lifespan.on_shutdown.append(on_shutdown)
-            on_cleanup:
-                A sequence of `rapidy.types.LifespanHook` called during application cleanup.
-                Developers may use this for gracefully closing connections to database server etc.
-                Signal handlers should have the following signature:
+                >>> rapidy.lifespan.on_shutdown.append(on_shutdown)
+            on_cleanup: A sequence of `rapidy.types.LifespanHook` called during application cleanup.
+                        Developers may use this for gracefully closing connections to database server etc.
+                        Signal handlers should have the following signature:
                 >>> def on_cleanup(app):
                 >>>     pass
 
@@ -361,7 +422,7 @@ class HTTPRouter(BaseHTTPRouter):
                 >>> async def on_cleanup():
                 >>>     pass
 
-                >>> app = web.Application(on_cleanup=[on_cleanup, ...], ...)
+                >>> rapidy = Rapidy(on_cleanup=[on_cleanup, ...], ...)
         """
         super().__init__(path=path)
 
@@ -380,14 +441,28 @@ class HTTPRouter(BaseHTTPRouter):
 
 
 class HTTPMethodRouteHandler(HTTPRouteHandler):
+    """HTTP method route handler."""
+
     def __call__(self, handler: Handler) -> HTTPRouteHandler:
-        """Wrap handler into a route handler."""
+        """Wrap handler into a route handler.
+
+        Args:
+            handler: The handler to wrap.
+
+        Returns:
+            HTTPRouteHandler: The wrapped handler.
+
+        Raises:
+            HandlerIsNotAsyncFuncTypeError: If the handler is not an async function.
+        """
         if is_async_callable(handler):
             return super().__call__(handler)
         raise HandlerIsNotAsyncFuncTypeError(type_handler=str(type(handler)))
 
 
 class controller(HTTPRouteHandler):
+    """Class-based view handler."""
+
     _method_name = MethodName.any
 
     def __init__(

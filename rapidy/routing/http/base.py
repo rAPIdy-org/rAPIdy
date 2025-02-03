@@ -8,16 +8,39 @@ if TYPE_CHECKING:
 
 
 class IncorrectPathError(RapidyException):
-    """IncorrectPathError."""
+    """Exception raised when the 'path' attribute is incorrectly formatted.
+
+    Attributes:
+        message (str): Error message template that includes the incorrect path.
+    """
 
     message = 'Attribute `path` must start with a slash `/`, not `{path}`.'
 
 
 class BaseHTTPRouter(ABC):
-    """BaseHTTPRouter."""
+    """Abstract base class for HTTP routers in the application.
+
+    This class serves as a base for routers that handle routing logic for HTTP requests.
+    It ensures the validity of the `path` attribute and defines an abstract method
+    for route registration in a `Rapidy` application.
+
+    Attributes:
+        path (Optional[str]): The path for the router, which must start with a slash ('/').
+                              If None is provided, the router must be a sub-route
+                              (path is inherited from the controller router).
+    """
 
     def __init__(self, path: Optional[str]) -> None:
-        """Initialize BaseHTTPRouter."""
+        """Initializes the BaseHTTPRouter instance.
+
+        Args:
+            path (Optional[str]): The path for the router, which must start with a slash ('/').
+                                  If None is provided, the router must be a sub-route
+                                  (path is inherited from the controller router).
+
+        Raises:
+            IncorrectPathError: If the provided path does not start with a slash.
+        """
         if path is not None and not path.startswith('/'):
             raise IncorrectPathError(path=path)
 
@@ -25,5 +48,15 @@ class BaseHTTPRouter(ABC):
 
     @abstractmethod
     def route_register(self, application: 'Rapidy') -> None:
-        """Abstract method for registering in an application."""
+        """Registers the router with the given application.
+
+        This is an abstract method that must be implemented by subclasses to register the
+        router with an application.
+
+        Args:
+            application (Rapidy): The application in which the router should be registered.
+
+        Raises:
+            NotImplementedError: This method must be overridden by subclasses.
+        """
         raise NotImplementedError

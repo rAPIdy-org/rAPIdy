@@ -24,6 +24,13 @@ from rapidy.typedefs import Handler, Undefined
 
 
 class RequestFieldAlreadyExistsError(RapidyHandlerException):
+    """Raised when a request parameter is defined twice in the handler's attributes.
+
+    This error occurs when the first attribute of the handler is not annotated, and `rapidy`
+    will automatically assign `web.Request` to the first attribute. The error indicates that
+    the parameter has been defined more than once.
+    """
+
     message = (
         'Error during attribute definition in the handler - request param defined twice. '
         'The error may be because the first attribute of the handler is not annotated. '
@@ -36,6 +43,23 @@ def raise_if_stream_reader_def_incorrectly(
     # only to create context with exception
     handler: Handler,
 ) -> None:
+    """Raises an error if the stream reader definition is incorrect.
+
+    This function checks whether the `body_attr` (which represents an HTTP request attribute)
+    is defined incorrectly. The following conditions are checked:
+    1. If the field is optional.
+    2. If the field has a default value.
+    3. If the field has a default factory.
+
+    Args:
+        body_attr (HTTPRequestAttr): The HTTP request attribute to check.
+        handler (Handler): The handler that the attribute belongs to, used for exception context.
+
+    Raises:
+        CannotBeOptionalError: If the field is marked as optional.
+        ParameterCannotUseDefaultError: If the field has a default value.
+        ParameterCannotUseDefaultFactoryError: If the field has a default factory.
+    """
     if is_optional(body_attr.field_annotation):
         raise CannotBeOptionalError.create(
             annotation=body_attr.attribute_annotation,
@@ -63,6 +87,17 @@ def raise_if_stream_reader_def_incorrectly(
 
 @define(slots=True)
 class HTTPHandlerInfo(HandlerRawInfo):
+    """Contains information about the HTTP handler attributes.
+
+    This class extends `HandlerRawInfo` to add specific attributes related to the HTTP request
+    and response, such as request parameters and request/response attributes.
+
+    Attributes:
+        request_attribute (Optional[Attr]): The attribute representing the HTTP request.
+        response_attribute (Optional[Attr]): The attribute representing the HTTP response.
+        request_params (List[HTTPRequestAttr]): A list of HTTP request parameters.
+    """
+
     request_attribute: Optional[Attr] = None
     response_attribute: Optional[Attr] = None
     request_params: List[HTTPRequestAttr] = Factory(list)
@@ -73,6 +108,24 @@ def get_http_handler_info(
     *,
     request_attr_can_declare: bool,
 ) -> HTTPHandlerInfo:
+    """Generates the HTTP handler information from the given handler.
+
+    This function processes the handler to extract details about its request and response
+    attributes, as well as the request parameters. It ensures that the handler's attributes
+    are properly annotated and checks for potential errors (e.g., multiple definitions of
+    `web.Request`).
+
+    Args:
+        handler (Handler): The handler to extract information from.
+        request_attr_can_declare (bool): Flag indicating whether the request attribute can be declared.
+
+    Returns:
+        HTTPHandlerInfo: The processed information about the HTTP handler, including its attributes
+        and request parameters.
+
+    Raises:
+        RequestFieldAlreadyExistsError: If the request field is defined more than once.
+    """
     handler_raw_info = get_handler_raw_info(handler=handler)
 
     http_handler_info = HTTPHandlerInfo(
