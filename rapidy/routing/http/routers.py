@@ -255,14 +255,16 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
             kwargs=self._route_kwargs,
         )
         if is_controller(self):
-            for handler_attr_name in dir(self._handler):
+            controller_instance = self._handler()
+
+            for handler_attr_name in dir(controller_instance):
                 if is_dunder_name(handler_attr_name):
                     continue
 
-                handler_attr = getattr(self._handler, handler_attr_name)
+                handler_attr = getattr(controller_instance, handler_attr_name)
                 if isinstance(handler_attr, HTTPRouteHandler):
                     handler_attr._handler = HandlerPartial(  # noqa: SLF001
-                        controller_instance=self._handler,
+                        controller_instance=controller_instance,
                         handler=handler_attr._handler,  # noqa: SLF001
                     )
                     handler_attr.path = self._create_sub_route_path(sub_path=handler_attr.path)

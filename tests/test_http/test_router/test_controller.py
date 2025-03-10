@@ -183,3 +183,20 @@ async def test_path_empty() -> None:
             @get()
             async def get(self) -> None:
                 pass
+
+
+async def test_instance(aiohttp_client: AiohttpClient) -> None:
+    @controller('/')
+    class Controller:
+        def __init__(self) -> None:
+            self.foo = True
+
+        @get()
+        async def get(self) -> None:
+            assert self.foo
+
+    app = Rapidy(http_route_handlers=[Controller])
+    client = await aiohttp_client(app)
+
+    resp = await client.get('/')
+    assert resp.status == 200
