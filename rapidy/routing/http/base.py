@@ -1,10 +1,38 @@
 from abc import ABC, abstractmethod
-from typing import Optional, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING
 
 from rapidy._base_exceptions import RapidyException
 
 if TYPE_CHECKING:
     from rapidy import Rapidy
+
+
+class RouterTypeError(RapidyException):
+    """Exception raised when `route_handler` is not a subclass of `BaseHTTPRouter`."""
+
+    message = """
+    `route_handler` must be a subclass of `BaseHTTPRouter`
+
+    Examples:
+    >>> from rapidy.http import get, controller, PathParam
+
+    >>> @get("/{user_id}")  # <-- `get` deco
+    >>> async def some_get(self, user_id: str = PathParam()) -> None:
+    >>>    pass
+
+    >>> @controller("/")  # <-- `controller` deco
+    >>> class SomeController§(web.View):
+    >>>     @get("/{user_id}")  # <-- `get` deco
+    >>>     async def some_get(self, user_id: str = PathParam()) -> None:
+    >>>         pass
+
+    >>> api_router = HTTPRouter(
+    >>>     '/api',
+    >>>     route_handlers=[
+    >>>     ],
+    >>> )
+    )
+    """
 
 
 class IncorrectPathError(RapidyException):
@@ -60,3 +88,19 @@ class BaseHTTPRouter(ABC):
             NotImplementedError: This method must be overridden by subclasses.
         """
         raise NotImplementedError
+
+
+def raise_if_not_base_http_router(obj: Any) -> None:
+    """Checks whether the given object is an instance of HTTPRouter.
+
+    This check serves as an additional safeguard since mypy
+    does not fully support type checking for class decorators.
+
+    Args:
+        obj: The object to check.
+
+    Raises:
+        NotBaseHTTPRouterError: If the handler is not an async function.
+    """
+    if not isinstance(obj, BaseHTTPRouter):
+        raise RouterTypeError

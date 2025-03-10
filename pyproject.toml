@@ -80,6 +80,7 @@ ignore = [
     "EM101",    # Exception must not use a string literal, assign to variable first
     "FA100",    # Add `from __future__ import annotations` to simplify `typing.Dict`
     "FA102",    # Missing `from __future__ import annotations`, but uses PEP 604 union
+    "FIX001",   # Line contains FIXME, consider resolving the issue
     "PLR0911",  # Too many return statements (X > 6)
     "PLR0913",  # Too many arguments in function definition (X > 5)
     "RUF022",   # `__all__` is not sorted - fixme later
@@ -87,7 +88,9 @@ ignore = [
     "TC001",    # Move application import `X` into a type-checking block
     "TC003",    # Move standard library import `X` into a type-checking block
     "TD001",    # Invalid TODO tag: `FIXME`
+    "TD002",    # Missing author in TODO
     "TD003",    # Missing issue link on the line following this TODO
+    "TD005",    # Missing issue description after `TODO`
 ]
 
 [tool.ruff.lint.flake8-quotes]

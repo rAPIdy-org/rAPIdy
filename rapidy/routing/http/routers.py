@@ -313,7 +313,8 @@ class HTTPRouter(BaseHTTPRouter):
     def __init__(
         self,
         path: str,
-        route_handlers: Iterable[BaseHTTPRouter] = (),
+        # FIXME: Fix `Any` after mypy improves type checking for cls deco
+        route_handlers: Iterable[Union[BaseHTTPRouter, Any]] = (),
         *,
         middlewares: Optional[Iterable[Middleware]] = None,
         client_max_size: int = CLIENT_MAX_SIZE,

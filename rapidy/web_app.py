@@ -1,7 +1,7 @@
 import contextlib
 import logging
 import warnings
-from typing import Any, AsyncGenerator, Callable, Coroutine, Iterable, Iterator, List, Mapping, Optional, Tuple
+from typing import Any, AsyncGenerator, Callable, Coroutine, Iterable, Iterator, List, Mapping, Optional, Tuple, Union
 
 from aiohttp.log import web_logger
 from aiohttp.web_app import (
@@ -11,12 +11,11 @@ from aiohttp.web_app import (
 from aiohttp.web_middlewares import _fix_request_current_app
 from aiohttp.web_request import Request
 
-from rapidy._base_exceptions import RapidyException
 from rapidy.constants import CLIENT_MAX_SIZE
 from rapidy.endpoint_handlers.http.handlers import middleware_validation_wrapper
 from rapidy.enums import HeaderName
 from rapidy.lifespan import Lifespan, LifespanCTX, LifespanHook
-from rapidy.routing.http.base import BaseHTTPRouter
+from rapidy.routing.http.base import raise_if_not_base_http_router
 from rapidy.typedefs import BaseHTTPRouterType, Middleware
 from rapidy.version import SERVER_INFO
 from rapidy.web_middlewares import get_middleware_attr_data, is_aiohttp_new_style_middleware, is_rapidy_middleware
@@ -29,34 +28,6 @@ __all__ = (
 )
 
 InnerDeco = Callable[[], Coroutine[Any, Any, None]]
-
-
-class RouterTypeError(RapidyException):
-    """Exception raised when `route_handler` is not a subclass of `BaseHTTPRouter`."""
-
-    message = """
-    `route_handler` must be a subclass of `BaseHTTPRouter`
-
-    Examples:
-    >>> from rapidy.http import get, controller, PathParam
-
-    >>> @get("/{user_id}")  # <-- `get` deco
-    >>> async def some_get(self, user_id: str = PathParam()) -> None:
-    >>>    pass
-
-    >>> @controller("/")  # <-- `controller` deco
-    >>> class SomeController§(web.View):
-    >>>     @get("/{user_id}")  # <-- `get` deco
-    >>>     async def some_get(self, user_id: str = PathParam()) -> None:
-    >>>         pass
-
-    >>> api_router = HTTPRouter(
-    >>>     '/api',
-    >>>     route_handlers=[
-    >>>     ],
-    >>> )
-    )
-    """
 
 
 def server_info_wrapper(*, show_info: bool = False) -> Callable[[Any], InnerDeco]:
@@ -116,7 +87,8 @@ class Application(AiohttpApplication):
         on_startup: Optional[List[LifespanHook]] = None,
         on_shutdown: Optional[List[LifespanHook]] = None,
         on_cleanup: Optional[List[LifespanHook]] = None,
-        http_route_handlers: Iterable[BaseHTTPRouterType] = (),
+        # FIXME(daniil_grois): Fix `Any` after mypy improves type checking for cls deco
+        http_route_handlers: Iterable[Union[BaseHTTPRouterType, Any]] = (),
     ) -> None:
         """Initializes the Application instance with various configuration options.
 
@@ -218,7 +190,11 @@ class Application(AiohttpApplication):
 
         self.add_http_routers(http_route_handlers)
 
-    def add_http_router(self, http_router: BaseHTTPRouterType) -> None:
+    def add_http_router(
+        self,
+        # FIXME(daniil_grois): Fix `Any` after mypy improves type checking for cls deco
+        http_router: Union[BaseHTTPRouterType, Any],
+    ) -> None:
         """Adds an HTTP router to the application.
 
         Args:
@@ -227,12 +203,15 @@ class Application(AiohttpApplication):
         Raises:
             RouterTypeError: If the provided `http_router` is not an instance of `BaseHTTPRouter`.
         """
-        if not isinstance(http_router, BaseHTTPRouter):
-            raise RouterTypeError
+        raise_if_not_base_http_router(http_router)
 
         http_router.route_register(application=self)
 
-    def add_http_routers(self, route_handlers: Iterable[BaseHTTPRouterType]) -> None:
+    def add_http_routers(
+        self,
+        # FIXME: Fix `Any` after mypy improves type checking for cls deco
+        route_handlers: Iterable[Union[BaseHTTPRouterType, Any]],
+    ) -> None:
         """Adds multiple HTTP routers to the application.
 
         Args:

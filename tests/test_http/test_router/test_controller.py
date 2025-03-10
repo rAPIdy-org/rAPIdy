@@ -4,8 +4,7 @@ from aiohttp.pytest_plugin import AiohttpClient
 from rapidy import Rapidy
 from rapidy.enums import ContentType, MethodName
 from rapidy.http import controller, delete, get, head, options, patch, PathParam, post, put
-from rapidy.routing.http.base import IncorrectPathError
-from rapidy.web_app import RouterTypeError
+from rapidy.routing.http.base import IncorrectPathError, RouterTypeError
 from tests.test_http.test_router.helpers import parametrize_method_names
 
 

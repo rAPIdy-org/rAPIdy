@@ -206,7 +206,7 @@ def view_validation_wrapper(  # noqa: C901
         except AttributeError as method_not_found_error:
             raise MethodNotFoundInViewError(method_name=method_name) from method_not_found_error
 
-        # FIXME(daniil.grois): duplicate code  # noqa: FIX001
+        # FIXME(daniil.grois): duplicate code
         handler_controllers[method_name] = controller_factory(
             method_handler,
             response_validate=response_validate,
@@ -227,7 +227,7 @@ def view_validation_wrapper(  # noqa: C901
 
     else:
         for method_name in view_http_methods:
-            # FIXME(daniil.grois):  # noqa: FIX001
+            # FIXME(daniil.grois):
             #  rapidy always re-creates a controller wrapper over each handler
             #  even if some methods have already been defined beforehand
             #  NOTE: only affects the creation of unnecessary objects
@@ -235,7 +235,7 @@ def view_validation_wrapper(  # noqa: C901
             #  >>> app.router.add_get('/test/{foo}', FooView)
             #  >>> app.router.add_view('/test', FooView)  # recreate all controllers
 
-            # FIXME(daniil.grois): duplicate code  # noqa: FIX001
+            # FIXME(daniil.grois): duplicate code
             try:
                 method_handler: Handler = getattr(view, method_name)  # type: ignore[no-redef]
             except AttributeError as method_not_found_error:

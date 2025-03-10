@@ -211,7 +211,7 @@ else:
         Args:
             error (Dict[str, Any]): The error dictionary to clean up.
         """
-        # TODO: need advice - not sure about this  # noqa: FIX002, TD002
+        # TODO: need advice - not sure about this  # noqa: FIX002
         error.pop('url', None)
         error.pop('input', None)
 

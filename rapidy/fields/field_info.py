@@ -172,7 +172,7 @@ if PYDANTIC_IS_V1:
 else:
 
     def copy_field_info(*, field_info: RapidyFieldInfo, annotation: Any) -> RapidyFieldInfo:
-        # FIXME:  # noqa: FIX001, TD002
+        # FIXME:
         #  If the desired data type is of type `Union` (pydantic.UUID4, ...), the metadata will be assembled according
         #  to the parameter definition.
         #  Example: `data: Annotated[UUID4, Body(regex='some')`

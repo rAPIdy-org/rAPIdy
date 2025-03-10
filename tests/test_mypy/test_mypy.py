@@ -37,7 +37,7 @@ def _get_mypy_expected_out_by_path(path: Path) -> str:
         return mypy_out_file.read()
 
 
-check_default_dirs = [  # FIXME: os.walk  # noqa: FIX001, TD002
+check_default_dirs = [  # FIXME: os.walk
     'path',
     'header',
     'cookie',
