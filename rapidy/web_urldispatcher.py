@@ -1,5 +1,6 @@
 from abc import ABC
 from concurrent.futures import Executor
+from http import HTTPStatus
 from types import FunctionType
 from typing import Any, cast, Final, Optional, Type, Union
 
@@ -65,6 +66,7 @@ def wrap_handler(
     """
     return wrapper(
         handler,
+        status_code=kwargs.pop('status_code'),
         response_validate=kwargs.pop('response_validate'),
         response_type=kwargs.pop('response_type'),
         response_content_type=kwargs.pop('response_content_type'),
@@ -239,6 +241,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         *,
         name: Optional[str] = None,
         allow_head: bool = True,
+        status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
         response_validate: bool = True,
         response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
         response_content_type: Union[str, ContentType, None] = None,
@@ -262,6 +265,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             handler (HandlerOrView): Route handler.
             name (Optional[str]): Optional resource name.
             allow_head (bool): If True (default), allows a HEAD route with the same handler as GET.
+            status_code (int): The default status code to be used for the response.
             response_validate (bool): Flag determining if the handler response should be validated.
             response_type (Union[Type[Any], None, UnsetType]): Handler response type, overrides the
                                                                return annotation if set.
@@ -289,6 +293,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             resource.add_route(
                 METH_HEAD,
                 handler,
+                status_code=status_code,
                 response_validate=response_validate,
                 response_type=response_type,
                 response_content_type=response_content_type,
@@ -308,6 +313,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         return resource.add_route(
             METH_GET,
             handler,
+            status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -331,6 +337,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         handler: HandlerOrView,
         *,
         name: Optional[str] = None,
+        status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
         response_validate: bool = True,
         response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
         response_content_type: Union[str, ContentType, None] = None,
@@ -353,6 +360,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             path (str): Resource path spec.
             handler (HandlerOrView): Route handler.
             name (Optional[str]): Optional resource name.
+            status_code (int): The default status code to be used for the response.
             response_validate (bool): Flag determining if the handler response should be validated.
             response_type (Union[Type[Any], None, UnsetType]): Handler response type, overrides the
                                                                return annotation if set.
@@ -383,6 +391,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             name=name,
             **kwargs,
             # rapidy attrs
+            status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -405,6 +414,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         handler: HandlerOrView,
         *,
         name: Optional[str] = None,
+        status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
         response_validate: bool = True,
         response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
         response_content_type: Union[str, ContentType, None] = None,
@@ -427,6 +437,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             path (str): Resource path spec.
             handler (HandlerOrView): Route handler.
             name (Optional[str]): Optional resource name.
+            status_code (int): The default status code to be used for the response.
             response_validate (bool): Flag determining if the handler response should be validated.
             response_type (Union[Type[Any], None, UnsetType]): Handler response type, overrides the
                                                                return annotation if set.
@@ -457,6 +468,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             name=name,
             **kwargs,
             # rapidy attrs
+            status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -479,6 +491,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         handler: HandlerOrView,
         *,
         name: Optional[str] = None,
+        status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
         response_validate: bool = True,
         response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
         response_content_type: Union[str, ContentType, None] = None,
@@ -501,6 +514,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             path (str): Resource path spec.
             handler (HandlerOrView): Route handler.
             name (Optional[str]): Optional resource name.
+            status_code (int): The default status code to be used for the response.
             response_validate (bool): Flag determining if the handler response should be validated.
             response_type (Union[Type[Any], None, UnsetType]): Handler response type, overrides the
                                                                return annotation if set.
@@ -531,6 +545,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             name=name,
             **kwargs,
             # rapidy attrs
+            status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -553,6 +568,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         handler: HandlerOrView,
         *,
         name: Optional[str] = None,
+        status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
         response_validate: bool = True,
         response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
         response_content_type: Union[str, ContentType, None] = None,
@@ -575,6 +591,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             path (str): Resource path spec.
             handler (HandlerOrView): Route handler.
             name (Optional[str]): Optional resource name.
+            status_code (int): The default status code to be used for the response.
             response_validate (bool): Flag determining if the handler response should be validated.
             response_type (Union[Type[Any], None, UnsetType]): Handler response type, overrides the
                                                                return annotation if set.
@@ -603,6 +620,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             handler,
             name=name,
             **kwargs,
+            status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -625,6 +643,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         handler: HandlerOrView,
         *,
         name: Optional[str] = None,
+        status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
         response_validate: bool = True,
         response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
         response_content_type: Union[str, ContentType, None] = None,
@@ -647,6 +666,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             path (str): Resource path spec.
             handler (HandlerOrView): Route handler.
             name (Optional[str]): Optional resource name.
+            status_code (int): The default status code to be used for the response.
             response_validate (bool): Flag determining if the handler response should be validated.
             response_type (Union[Type[Any], None, UnsetType]): Handler response type, overrides the
                                                                return annotation if set.
@@ -677,6 +697,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             name=name,
             **kwargs,
             # rapidy attrs
+            status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -699,6 +720,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         handler: HandlerOrView,
         *,
         name: Optional[str] = None,
+        status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
         response_validate: bool = True,
         response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
         response_content_type: Union[str, ContentType, None] = None,
@@ -721,6 +743,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             path (str): Resource path spec.
             handler (HandlerOrView): Route handler.
             name (Optional[str]): Optional resource name.
+            status_code (int): The default status code to be used for the response.
             response_validate (bool): Flag determining if the handler response should be validated.
             response_type (Union[Type[Any], None, UnsetType]): Handler response type, overrides the
                                                                return annotation if set.
@@ -751,6 +774,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             name=name,
             **kwargs,
             # rapidy attrs
+            status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -773,6 +797,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         handler: Type[AbstractView],
         *,
         name: Optional[str] = None,
+        status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
         response_validate: bool = True,
         response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
         response_content_type: Union[str, ContentType, None] = None,
@@ -795,6 +820,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             path (str): Resource path spec.
             handler (HandlerOrView): Route handler.
             name (Optional[str]): Optional resource name.
+            status_code (int): The default status code to be used for the response.
             response_validate (bool): Flag determining if the handler response should be validated.
             response_type (Union[Type[Any], None, UnsetType]): Handler response type, overrides the
                                                                return annotation if set.
@@ -825,6 +851,7 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
             name=name,
             **kwargs,
             # rapidy attrs
+            status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,

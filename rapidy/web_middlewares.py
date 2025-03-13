@@ -1,5 +1,6 @@
 from concurrent.futures import Executor
 from functools import wraps
+from http import HTTPStatus
 from typing import Any, Callable, cast, NamedTuple, Optional, overload, Type, TypeVar, Union
 from urllib.request import Request
 
@@ -26,6 +27,7 @@ class MiddlewareAttrData(NamedTuple):
     """A class that holds attributes for middleware configuration.
 
     Attributes:
+        status_code (int): The default status code to be used for the response.
         response_validate (bool): Whether the handler response should be validated.
         response_type (Union[Type[Any], None, UnsetType]): The handler response type.
         response_content_type (Union[str, ContentType, None]): The Content-Type header.
@@ -42,6 +44,7 @@ class MiddlewareAttrData(NamedTuple):
         response_json_encoder (JSONEncoder): JSON encoder callable for the response.
     """
 
+    status_code: Union[int, HTTPStatus]
     response_validate: bool
     response_type: Union[Type[Any], None, UnsetType]
     response_content_type: Union[str, ContentType, None]
@@ -65,6 +68,7 @@ def middleware(middleware: TMiddleware) -> TMiddleware: ...
 @overload
 def middleware(
     *,
+    status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
     response_validate: bool = True,
     response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
     response_content_type: Union[str, ContentType, None] = None,
@@ -85,6 +89,7 @@ def middleware(
 def middleware(
     middleware: Optional[TMiddleware] = None,
     *,
+    status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
     response_validate: bool = True,
     response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
     response_content_type: Union[str, ContentType, None] = None,
@@ -107,6 +112,7 @@ def middleware(
 
     Args:
         middleware (Optional[TMiddleware], optional): A middleware function to wrap. Defaults to None.
+        status_code (int): The default status code to be used for the response.
         response_validate (bool, optional): Whether the handler's response should be validated. Defaults to True.
         response_type (Union[Type[Any], None, UnsetType], optional): The handler response type. Defaults to Unset.
         response_content_type (Union[str, ContentType, None], optional): Defines the `Content-Type` header.
@@ -133,6 +139,7 @@ def middleware(
         Union[TMiddleware, Callable[[Any], TMiddleware]]: A middleware function or a decorator based on input.
     """
     middleware_attr_data = MiddlewareAttrData(
+        status_code=status_code,
         response_validate=response_validate,
         response_type=response_type,
         response_content_type=response_content_type,

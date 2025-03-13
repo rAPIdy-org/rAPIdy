@@ -1,4 +1,5 @@
 from concurrent.futures import Executor
+from http import HTTPStatus
 from pprint import pformat
 from typing import Any, cast, Dict, Optional, Type, Union
 from typing_extensions import TypeAlias
@@ -71,6 +72,7 @@ class HandlerController:
         _handler (Handler): The handler function associated with the controller.
         _request_validator (RequestValidator): Validator for the request data.
         _result_validator (ResultValidator): Validator for the result returned by the handler.
+        _status_code (int): The default status code to be used for the response.
         _response_validate (bool): Flag indicating whether to validate the response.
         _response_content_type (Union[str, ContentType, None]): The content type for the response.
         _response_charset (str): The charset for the response.
@@ -100,6 +102,7 @@ class HandlerController:
         request_attribute_name: Optional[str],
         response_attribute_name: Optional[str],
         # response
+        status_code: Union[int, HTTPStatus],
         response_validate: bool,
         response_content_type: Union[str, ContentType, None],
         response_charset: str,
@@ -122,6 +125,7 @@ class HandlerController:
             request_validator (RequestValidator): Validator for the request data.
             result_validator (ResultValidator): Validator for the result data.
             request_attribute_name (Optional[str]): The name of the request attribute.
+            status_code (int): The default status code to be used for the response.
             response_attribute_name (Optional[str]): The name of the response attribute.
             response_validate (bool): Flag indicating whether the response should be validated.
             response_content_type (Union[str, ContentType, None]): The content type of the response.
@@ -145,6 +149,7 @@ class HandlerController:
         self._request_validator = request_validator
         self._result_validator = result_validator
 
+        self._status_code = status_code
         self._response_validate = response_validate
         self._response_content_type = response_content_type
         self._response_charset = response_charset
@@ -204,6 +209,7 @@ class HandlerController:
 
         if current_response is None:
             current_response = Response(
+                status=self._status_code,
                 content_type=self._response_content_type,
                 charset=self._response_charset,
                 zlib_executor=self._response_zlib_executor,
@@ -230,6 +236,7 @@ def controller_factory(
     *,
     request_attr_can_declare: bool = False,
     # response
+    status_code: Union[int, HTTPStatus],
     response_validate: bool,
     response_type: Union[Type[Any], None, UnsetType],
     response_content_type: Union[str, ContentType, None],
@@ -251,6 +258,7 @@ def controller_factory(
     Args:
         endpoint_handler (Handler): The endpoint handler for which to create the controller.
         request_attr_can_declare (bool): Flag indicating whether request attributes can be declared.
+        status_code (int): The default status code to be used for the response.
         response_validate (bool): Flag to indicate whether the response should be validated.
         response_type (Union[Type[Any], None, UnsetType]): The expected response type.
         response_content_type (Union[str, ContentType, None]): The content type for the response.
@@ -299,6 +307,7 @@ def controller_factory(
         request_attribute_name=request_attribute_name,
         response_attribute_name=response_attribute_name,
         # response attrs
+        status_code=status_code,
         response_validate=response_validate,
         response_content_type=response_content_type,
         response_charset=response_charset,

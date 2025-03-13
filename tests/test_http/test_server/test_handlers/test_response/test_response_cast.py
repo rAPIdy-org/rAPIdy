@@ -11,16 +11,16 @@ from tests.constants import ClientBodyExtractMethod, DEFAULT_RETURN_VALUE
 test_dict = {'test': DEFAULT_RETURN_VALUE}
 
 
-class TestBaseModel(BaseModel):
+class BaseModelTest(BaseModel):
     test: str = 'test'
 
 
 @dataclass
-class TestDataclass:
+class DataclassTest:
     test: str = 'test'
 
 
-@pytest.mark.parametrize('schema', [TestDataclass, TestBaseModel])
+@pytest.mark.parametrize('schema', [DataclassTest, BaseModelTest])
 async def test_cast_dict_to_schema(aiohttp_client: AiohttpClient, schema: Any) -> None:
     await check_handlers_all_response_models(
         aiohttp_client=aiohttp_client,

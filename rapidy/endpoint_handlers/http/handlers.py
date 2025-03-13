@@ -1,5 +1,6 @@
 from concurrent.futures import Executor
 from functools import partial, wraps
+from http import HTTPStatus
 from typing import Any, cast, Optional, Type, TYPE_CHECKING, Union
 
 from aiohttp.hdrs import METH_ALL
@@ -46,6 +47,8 @@ class MethodAlreadyRegisteredError(ValueError):
 def handler_validation_wrapper(
     handler: Handler,
     *,
+    # response
+    status_code: HTTPStatus,
     response_validate: bool,
     response_type: Optional[Type[Any]],
     response_content_type: Union[str, ContentType, None],
@@ -66,6 +69,7 @@ def handler_validation_wrapper(
 
     Args:
         handler (Handler): The request handler to wrap.
+        status_code (int): The default status code to be used for the response.
         response_validate (bool): Whether to validate the response.
         response_type (Optional[Type[Any]]): The expected response type.
         response_content_type (Union[str, ContentType, None]): The response content type.
@@ -87,6 +91,7 @@ def handler_validation_wrapper(
     handler_controller = controller_factory(
         handler,
         request_attr_can_declare=True,
+        status_code=status_code,
         response_validate=response_validate,
         response_type=response_type,
         response_content_type=response_content_type,
@@ -122,6 +127,7 @@ def handler_validation_wrapper(
 
         if handler_controller.response_attribute_name:
             pre_response = Response(
+                status=status_code,
                 content_type=response_content_type,
                 charset=response_charset,
                 zlib_executor=response_zlib_executor,
@@ -148,6 +154,8 @@ def view_validation_wrapper(  # noqa: C901
     view: Type['View'],
     *,
     method: MethodName,
+    # response
+    status_code: HTTPStatus,
     response_validate: bool,
     response_type: Optional[Type[Any]],
     response_content_type: Union[str, ContentType, None],
@@ -169,6 +177,7 @@ def view_validation_wrapper(  # noqa: C901
     Args:
         view (Type['View']): The view class to wrap.
         method (MethodName): The HTTP method to validate.
+        status_code (int): The default status code to be used for the response.
         response_validate (bool): Whether to validate the response.
         response_type (Optional[Type[Any]]): The expected response type.
         response_content_type (Union[str, ContentType, None]): The response content type.
@@ -209,6 +218,7 @@ def view_validation_wrapper(  # noqa: C901
         # FIXME(daniil.grois): duplicate code
         handler_controllers[method_name] = controller_factory(
             method_handler,
+            status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -243,6 +253,7 @@ def view_validation_wrapper(  # noqa: C901
 
             handler_controllers[method_name] = controller_factory(
                 method_handler,
+                status_code=status_code,
                 response_validate=response_validate,
                 response_type=response_type,
                 response_content_type=response_content_type,
@@ -290,6 +301,7 @@ def view_validation_wrapper(  # noqa: C901
 
         if endpoint_handler.response_attribute_name:
             pre_response = Response(
+                status=status_code,
                 content_type=response_content_type,
                 charset=response_charset,
                 zlib_executor=response_zlib_executor,
@@ -319,6 +331,8 @@ def view_validation_wrapper(  # noqa: C901
 def middleware_validation_wrapper(
     middleware: Middleware,
     *,
+    # response
+    status_code: Union[int, HTTPStatus],
     response_validate: bool,
     response_type: Union[Type[Any], None, UnsetType],
     response_content_type: Union[str, ContentType, None],
@@ -339,6 +353,7 @@ def middleware_validation_wrapper(
 
     Args:
         middleware (Middleware): The middleware to wrap.
+        status_code (int): The default status code to be used for the response.
         response_validate (bool): Whether to validate the response.
         response_type (Union[Type[Any], None, UnsetType]): The expected response type.
         response_content_type (Union[str, ContentType, None]): The response content type.
@@ -360,6 +375,7 @@ def middleware_validation_wrapper(
 
     handler_controller = controller_factory(
         middleware,
+        status_code=status_code,
         response_validate=response_validate,
         response_type=response_type,
         response_content_type=response_content_type,
@@ -383,6 +399,7 @@ def middleware_validation_wrapper(
         validated_data = await handler_controller.validate_request(request=request)
         if handler_controller.response_attribute_name:
             pre_response = Response(
+                status=status_code,
                 content_type=response_content_type,
                 charset=response_charset,
                 zlib_executor=response_zlib_executor,

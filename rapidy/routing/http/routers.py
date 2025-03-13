@@ -1,6 +1,7 @@
 from abc import ABC
 from concurrent.futures import Executor
 from functools import partial
+from http import HTTPStatus
 from typing import Any, Iterable, List, Optional, Type, Union
 
 from aiohttp.web_routedef import RouteDef
@@ -82,6 +83,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         self,
         path: Optional[str] = None,
         *,
+        status_code: Union[int, HTTPStatus, UnsetType] = Unset,
         response_validate: Union[bool, UnsetType] = Unset,
         response_type: Union[Type[Any], None, UnsetType] = Unset,
         response_content_type: Union[str, ContentType, None, UnsetType] = Unset,
@@ -119,6 +121,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
             **kwargs: Additional keyword arguments.
         """
         raw_kwargs = {
+            'status_code': status_code,
             'response_validate': response_validate,
             'response_type': response_type,
             'response_content_type': response_content_type,
@@ -142,6 +145,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         self,
         path: Optional[str] = None,
         *,
+        status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
         response_validate: bool = True,
         response_type: Union[Type[Any], None, UnsetType] = Unset,
         response_content_type: Union[str, ContentType, None] = None,
@@ -179,6 +183,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
             **kwargs: Additional keyword arguments.
         """
         self._route_kwargs = {
+            'status_code': status_code,
             'response_validate': response_validate,
             'response_type': response_type,
             'response_content_type': response_content_type,
@@ -209,6 +214,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         path: str,
         handler: Union[Handler, ControllerHTTPRouterType],
         *,
+        status_code: Union[int, HTTPStatus, UnsetType] = Unset,
         response_validate: Union[bool, UnsetType] = Unset,
         response_type: Union[Type[Any], None, UnsetType] = Unset,
         response_content_type: Union[str, ContentType, None, UnsetType] = Unset,
@@ -227,6 +233,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
     ) -> 'HTTPRouteHandler':
         init = cls(
             path=path,
+            status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -472,6 +479,7 @@ class controller(HTTPRouteHandler):
         self,
         path: str,
         *,
+        status_code: Union[int, HTTPStatus, UnsetType] = Unset,
         response_validate: Union[bool, UnsetType] = Unset,
         response_type: Union[Type[Any], None, UnsetType] = Unset,
         response_content_type: Union[str, ContentType, None, UnsetType] = Unset,
@@ -493,6 +501,8 @@ class controller(HTTPRouteHandler):
         Args:
             path:
                 Resource path spec.
+            status_code (int):
+                The default status code to be used for the response.
             response_validate:
                 Flag determines whether the handler response should be validated.
             response_type:
@@ -537,6 +547,7 @@ class controller(HTTPRouteHandler):
         """
         super().__init__(
             path=path,
+            status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -563,6 +574,7 @@ class get(HTTPMethodRouteHandler):
         path: Optional[str] = None,
         *,
         allow_head: bool = True,
+        status_code: Union[int, HTTPStatus, UnsetType] = Unset,
         response_validate: Union[bool, UnsetType] = Unset,
         response_type: Union[Type[Any], None, UnsetType] = Unset,
         response_content_type: Union[str, ContentType, None, UnsetType] = Unset,
@@ -591,6 +603,8 @@ class get(HTTPMethodRouteHandler):
                 >>> @get(path, handler, name='route')
                 >>> def handler(request): ...
                 call adds two routes: first for GET with name 'route' and second for HEAD with name 'route-head'.
+            status_code (int):
+                The default status code to be used for the response.
             response_validate:
                 Flag determines whether the handler response should be validated.
             response_type:
@@ -636,6 +650,7 @@ class get(HTTPMethodRouteHandler):
         super().__init__(
             path=path,
             allow_head=allow_head,
+            status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -661,6 +676,7 @@ class post(HTTPMethodRouteHandler):
         self,
         path: Optional[str] = None,
         *,
+        status_code: Union[int, HTTPStatus, UnsetType] = Unset,
         response_validate: Union[bool, UnsetType] = Unset,
         response_type: Union[Type[Any], None, UnsetType] = Unset,
         response_content_type: Union[str, ContentType, None, UnsetType] = Unset,
@@ -682,6 +698,8 @@ class post(HTTPMethodRouteHandler):
         Args:
             path:
                 Resource path spec.
+            status_code (int):
+                The default status code to be used for the response.
             response_validate:
                 Flag determines whether the handler response should be validated.
             response_type:
@@ -726,6 +744,7 @@ class post(HTTPMethodRouteHandler):
         """
         super().__init__(
             path=path,
+            status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -751,6 +770,7 @@ class put(HTTPMethodRouteHandler):
         self,
         path: Optional[str] = None,
         *,
+        status_code: Union[int, HTTPStatus, UnsetType] = Unset,
         response_validate: Union[bool, UnsetType] = Unset,
         response_type: Union[Type[Any], None, UnsetType] = Unset,
         response_content_type: Union[str, ContentType, None, UnsetType] = Unset,
@@ -772,6 +792,8 @@ class put(HTTPMethodRouteHandler):
         Args:
             path:
                 Resource path spec.
+            status_code (int):
+                The default status code to be used for the response.
             response_validate:
                 Flag determines whether the handler response should be validated.
             response_type:
@@ -816,6 +838,7 @@ class put(HTTPMethodRouteHandler):
         """
         super().__init__(
             path=path,
+            status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -841,6 +864,7 @@ class patch(HTTPMethodRouteHandler):
         self,
         path: Optional[str] = None,
         *,
+        status_code: Union[int, HTTPStatus, UnsetType] = Unset,
         response_validate: Union[bool, UnsetType] = Unset,
         response_type: Union[Type[Any], None, UnsetType] = Unset,
         response_content_type: Union[str, ContentType, None, UnsetType] = Unset,
@@ -862,6 +886,8 @@ class patch(HTTPMethodRouteHandler):
         Args:
             path:
                 Resource path spec.
+            status_code (int):
+                The default status code to be used for the response.
             response_validate:
                 Flag determines whether the handler response should be validated.
             response_type:
@@ -906,6 +932,7 @@ class patch(HTTPMethodRouteHandler):
         """
         super().__init__(
             path=path,
+            status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -931,6 +958,7 @@ class delete(HTTPMethodRouteHandler):
         self,
         path: Optional[str] = None,
         *,
+        status_code: Union[int, HTTPStatus, UnsetType] = Unset,
         response_validate: Union[bool, UnsetType] = Unset,
         response_type: Union[Type[Any], None, UnsetType] = Unset,
         response_content_type: Union[str, ContentType, None, UnsetType] = Unset,
@@ -952,6 +980,8 @@ class delete(HTTPMethodRouteHandler):
         Args:
             path:
                 Resource path spec.
+            status_code (int):
+                The default status code to be used for the response.
             response_validate:
                 Flag determines whether the handler response should be validated.
             response_type:
@@ -996,6 +1026,7 @@ class delete(HTTPMethodRouteHandler):
         """
         super().__init__(
             path=path,
+            status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -1021,6 +1052,7 @@ class head(HTTPMethodRouteHandler):
         self,
         path: Optional[str] = None,
         *,
+        status_code: Union[int, HTTPStatus, UnsetType] = Unset,
         response_validate: Union[bool, UnsetType] = Unset,
         response_type: Union[Type[Any], None, UnsetType] = Unset,
         response_content_type: Union[str, ContentType, None, UnsetType] = Unset,
@@ -1042,6 +1074,8 @@ class head(HTTPMethodRouteHandler):
         Args:
             path:
                 Resource path spec.
+            status_code (int):
+                The default status code to be used for the response.
             response_validate:
                 Flag determines whether the handler response should be validated.
             response_type:
@@ -1086,6 +1120,7 @@ class head(HTTPMethodRouteHandler):
         """
         super().__init__(
             path=path,
+            status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -1111,6 +1146,7 @@ class options(HTTPMethodRouteHandler):
         self,
         path: Optional[str] = None,
         *,
+        status_code: Union[int, HTTPStatus, UnsetType] = Unset,
         response_validate: Union[bool, UnsetType] = Unset,
         response_type: Union[Type[Any], None, UnsetType] = Unset,
         response_content_type: Union[str, ContentType, None, UnsetType] = Unset,
@@ -1132,6 +1168,8 @@ class options(HTTPMethodRouteHandler):
         Args:
             path:
                 Resource path spec.
+            status_code (int):
+                The default status code to be used for the response.
             response_validate:
                 Flag determines whether the handler response should be validated.
             response_type:
@@ -1176,6 +1214,7 @@ class options(HTTPMethodRouteHandler):
         """
         super().__init__(
             path=path,
+            status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,

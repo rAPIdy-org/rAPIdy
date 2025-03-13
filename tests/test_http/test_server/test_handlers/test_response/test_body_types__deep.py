@@ -20,7 +20,7 @@ PATH: Final[str] = '/'
 JSON_CHARSET_UTF8: Final[str] = 'application/json; charset=utf-8'
 
 
-class TestEnum(Enum):
+class EnumTest(Enum):
     test = 'test'
 
 
@@ -87,7 +87,7 @@ test_cases = (
     ),
     TestCase(
         id='enum-unknown',
-        response_body=TestEnum.test,
+        response_body=EnumTest.test,
     ),
     TestCase(
         id='int-unknown',
@@ -178,7 +178,7 @@ test_cases = (
     ),
     TestCaseTextPlain(
         id='enum-text-plain',
-        response_body=TestEnum.test,
+        response_body=EnumTest.test,
     ),
     TestCaseTextPlain(
         id='int-text-plain',
@@ -251,7 +251,7 @@ test_cases = (
     ),
     TestCaseJson(
         id='enum-json',
-        response_body=TestEnum.test,
+        response_body=EnumTest.test,
     ),
     TestCaseJson(
         id='int-json',

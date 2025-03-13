@@ -15,6 +15,8 @@ class TestCase:
     expected_ctype: str = ContentType.text_plain.value
     sent_ctype: str = ContentType.text_plain.value
 
+    __test__ = False
+
 
 test_cases = (
     TestCase(

@@ -1,6 +1,6 @@
 from typing import Final
 
-from pytest_aiohttp import AiohttpClient
+from aiohttp.pytest_plugin import AiohttpClient
 
 from rapidy import Rapidy
 from rapidy.enums import ContentType, HeaderName

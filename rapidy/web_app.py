@@ -265,6 +265,7 @@ class Application(AiohttpApplication):
 
                     middleware = middleware_validation_wrapper(  # noqa: PLW2901
                         middleware,
+                        status_code=m_attr_data.status_code,
                         response_validate=m_attr_data.response_validate,
                         response_type=m_attr_data.response_type,
                         response_content_type=m_attr_data.response_content_type,

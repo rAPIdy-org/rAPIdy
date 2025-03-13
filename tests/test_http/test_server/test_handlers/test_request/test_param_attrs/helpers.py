@@ -18,6 +18,8 @@ class TestCase:
     client_kwargs: Dict[str, Any]
     expected_client_err: bool = False
 
+    __test__ = False
+
 
 def create_test_cases(
     correct_value: Any,

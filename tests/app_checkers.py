@@ -242,7 +242,7 @@ async def check_fabric(
         client_method = _get_bound_method_by_http_method_name(client, web_method_name)
 
         resp = await client_method(aiohttp_client_send_path)
-        assert resp.status == expected_status_code
+        assert resp.status == expected_status_code, (resp.status, expected_status_code)
         if check_return_value and handler_return_value is not None:
             resp_data = await getattr(resp, aiohttp_client_response_body_attr_name)()
             assert resp_data == expected_return_value, (resp_data, expected_return_value)
@@ -258,6 +258,7 @@ async def check_handlers(
     aiohttp_client_response_body_attr_name: ClientBodyExtractMethod = ClientBodyExtractMethod.json,
     aiohttp_client_send_path: str = '/',
     # handler factories attrs
+    status_code: int = HTTPStatus.OK,
     handler_path: str = '/',
     handler_return_type: Any = DEFAULT_RETURN_TYPE,
     handler_return_value: Optional[Any] = DEFAULT_RETURN_VALUE,
@@ -288,6 +289,7 @@ async def check_handlers(
                 aiohttp_client_response_body_attr_name=aiohttp_client_response_body_attr_name,
                 aiohttp_client_send_path=aiohttp_client_send_path,
                 # handler factories attrs
+                status_code=status_code,
                 handler_path=handler_path,
                 handler_return_type=handler_return_type,
                 handler_return_value=handler_return_value,
@@ -321,6 +323,7 @@ async def check_handlers_all_response_models(
     aiohttp_client_response_body_attr_name: ClientBodyExtractMethod = ClientBodyExtractMethod.text,
     aiohttp_client_send_path: str = '/',
     # handler factories attrs
+    status_code: int = HTTPStatus.OK,
     handler_path: str = '/',
     handler_return_type: Any = DEFAULT_RETURN_TYPE,
     handler_return_value: Optional[Any] = DEFAULT_RETURN_VALUE,
@@ -347,6 +350,7 @@ async def check_handlers_all_response_models(
             aiohttp_client_response_body_attr_name=aiohttp_client_response_body_attr_name,
             aiohttp_client_send_path=aiohttp_client_send_path,
             # handler factories attrs
+            status_code=status_code,
             handler_path=handler_path,
             handler_return_value=handler_return_value,
             expected_return_value=expected_return_value,

@@ -1,4 +1,5 @@
 from concurrent.futures import Executor
+from http import HTTPStatus
 from typing import Any, Optional, Type, Union
 
 from aiohttp.abc import AbstractView
@@ -54,6 +55,7 @@ def get(
     *,
     name: Optional[str] = None,
     allow_head: bool = True,
+    status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
     response_validate: bool = True,
     response_type: Union[Type[Any], None, UnsetType] = Unset,
     response_content_type: Union[str, ContentType, None] = None,
@@ -77,6 +79,7 @@ def get(
         handler (HandlerOrView): The handler function or view for the route.
         name (Optional[str]): Optional resource name.
         allow_head (bool): If True (default), allows a HEAD route with the same handler as GET.
+        status_code (int): The default status code to be used for the response.
         response_validate (bool): Determines whether the handler's response should be validated.
         response_type (Union[Type[Any], None, UnsetType]): The type of response expected.
         response_content_type (Union[str, ContentType, None]): Defines the `Content-Type` header for the response.
@@ -103,6 +106,8 @@ def get(
         name=name,
         allow_head=allow_head,
         **kwargs,
+        # rapidy attrs
+        status_code=status_code,
         response_validate=response_validate,
         response_type=response_type,
         response_content_type=response_content_type,
@@ -125,6 +130,7 @@ def post(
     handler: HandlerOrView,
     *,
     name: Optional[str] = None,
+    status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
     response_validate: bool = True,
     response_type: Union[Type[Any], None, UnsetType] = Unset,
     response_content_type: Union[str, ContentType, None] = None,
@@ -147,6 +153,7 @@ def post(
         path (str): The resource path specification for the route.
         handler (HandlerOrView): The handler function or view for the route.
         name (Optional[str]): Optional resource name.
+        status_code (int): The default status code to be used for the response.
         response_validate (bool): Determines whether the handler's response should be validated.
         response_type (Union[Type[Any], None, UnsetType]): The type of response expected.
         response_content_type (Union[str, ContentType, None]): Defines the `Content-Type` header for the response.
@@ -174,6 +181,7 @@ def post(
         name=name,
         **kwargs,
         # rapidy attrs
+        status_code=status_code,
         response_validate=response_validate,
         response_type=response_type,
         response_content_type=response_content_type,
@@ -196,6 +204,7 @@ def put(
     handler: HandlerOrView,
     *,
     name: Optional[str] = None,
+    status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
     response_validate: bool = True,
     response_type: Union[Type[Any], None, UnsetType] = Unset,
     response_content_type: Union[str, ContentType, None] = None,
@@ -218,6 +227,7 @@ def put(
         path (str): The resource path specification for the route.
         handler (HandlerOrView): The handler function or view for the route.
         name (Optional[str]): Optional resource name.
+        status_code (int): The default status code to be used for the response.
         response_validate (bool): Determines whether the handler's response should be validated.
         response_type (Union[Type[Any], None, UnsetType]): The type of response expected.
         response_content_type (Union[str, ContentType, None]): Defines the `Content-Type` header for the response.
@@ -245,6 +255,7 @@ def put(
         name=name,
         **kwargs,
         # rapidy attrs
+        status_code=status_code,
         response_validate=response_validate,
         response_type=response_type,
         response_content_type=response_content_type,
@@ -267,6 +278,7 @@ def patch(
     handler: HandlerOrView,
     *,
     name: Optional[str] = None,
+    status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
     response_validate: bool = True,
     response_type: Union[Type[Any], None, UnsetType] = Unset,
     response_content_type: Union[str, ContentType, None] = None,
@@ -289,6 +301,7 @@ def patch(
         path (str): The resource path specification for the route.
         handler (HandlerOrView): The handler function or view for the route.
         name (Optional[str]): Optional resource name.
+        status_code (int): The default status code to be used for the response.
         response_validate (bool): Determines whether the handler's response should be validated.
         response_type (Union[Type[Any], None, UnsetType]): The type of response expected.
         response_content_type (Union[str, ContentType, None]): Defines the `Content-Type` header for the response.
@@ -316,6 +329,7 @@ def patch(
         name=name,
         **kwargs,
         # rapidy attrs
+        status_code=status_code,
         response_validate=response_validate,
         response_type=response_type,
         response_content_type=response_content_type,
@@ -338,6 +352,7 @@ def delete(
     handler: HandlerOrView,
     *,
     name: Optional[str] = None,
+    status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
     response_validate: bool = True,
     response_type: Union[Type[Any], None, UnsetType] = Unset,
     response_content_type: Union[str, ContentType, None] = None,
@@ -360,6 +375,7 @@ def delete(
         path (str): The resource path specification for the route.
         handler (HandlerOrView): The handler function or view for the route.
         name (Optional[str]): Optional resource name.
+        status_code (int): The default status code to be used for the response.
         response_validate (bool): Determines whether the handler's response should be validated.
         response_type (Union[Type[Any], None, UnsetType]): The type of response expected.
         response_content_type (Union[str, ContentType, None]): Defines the `Content-Type` header for the response.
@@ -387,6 +403,7 @@ def delete(
         name=name,
         **kwargs,
         # rapidy attrs
+        status_code=status_code,
         response_validate=response_validate,
         response_type=response_type,
         response_content_type=response_content_type,
@@ -409,6 +426,7 @@ def view(
     handler: Type[AbstractView],
     *,
     name: Optional[str] = None,
+    status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
     response_validate: bool = True,
     response_type: Union[Type[Any], None, UnsetType] = Unset,
     response_content_type: Union[str, ContentType, None] = None,
@@ -431,6 +449,7 @@ def view(
         path (str): The resource path specification for the route.
         handler (HandlerOrView): The handler function or view for the route.
         name (Optional[str]): Optional resource name.
+        status_code (int): The default status code to be used for the response.
         response_validate (bool): Determines whether the handler's response should be validated.
         response_type (Union[Type[Any], None, UnsetType]): The type of response expected.
         response_content_type (Union[str, ContentType, None]): Defines the `Content-Type` header for the response.
@@ -458,6 +477,7 @@ def view(
         name=name,
         **kwargs,
         # rapidy attrs
+        status_code=status_code,
         response_validate=response_validate,
         response_type=response_type,
         response_content_type=response_content_type,
@@ -480,6 +500,7 @@ def head(
     handler: HandlerOrView,
     *,
     name: Optional[str] = None,
+    status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
     response_validate: bool = True,
     response_type: Union[Type[Any], None, UnsetType] = Unset,
     response_content_type: Union[str, ContentType, None] = None,
@@ -502,6 +523,7 @@ def head(
         path (str): The resource path specification for the route.
         handler (HandlerOrView): The handler function or view for the route.
         name (Optional[str]): Optional resource name.
+        status_code (int): The default status code to be used for the response.
         response_validate (bool): Determines whether the handler's response should be validated.
         response_type (Union[Type[Any], None, UnsetType]): The type of response expected.
         response_content_type (Union[str, ContentType, None]): Defines the `Content-Type` header for the response.
@@ -529,6 +551,7 @@ def head(
         name=name,
         **kwargs,
         # rapidy attrs
+        status_code=status_code,
         response_validate=response_validate,
         response_type=response_type,
         response_content_type=response_content_type,
@@ -551,6 +574,7 @@ def options(
     handler: HandlerOrView,
     *,
     name: Optional[str] = None,
+    status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
     response_validate: bool = True,
     response_type: Union[Type[Any], None, UnsetType] = Unset,
     response_content_type: Union[str, ContentType, None] = None,
@@ -573,6 +597,7 @@ def options(
         path (str): The resource path specification for the route.
         handler (HandlerOrView): The handler function or view for the route.
         name (Optional[str]): Optional resource name.
+        status_code (int): The default status code to be used for the response.
         response_validate (bool): Determines whether the handler's response should be validated.
         response_type (Union[Type[Any], None, UnsetType]): The type of response expected.
         response_content_type (Union[str, ContentType, None]): Defines the `Content-Type` header for the response.
@@ -600,6 +625,7 @@ def options(
         name=name,
         **kwargs,
         # rapidy attrs
+        status_code=status_code,
         response_validate=response_validate,
         response_type=response_type,
         response_content_type=response_content_type,
@@ -658,6 +684,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
         *,
         name: Optional[str] = None,
         allow_head: bool = True,
+        status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
         response_validate: bool = True,
         response_type: Union[Type[Any], None, UnsetType] = Unset,
         response_content_type: Union[str, ContentType, None] = None,
@@ -677,27 +704,25 @@ class RouteTableDef(AioHTTPRouteTableDef):
         """Add a new RouteDef item for registering a GET web-handler.
 
         Args:
-            path (str): Resource path spec.
-            name (Optional[str]): An optional resource name.
-            allow_head (bool): If True (default), a HEAD route will also be created for the same handler.
-            response_validate (bool): Whether the response should be validated (default is True).
-            response_type (Union[Type[Any], None, UnsetType]): The type of the response.
-                                                               Overrides return type annotation if set.
-            response_content_type (Union[str, ContentType, None]): The `Content-Type` header for the response.
-            response_charset (Union[str, Charset]): The charset for encoding/decoding response data.
-            response_zlib_executor (Optional[Executor]): Executor for zlib compression of response body.
-            response_zlib_executor_size (Optional[int]): Threshold for triggering zlib compression.
-            response_include_fields (Optional[Include]): Pydantic's `include` parameter
-                                                         to include specific fields in response.
-            response_exclude_fields (Optional[Exclude]): Pydantic's `exclude` parameter
-                                                         to exclude specific fields in response.
-            response_by_alias (bool): Whether to use alias names instead of attribute names in the response.
-            response_exclude_unset (bool): Exclude fields with default values from the response.
-            response_exclude_defaults (bool): Exclude fields that have default values even if explicitly set.
-            response_exclude_none (bool): Exclude fields with a `None` value from the response.
-            response_custom_encoder (Optional[CustomEncoder]): A custom encoder for specific field types.
-            response_json_encoder (JSONEncoder): A JSON encoder to serialize the response.
-            kwargs (Any): Additional internal arguments.
+            path (str): The resource path specification for the route.
+            name (Optional[str]): Optional resource name.
+            allow_head (bool): If True (default), allows a HEAD route with the same handler as GET.
+            status_code (int): The default status code to be used for the response.
+            response_validate (bool): Determines whether the handler's response should be validated.
+            response_type (Union[Type[Any], None, UnsetType]): The type of response expected.
+            response_content_type (Union[str, ContentType, None]): Defines the `Content-Type` header for the response.
+            response_charset (Union[str, Charset]): Charset used for encoding and decoding the response.
+            response_zlib_executor (Optional[Executor]): Executor for zlib compression.
+            response_zlib_executor_size (Optional[int]): The size threshold for triggering zlib compression.
+            response_include_fields (Optional[Include]): Fields to include during Pydantic model serialization.
+            response_exclude_fields (Optional[Exclude]): Fields to exclude during Pydantic model serialization.
+            response_by_alias (bool): Whether to use aliases for fields during serialization.
+            response_exclude_unset (bool): Whether to exclude unset fields from the response.
+            response_exclude_defaults (bool): Whether to exclude fields with default values from the response.
+            response_exclude_none (bool): Whether to exclude fields with `None` values from the response.
+            response_custom_encoder (Optional[CustomEncoder]): A custom encoder for Pydantic models.
+            response_json_encoder (JSONEncoder): Custom JSON encoder function for serializing the response.
+            kwargs (Any): Additional internal arguments for the route.
 
         Returns:
             RouterDeco: A decorator function to register the GET route handler.
@@ -710,6 +735,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             allow_head=allow_head,
             **kwargs,
             # rapidy attrs
+            status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -731,6 +757,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
         path: str,
         *,
         name: Optional[str] = None,
+        status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
         response_validate: bool = True,
         response_type: Union[Type[Any], None, UnsetType] = Unset,
         response_content_type: Union[str, ContentType, None] = None,
@@ -750,26 +777,24 @@ class RouteTableDef(AioHTTPRouteTableDef):
         """Add a new RouteDef item for registering a POST web-handler.
 
         Args:
-            path (str): Resource path spec.
-            name (Optional[str]): An optional resource name.
-            response_validate (bool): Whether the response should be validated (default is True).
-            response_type (Union[Type[Any], None, UnsetType]): The type of the response.
-                                                               Overrides return type annotation if set.
-            response_content_type (Union[str, ContentType, None]): The `Content-Type` header for the response.
-            response_charset (Union[str, Charset]): The charset for encoding/decoding response data.
-            response_zlib_executor (Optional[Executor]): Executor for zlib compression of response body.
-            response_zlib_executor_size (Optional[int]): Threshold for triggering zlib compression.
-            response_include_fields (Optional[Include]): Pydantic's `include` parameter
-                                                         to include specific fields in response.
-            response_exclude_fields (Optional[Exclude]): Pydantic's `exclude` parameter
-                                                         to exclude specific fields in response.
-            response_by_alias (bool): Whether to use alias names instead of attribute names in the response.
-            response_exclude_unset (bool): Exclude fields with default values from the response.
-            response_exclude_defaults (bool): Exclude fields that have default values even if explicitly set.
-            response_exclude_none (bool): Exclude fields with a `None` value from the response.
-            response_custom_encoder (Optional[CustomEncoder]): A custom encoder for specific field types.
-            response_json_encoder (JSONEncoder): A JSON encoder to serialize the response.
-            kwargs (Any): Additional internal arguments.
+            path (str): The resource path specification for the route.
+            name (Optional[str]): Optional resource name.
+            status_code (int): The default status code to be used for the response.
+            response_validate (bool): Determines whether the handler's response should be validated.
+            response_type (Union[Type[Any], None, UnsetType]): The type of response expected.
+            response_content_type (Union[str, ContentType, None]): Defines the `Content-Type` header for the response.
+            response_charset (Union[str, Charset]): Charset used for encoding and decoding the response.
+            response_zlib_executor (Optional[Executor]): Executor for zlib compression.
+            response_zlib_executor_size (Optional[int]): The size threshold for triggering zlib compression.
+            response_include_fields (Optional[Include]): Fields to include during Pydantic model serialization.
+            response_exclude_fields (Optional[Exclude]): Fields to exclude during Pydantic model serialization.
+            response_by_alias (bool): Whether to use aliases for fields during serialization.
+            response_exclude_unset (bool): Whether to exclude unset fields from the response.
+            response_exclude_defaults (bool): Whether to exclude fields with default values from the response.
+            response_exclude_none (bool): Whether to exclude fields with `None` values from the response.
+            response_custom_encoder (Optional[CustomEncoder]): A custom encoder for Pydantic models.
+            response_json_encoder (JSONEncoder): Custom JSON encoder function for serializing the response.
+            kwargs (Any): Additional internal arguments for the route.
 
         Returns:
             RouterDeco: A decorator function to register the POST route handler.
@@ -781,6 +806,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             name=name,
             **kwargs,
             # rapidy attrs
+            status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -802,6 +828,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
         path: str,
         *,
         name: Optional[str] = None,
+        status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
         response_validate: bool = True,
         response_type: Union[Type[Any], None, UnsetType] = Unset,
         response_content_type: Union[str, ContentType, None] = None,
@@ -821,26 +848,24 @@ class RouteTableDef(AioHTTPRouteTableDef):
         """Add a new RouteDef item for registering a PUT web-handler.
 
         Args:
-            path (str): Resource path spec.
-            name (Optional[str]): An optional resource name.
-            response_validate (bool): Whether the response should be validated (default is True).
-            response_type (Union[Type[Any], None, UnsetType]): The type of the response.
-                                                               Overrides return type annotation if set.
-            response_content_type (Union[str, ContentType, None]): The `Content-Type` header for the response.
-            response_charset (Union[str, Charset]): The charset for encoding/decoding response data.
-            response_zlib_executor (Optional[Executor]): Executor for zlib compression of response body.
-            response_zlib_executor_size (Optional[int]): Threshold for triggering zlib compression.
-            response_include_fields (Optional[Include]): Pydantic's `include` parameter
-                                                         to include specific fields in response.
-            response_exclude_fields (Optional[Exclude]): Pydantic's `exclude` parameter
-                                                         to exclude specific fields in response.
-            response_by_alias (bool): Whether to use alias names instead of attribute names in the response.
-            response_exclude_unset (bool): Exclude fields with default values from the response.
-            response_exclude_defaults (bool): Exclude fields that have default values even if explicitly set.
-            response_exclude_none (bool): Exclude fields with a `None` value from the response.
-            response_custom_encoder (Optional[CustomEncoder]): A custom encoder for specific field types.
-            response_json_encoder (JSONEncoder): A JSON encoder to serialize the response.
-            kwargs (Any): Additional internal arguments.
+            path (str): The resource path specification for the route.
+            name (Optional[str]): Optional resource name.
+            status_code (int): The default status code to be used for the response.
+            response_validate (bool): Determines whether the handler's response should be validated.
+            response_type (Union[Type[Any], None, UnsetType]): The type of response expected.
+            response_content_type (Union[str, ContentType, None]): Defines the `Content-Type` header for the response.
+            response_charset (Union[str, Charset]): Charset used for encoding and decoding the response.
+            response_zlib_executor (Optional[Executor]): Executor for zlib compression.
+            response_zlib_executor_size (Optional[int]): The size threshold for triggering zlib compression.
+            response_include_fields (Optional[Include]): Fields to include during Pydantic model serialization.
+            response_exclude_fields (Optional[Exclude]): Fields to exclude during Pydantic model serialization.
+            response_by_alias (bool): Whether to use aliases for fields during serialization.
+            response_exclude_unset (bool): Whether to exclude unset fields from the response.
+            response_exclude_defaults (bool): Whether to exclude fields with default values from the response.
+            response_exclude_none (bool): Whether to exclude fields with `None` values from the response.
+            response_custom_encoder (Optional[CustomEncoder]): A custom encoder for Pydantic models.
+            response_json_encoder (JSONEncoder): Custom JSON encoder function for serializing the response.
+            kwargs (Any): Additional internal arguments for the route.
 
         Returns:
             RouterDeco: A decorator function to register the PUT route handler.
@@ -852,6 +877,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             name=name,
             **kwargs,
             # rapidy attrs
+            status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -873,6 +899,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
         path: str,
         *,
         name: Optional[str] = None,
+        status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
         response_validate: bool = True,
         response_type: Union[Type[Any], None, UnsetType] = Unset,
         response_content_type: Union[str, ContentType, None] = None,
@@ -892,26 +919,24 @@ class RouteTableDef(AioHTTPRouteTableDef):
         """Add a new RouteDef item for registering a PATCH web-handler.
 
         Args:
-            path (str): Resource path spec.
-            name (Optional[str]): An optional resource name.
-            response_validate (bool): Whether the response should be validated (default is True).
-            response_type (Union[Type[Any], None, UnsetType]): The type of the response.
-                                                               Overrides return type annotation if set.
-            response_content_type (Union[str, ContentType, None]): The `Content-Type` header for the response.
-            response_charset (Union[str, Charset]): The charset for encoding/decoding response data.
-            response_zlib_executor (Optional[Executor]): Executor for zlib compression of response body.
-            response_zlib_executor_size (Optional[int]): Threshold for triggering zlib compression.
-            response_include_fields (Optional[Include]): Pydantic's `include` parameter
-                                                         to include specific fields in response.
-            response_exclude_fields (Optional[Exclude]): Pydantic's `exclude` parameter
-                                                         to exclude specific fields in response.
-            response_by_alias (bool): Whether to use alias names instead of attribute names in the response.
-            response_exclude_unset (bool): Exclude fields with default values from the response.
-            response_exclude_defaults (bool): Exclude fields that have default values even if explicitly set.
-            response_exclude_none (bool): Exclude fields with a `None` value from the response.
-            response_custom_encoder (Optional[CustomEncoder]): A custom encoder for specific field types.
-            response_json_encoder (JSONEncoder): A JSON encoder to serialize the response.
-            kwargs (Any): Additional internal arguments.
+            path (str): The resource path specification for the route.
+            name (Optional[str]): Optional resource name.
+            status_code (int): The default status code to be used for the response.
+            response_validate (bool): Determines whether the handler's response should be validated.
+            response_type (Union[Type[Any], None, UnsetType]): The type of response expected.
+            response_content_type (Union[str, ContentType, None]): Defines the `Content-Type` header for the response.
+            response_charset (Union[str, Charset]): Charset used for encoding and decoding the response.
+            response_zlib_executor (Optional[Executor]): Executor for zlib compression.
+            response_zlib_executor_size (Optional[int]): The size threshold for triggering zlib compression.
+            response_include_fields (Optional[Include]): Fields to include during Pydantic model serialization.
+            response_exclude_fields (Optional[Exclude]): Fields to exclude during Pydantic model serialization.
+            response_by_alias (bool): Whether to use aliases for fields during serialization.
+            response_exclude_unset (bool): Whether to exclude unset fields from the response.
+            response_exclude_defaults (bool): Whether to exclude fields with default values from the response.
+            response_exclude_none (bool): Whether to exclude fields with `None` values from the response.
+            response_custom_encoder (Optional[CustomEncoder]): A custom encoder for Pydantic models.
+            response_json_encoder (JSONEncoder): Custom JSON encoder function for serializing the response.
+            kwargs (Any): Additional internal arguments for the route.
 
         Returns:
             RouterDeco: A decorator function to register the PATCH route handler.
@@ -923,6 +948,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             name=name,
             **kwargs,
             # rapidy attrs
+            status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -944,6 +970,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
         path: str,
         *,
         name: Optional[str] = None,
+        status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
         response_validate: bool = True,
         response_type: Union[Type[Any], None, UnsetType] = Unset,
         response_content_type: Union[str, ContentType, None] = None,
@@ -963,27 +990,24 @@ class RouteTableDef(AioHTTPRouteTableDef):
         """Add a new RouteDef item for registering a DELETE web-handler.
 
         Args:
-            path (str): Resource path spec.
-            name (Optional[str]): An optional resource name.
-            response_validate (bool): Whether the response should be validated (default is True).
-            response_type (Union[Type[Any], None, UnsetType]): The type of the response.
-                                                               Overrides return type annotation if set.
-            response_content_type (Union[str, ContentType, None]): The `Content-Type` header for the response.
-            response_charset (Union[str, Charset]): The charset for encoding/decoding response data.
-            response_zlib_executor (Optional[Executor]): Executor for zlib compression of response body.
-            response_zlib_executor_size (Optional[int]): Threshold for triggering zlib compression.
-            response_include_fields (Optional[Include]): Pydantic's `include` parameter
-                                                         to include specific fields in response.
-            response_exclude_fields (Optional[Exclude]): Pydantic's `exclude` parameter
-                                                         to exclude specific fields in response.
-            response_by_alias (bool): Whether to use alias names instead of attribute names in the response.
-            response_by_alias (bool): Whether to use alias names instead of attribute names in the response.
-            response_exclude_unset (bool): Exclude fields with default values from the response.
-            response_exclude_defaults (bool): Exclude fields that have default values even if explicitly set.
-            response_exclude_none (bool): Exclude fields with a `None` value from the response.
-            response_custom_encoder (Optional[CustomEncoder]): A custom encoder for specific field types.
-            response_json_encoder (JSONEncoder): A JSON encoder to serialize the response.
-            kwargs (Any): Additional internal arguments.
+            path (str): The resource path specification for the route.
+            name (Optional[str]): Optional resource name.
+            status_code (int): The default status code to be used for the response.
+            response_validate (bool): Determines whether the handler's response should be validated.
+            response_type (Union[Type[Any], None, UnsetType]): The type of response expected.
+            response_content_type (Union[str, ContentType, None]): Defines the `Content-Type` header for the response.
+            response_charset (Union[str, Charset]): Charset used for encoding and decoding the response.
+            response_zlib_executor (Optional[Executor]): Executor for zlib compression.
+            response_zlib_executor_size (Optional[int]): The size threshold for triggering zlib compression.
+            response_include_fields (Optional[Include]): Fields to include during Pydantic model serialization.
+            response_exclude_fields (Optional[Exclude]): Fields to exclude during Pydantic model serialization.
+            response_by_alias (bool): Whether to use aliases for fields during serialization.
+            response_exclude_unset (bool): Whether to exclude unset fields from the response.
+            response_exclude_defaults (bool): Whether to exclude fields with default values from the response.
+            response_exclude_none (bool): Whether to exclude fields with `None` values from the response.
+            response_custom_encoder (Optional[CustomEncoder]): A custom encoder for Pydantic models.
+            response_json_encoder (JSONEncoder): Custom JSON encoder function for serializing the response.
+            kwargs (Any): Additional internal arguments for the route.
 
         Returns:
             RouterDeco: A decorator function to register the DELETE route handler.
@@ -995,6 +1019,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             name=name,
             **kwargs,
             # rapidy attrs
+            status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -1016,6 +1041,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
         path: str,
         *,
         name: Optional[str] = None,
+        status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
         response_validate: bool = True,
         response_type: Union[Type[Any], None, UnsetType] = Unset,
         response_content_type: Union[str, ContentType, None] = None,
@@ -1035,27 +1061,24 @@ class RouteTableDef(AioHTTPRouteTableDef):
         """Add a new RouteDef item for registering a HEAD web-handler.
 
         Args:
-            path (str): Resource path spec.
-            name (Optional[str]): An optional resource name.
-            response_validate (bool): Whether the response should be validated (default is True).
-            response_type (Union[Type[Any], None, UnsetType]): The type of the response.
-                                                               Overrides return type annotation if set.
-            response_content_type (Union[str, ContentType, None]): The `Content-Type` header for the response.
-            response_charset (Union[str, Charset]): The charset for encoding/decoding response data.
-            response_zlib_executor (Optional[Executor]): Executor for zlib compression of response body.
-            response_zlib_executor_size (Optional[int]): Threshold for triggering zlib compression.
-            response_include_fields (Optional[Include]): Pydantic's `include` parameter
-                                                         to include specific fields in response.
-            response_exclude_fields (Optional[Exclude]): Pydantic's `exclude` parameter
-                                                         to exclude specific fields in response.
-            response_by_alias (bool): Whether to use alias names instead of attribute names in the response.
-            response_by_alias (bool): Whether to use alias names instead of attribute names in the response.
-            response_exclude_unset (bool): Exclude fields with default values from the response.
-            response_exclude_defaults (bool): Exclude fields that have default values even if explicitly set.
-            response_exclude_none (bool): Exclude fields with a `None` value from the response.
-            response_custom_encoder (Optional[CustomEncoder]): A custom encoder for specific field types.
-            response_json_encoder (JSONEncoder): A JSON encoder to serialize the response.
-            kwargs (Any): Additional internal arguments.
+            path (str): The resource path specification for the route.
+            name (Optional[str]): Optional resource name.
+            status_code (int): The default status code to be used for the response.
+            response_validate (bool): Determines whether the handler's response should be validated.
+            response_type (Union[Type[Any], None, UnsetType]): The type of response expected.
+            response_content_type (Union[str, ContentType, None]): Defines the `Content-Type` header for the response.
+            response_charset (Union[str, Charset]): Charset used for encoding and decoding the response.
+            response_zlib_executor (Optional[Executor]): Executor for zlib compression.
+            response_zlib_executor_size (Optional[int]): The size threshold for triggering zlib compression.
+            response_include_fields (Optional[Include]): Fields to include during Pydantic model serialization.
+            response_exclude_fields (Optional[Exclude]): Fields to exclude during Pydantic model serialization.
+            response_by_alias (bool): Whether to use aliases for fields during serialization.
+            response_exclude_unset (bool): Whether to exclude unset fields from the response.
+            response_exclude_defaults (bool): Whether to exclude fields with default values from the response.
+            response_exclude_none (bool): Whether to exclude fields with `None` values from the response.
+            response_custom_encoder (Optional[CustomEncoder]): A custom encoder for Pydantic models.
+            response_json_encoder (JSONEncoder): Custom JSON encoder function for serializing the response.
+            kwargs (Any): Additional internal arguments for the route.
 
         Returns:
             RouterDeco: A decorator function to register the HEAD route handler.
@@ -1067,6 +1090,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             name=name,
             **kwargs,
             # rapidy attrs
+            status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -1088,6 +1112,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
         path: str,
         *,
         name: Optional[str] = None,
+        status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
         response_validate: bool = True,
         response_type: Union[Type[Any], None, UnsetType] = Unset,
         response_content_type: Union[str, ContentType, None] = None,
@@ -1107,27 +1132,24 @@ class RouteTableDef(AioHTTPRouteTableDef):
         """Add a new RouteDef item for registering a OPTIONS web-handler.
 
         Args:
-            path (str): Resource path spec.
-            name (Optional[str]): An optional resource name.
-            response_validate (bool): Whether the response should be validated (default is True).
-            response_type (Union[Type[Any], None, UnsetType]): The type of the response.
-                                                               Overrides return type annotation if set.
-            response_content_type (Union[str, ContentType, None]): The `Content-Type` header for the response.
-            response_charset (Union[str, Charset]): The charset for encoding/decoding response data.
-            response_zlib_executor (Optional[Executor]): Executor for zlib compression of response body.
-            response_zlib_executor_size (Optional[int]): Threshold for triggering zlib compression.
-            response_include_fields (Optional[Include]): Pydantic's `include` parameter
-                                                         to include specific fields in response.
-            response_exclude_fields (Optional[Exclude]): Pydantic's `exclude` parameter
-                                                         to exclude specific fields in response.
-            response_by_alias (bool): Whether to use alias names instead of attribute names in the response.
-            response_by_alias (bool): Whether to use alias names instead of attribute names in the response.
-            response_exclude_unset (bool): Exclude fields with default values from the response.
-            response_exclude_defaults (bool): Exclude fields that have default values even if explicitly set.
-            response_exclude_none (bool): Exclude fields with a `None` value from the response.
-            response_custom_encoder (Optional[CustomEncoder]): A custom encoder for specific field types.
-            response_json_encoder (JSONEncoder): A JSON encoder to serialize the response.
-            kwargs (Any): Additional internal arguments.
+            path (str): The resource path specification for the route.
+            name (Optional[str]): Optional resource name.
+            status_code (int): The default status code to be used for the response.
+            response_validate (bool): Determines whether the handler's response should be validated.
+            response_type (Union[Type[Any], None, UnsetType]): The type of response expected.
+            response_content_type (Union[str, ContentType, None]): Defines the `Content-Type` header for the response.
+            response_charset (Union[str, Charset]): Charset used for encoding and decoding the response.
+            response_zlib_executor (Optional[Executor]): Executor for zlib compression.
+            response_zlib_executor_size (Optional[int]): The size threshold for triggering zlib compression.
+            response_include_fields (Optional[Include]): Fields to include during Pydantic model serialization.
+            response_exclude_fields (Optional[Exclude]): Fields to exclude during Pydantic model serialization.
+            response_by_alias (bool): Whether to use aliases for fields during serialization.
+            response_exclude_unset (bool): Whether to exclude unset fields from the response.
+            response_exclude_defaults (bool): Whether to exclude fields with default values from the response.
+            response_exclude_none (bool): Whether to exclude fields with `None` values from the response.
+            response_custom_encoder (Optional[CustomEncoder]): A custom encoder for Pydantic models.
+            response_json_encoder (JSONEncoder): Custom JSON encoder function for serializing the response.
+            kwargs (Any): Additional internal arguments for the route.
 
         Returns:
             RouterDeco: A decorator function to register the OPTIONS route handler.
@@ -1139,6 +1161,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             name=name,
             **kwargs,
             # rapidy attrs
+            status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
@@ -1160,6 +1183,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
         path: str,
         *,
         name: Optional[str] = None,
+        status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
         response_validate: bool = True,
         response_type: Union[Type[Any], None, UnsetType] = Unset,
         response_content_type: Union[str, ContentType, None] = None,
@@ -1179,27 +1203,27 @@ class RouteTableDef(AioHTTPRouteTableDef):
         """Add a new RouteDef item for registering ANY methods for a class-based view.
 
         Args:
-            path (str): Resource path spec.
-            name (Optional[str]): An optional resource name.
-            response_validate (bool): Whether the response should be validated (default is True).
-            response_type (Union[Type[Any], None, UnsetType]): The type of the response.
-                                                               Overrides return type annotation if set.
-            response_content_type (Union[str, ContentType, None]): The `Content-Type` header for the response.
-            response_charset (Union[str, Charset]): The charset for encoding/decoding response data.
-            response_zlib_executor (Optional[Executor]): Executor for zlib compression of response body.
-            response_zlib_executor_size (Optional[int]): Threshold for triggering zlib compression.
-            response_include_fields (Optional[Include]): Pydantic's `include` parameter
-                                                         to include specific fields in response.
-            response_exclude_fields (Optional[Exclude]): Pydantic's `exclude` parameter
-                                                         to exclude specific fields in response.
-            response_by_alias (bool): Whether to use alias names instead of attribute names in the response.
-            response_by_alias (bool): Whether to use alias names instead of attribute names in the response.
-            response_exclude_unset (bool): Exclude fields with default values from the response.
-            response_exclude_defaults (bool): Exclude fields that have default values even if explicitly set.
-            response_exclude_none (bool): Exclude fields with a `None` value from the response.
-            response_custom_encoder (Optional[CustomEncoder]): A custom encoder for specific field types.
-            response_json_encoder (JSONEncoder): A JSON encoder to serialize the response.
-            kwargs (Any): Additional internal arguments.
+            path (str): The resource path specification for the route.
+            name (Optional[str]): Optional resource name.
+            status_code (int): The default status code to be used for the response.
+            response_validate (bool): Determines whether the handler's response should be validated.
+            response_type (Union[Type[Any], None, UnsetType]): The type of response expected.
+            response_content_type (Union[str, ContentType, None]): Defines the `Content-Type` header for the response.
+            response_charset (Union[str, Charset]): Charset used for encoding and decoding the response.
+            response_zlib_executor (Optional[Executor]): Executor for zlib compression.
+            response_zlib_executor_size (Optional[int]): The size threshold for triggering zlib compression.
+            response_include_fields (Optional[Include]): Fields to include during Pydantic model serialization.
+            response_exclude_fields (Optional[Exclude]): Fields to exclude during Pydantic model serialization.
+            response_by_alias (bool): Whether to use aliases for fields during serialization.
+            response_exclude_unset (bool): Whether to exclude unset fields from the response.
+            response_exclude_defaults (bool): Whether to exclude fields with default values from the response.
+            response_exclude_none (bool): Whether to exclude fields with `None` values from the response.
+            response_custom_encoder (Optional[CustomEncoder]): A custom encoder for Pydantic models.
+            response_json_encoder (JSONEncoder): Custom JSON encoder function for serializing the response.
+            kwargs (Any): Additional internal arguments for the route.
+
+        Returns:
+            RouterDeco: A decorator function to register the class-based view.
         """
         return self.route(
             # aiohttp attrs
@@ -1208,6 +1232,7 @@ class RouteTableDef(AioHTTPRouteTableDef):
             name=name,
             **kwargs,
             # rapidy attrs
+            status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,
             response_content_type=response_content_type,
