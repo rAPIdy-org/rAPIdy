@@ -1,8 +1,8 @@
 import pytest
 from aiohttp.pytest_plugin import AiohttpClient
 
-from tests.test_http.test_server.test_handlers.test_default.base import params_test_cases, TestCase
-from tests.test_http.test_server.test_handlers.test_default.test_default.base import (
+from tests.test_http.test_server.test_handlers.test_request.test_default.base import params_test_cases, TestCase
+from tests.test_http.test_server.test_handlers.test_request.test_default.test_default.base import (
     base_test_can_default,
     base_test_incorrect_define_default_annotated_def,
     base_test_specify_both_default_and_default_factory,

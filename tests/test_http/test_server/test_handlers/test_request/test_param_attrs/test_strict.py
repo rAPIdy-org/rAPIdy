@@ -1,7 +1,11 @@
 import pytest
-from pytest_aiohttp.plugin import AiohttpClient
+from aiohttp.pytest_plugin import AiohttpClient
 
-from tests.test_http.test_server.test_param_attrs.helpers import base_test, create_test_cases, TestCase
+from tests.test_http.test_server.test_handlers.test_request.test_param_attrs.helpers import (
+    base_test,
+    create_test_cases,
+    TestCase,
+)
 
 strict_true_test_cases = create_test_cases(1, '2s', skip_only_str_params=True)
 strict_false_test_cases = create_test_cases('1')

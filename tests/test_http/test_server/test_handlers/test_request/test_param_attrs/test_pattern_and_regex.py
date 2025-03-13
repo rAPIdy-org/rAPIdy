@@ -1,7 +1,11 @@
 import pytest
-from pytest_aiohttp.plugin import AiohttpClient
+from aiohttp.pytest_plugin import AiohttpClient
 
-from tests.test_http.test_server.test_param_attrs.helpers import base_test, create_test_cases, TestCase
+from tests.test_http.test_server.test_handlers.test_request.test_param_attrs.helpers import (
+    base_test,
+    create_test_cases,
+    TestCase,
+)
 
 
 @pytest.mark.parametrize(
@@ -17,6 +21,6 @@ async def test_regex_fields(
     await base_test(
         aiohttp_client=aiohttp_client,
         annotation=str,
-        param=test_case.param(**{param_name: 'test'}),  # type: ignore[arg-type]
+        param=test_case.param(**{param_name: 'test'}),  # type: ignore[arg-type, unused-ignore]
         test_case=test_case,
     )

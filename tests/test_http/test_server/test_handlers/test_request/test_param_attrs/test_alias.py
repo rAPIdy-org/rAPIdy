@@ -1,9 +1,13 @@
 from typing_extensions import Final
 
 import pytest
-from pytest_aiohttp.plugin import AiohttpClient
+from aiohttp.pytest_plugin import AiohttpClient
 
-from tests.test_http.test_server.test_param_attrs.helpers import base_test, create_test_cases, TestCase
+from tests.test_http.test_server.test_handlers.test_request.test_param_attrs.helpers import (
+    base_test,
+    create_test_cases,
+    TestCase,
+)
 
 ALIAS: Final[str] = 'Alias'
 

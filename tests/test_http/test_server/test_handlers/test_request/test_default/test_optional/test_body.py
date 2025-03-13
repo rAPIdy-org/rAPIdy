@@ -3,8 +3,8 @@ from aiohttp import StreamReader
 from aiohttp.pytest_plugin import AiohttpClient
 
 from rapidy.enums import ContentType
-from tests.test_http.test_server.test_handlers.test_default.base import body_test_cases, BodyTestCase
-from tests.test_http.test_server.test_handlers.test_default.test_optional.base import (
+from tests.test_http.test_server.test_handlers.test_request.test_default.base import body_test_cases, BodyTestCase
+from tests.test_http.test_server.test_handlers.test_request.test_default.test_optional.base import (
     base_test_optional,
     base_test_optional_schema_param_fields,
 )

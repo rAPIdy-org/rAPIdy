@@ -20,7 +20,7 @@ repos:
     hooks:
     - id: name-tests-test
       args: [ --pytest-test-first ]
-      exclude: ^tests/helpers.py|^tests/test_mypy/cases|^.*base.py|^.*helpers.py
+      exclude: ^tests/app_checkers.py|^tests/test_mypy/cases|^.*base.py|^.*helpers.py|^.*constants.py
 
   - repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.14.0

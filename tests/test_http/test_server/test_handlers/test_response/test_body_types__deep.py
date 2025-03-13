@@ -8,11 +8,13 @@ import pytest
 from aiohttp.pytest_plugin import AiohttpClient
 from pydantic import BaseModel, ConfigDict, Field
 
-from rapidy import web
+from rapidy import Rapidy, web
 from rapidy.constants import PYDANTIC_IS_V1
 from rapidy.encoders import Exclude, Include
 from rapidy.enums import ContentType, HeaderName
+from rapidy.http import Response
 from rapidy.web_response import ResponseDuplicateBodyError
+from tests.constants import ClientBodyExtractMethod
 
 PATH: Final[str] = '/'
 JSON_CHARSET_UTF8: Final[str] = 'application/json; charset=utf-8'
@@ -40,12 +42,6 @@ class BaseModelTest(BaseModel):
         model_config: ConfigDict = ConfigDict(populate_by_name=True)
 
 
-class ExtractMethod(str, Enum):
-    text = 'text'
-    read = 'read'
-    json = 'json'
-
-
 class BodySetterName(str, Enum):
     body = 'body'
     text = 'text'
@@ -57,7 +53,7 @@ class TestCase:
     response_body: Any = 'test'
     response_content_type: Optional[ContentType] = None
     expected_data: Any = 'test'
-    extract_method: ExtractMethod = ExtractMethod.text
+    extract_method: ClientBodyExtractMethod = ClientBodyExtractMethod.text
     expected_content_type: str = 'text/plain; charset=utf-8'
 
     setter: BodySetterName = BodySetterName.body
@@ -80,7 +76,7 @@ class TestCaseTextPlain(TestCase):
 @dataclass
 class TestCaseJson(TestCase):
     response_content_type: ContentType = ContentType.json
-    extract_method: ExtractMethod = ExtractMethod.json
+    extract_method: ClientBodyExtractMethod = ClientBodyExtractMethod.json
     expected_content_type: str = 'application/json; charset=utf-8'
 
 
@@ -117,63 +113,63 @@ test_cases = (
         id='dict-unknown',
         response_body={'Test': 'test'},
         expected_data={'Test': 'test'},
-        extract_method=ExtractMethod.json,
+        extract_method=ClientBodyExtractMethod.json,
         expected_content_type=JSON_CHARSET_UTF8,
     ),
     TestCase(
         id='base-model-unknown',
         response_body=BaseModelTest(),
         expected_data={'Test': 'test', 'test_none': None},
-        extract_method=ExtractMethod.json,
+        extract_method=ClientBodyExtractMethod.json,
         expected_content_type=JSON_CHARSET_UTF8,
     ),
     TestCase(
         id='dataclass-unknown',
         response_body=DataclassTest(),
         expected_data={'test': 'test'},
-        extract_method=ExtractMethod.json,
+        extract_method=ClientBodyExtractMethod.json,
         expected_content_type=JSON_CHARSET_UTF8,
     ),
     TestCase(
         id='tuple-unknown',
         response_body=('test', 'test'),
         expected_data=['test', 'test'],
-        extract_method=ExtractMethod.json,
+        extract_method=ClientBodyExtractMethod.json,
         expected_content_type=JSON_CHARSET_UTF8,
     ),
     TestCase(
         id='list-unknown',
         response_body=['test', 'test'],
         expected_data=['test', 'test'],
-        extract_method=ExtractMethod.json,
+        extract_method=ClientBodyExtractMethod.json,
         expected_content_type=JSON_CHARSET_UTF8,
     ),
     TestCase(
         id='set-unknown',
         response_body={'test'},
         expected_data=['test'],
-        extract_method=ExtractMethod.json,
+        extract_method=ClientBodyExtractMethod.json,
         expected_content_type=JSON_CHARSET_UTF8,
     ),
     TestCase(
         id='frozenset-unknown',
         response_body=frozenset(('test',)),
         expected_data=['test'],
-        extract_method=ExtractMethod.json,
+        extract_method=ClientBodyExtractMethod.json,
         expected_content_type=JSON_CHARSET_UTF8,
     ),
     TestCase(
         id='default-dict-unknown',
         response_body=defaultdict(int),
         expected_data={},
-        extract_method=ExtractMethod.json,
+        extract_method=ClientBodyExtractMethod.json,
         expected_content_type=JSON_CHARSET_UTF8,
     ),
     TestCase(
         id='counter-unknown',
         response_body=Counter(('test', 'test')),
         expected_data={'test': 2},
-        extract_method=ExtractMethod.json,
+        extract_method=ClientBodyExtractMethod.json,
         expected_content_type=JSON_CHARSET_UTF8,
     ),
     # CONTENT-TYPE text/plain
@@ -381,12 +377,12 @@ test_cases = (
 
 @pytest.mark.parametrize('test_case', [pytest.param(test_case, id=test_case.id) for test_case in test_cases])
 async def test_response(aiohttp_client: AiohttpClient, test_case: TestCase) -> None:
-    async def handler() -> web.Response:
+    async def handler() -> Response:
         response_kw = {
             test_case.setter.value: test_case.response_body,
         }
 
-        return web.Response(
+        return Response(
             **response_kw,
             content_type=test_case.response_content_type,
             include=test_case.include,
@@ -397,10 +393,10 @@ async def test_response(aiohttp_client: AiohttpClient, test_case: TestCase) -> N
             exclude_none=test_case.exclude_none,
         )
 
-    app = web.Application()
-    app.add_routes([web.get(PATH, handler)])
+    rapidy = Rapidy()
+    rapidy.add_routes([web.get(PATH, handler)])
 
-    client = await aiohttp_client(app)
+    client = await aiohttp_client(rapidy)
     resp = await client.get(PATH)
 
     data = await getattr(resp, test_case.extract_method)()
@@ -411,4 +407,4 @@ async def test_response(aiohttp_client: AiohttpClient, test_case: TestCase) -> N
 
 def test_init_body_and_text() -> None:
     with pytest.raises(ResponseDuplicateBodyError):
-        web.Response(body='test', text='test')
+        Response(body='test', text='test')
