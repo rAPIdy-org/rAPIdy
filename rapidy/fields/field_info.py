@@ -129,7 +129,7 @@ class RapidyFieldInfo(FieldInfo):
             kwargs['pattern'] = self._get_pattern(pattern=pattern, regex=regex)
 
         if PYDANTIC_VERSION_TUPLE < ('2', '7'):
-            self.deprecated = deprecated
+            self.deprecated = deprecated if deprecated is not Unset else None
         else:
             kwargs['deprecated'] = deprecated
 
