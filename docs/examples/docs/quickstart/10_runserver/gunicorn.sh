@@ -1,0 +1,1 @@
+gunicorn main:rapidy --bind localhost:8080 --reload --worker-class aiohttp.GunicornWebWorker

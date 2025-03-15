@@ -1,0 +1,7 @@
+cases/default/path/module.py:5: error: "default" or "default_factory" cannot be specified for "rapidy.parameters.http.PathParam"  [rapidy-param]
+cases/default/path/module.py:6: error: "default" or "default_factory" cannot be specified for "rapidy.parameters.http.PathParam"  [rapidy-param]
+cases/default/path/module.py:7: error: "default" or "default_factory" cannot be specified for "rapidy.parameters.http.PathParam"  [rapidy-param]
+cases/default/path/module.py:8: error: "default" or "default_factory" cannot be specified for "rapidy.parameters.http.PathParams"  [rapidy-param]
+cases/default/path/module.py:9: error: "default" or "default_factory" cannot be specified for "rapidy.parameters.http.PathParams"  [rapidy-param]
+cases/default/path/module.py:10: error: "default" or "default_factory" cannot be specified for "rapidy.parameters.http.PathParams"  [rapidy-param]
+Found 6 errors in 1 file (checked 1 source file)

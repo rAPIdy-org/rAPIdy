@@ -3,14 +3,17 @@ repos:
     rev: v3.1.0
     hooks:
       - id: add-trailing-comma
+        exclude: docs/examples/.*
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.4.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
+        exclude: docs/examples/.*
       - id: check-added-large-files
       - id: check-ast
+        exclude: docs/examples/.*
       - id: check-json
       - id: check-toml
       - id: check-yaml
@@ -20,27 +23,25 @@ repos:
     hooks:
     - id: name-tests-test
       args: [ --pytest-test-first ]
-      exclude: ^tests/helpers.py|^tests/mypy/cases
-
-  - repo: https://github.com/PyCQA/isort
-    rev: 5.13.1
-    hooks:
-      - id: isort
+      exclude: ^tests/app_checkers.py|^tests/test_mypy/cases|^.*base.py|^.*helpers.py|^.*constants.py
 
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.8.0
+    rev: v1.14.0
     hooks:
       - id: mypy
         types_or:
           - python
           - pyi
         require_serial: true
-        exclude: ^tests/mypy/cases/
+        exclude: docs/examples/.*|^tests/mypy/cases/
+        additional_dependencies: ["attrs==24.2.0"]
 
-  - repo: https://github.com/PyCQA/flake8
-    rev: 6.1.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
     hooks:
-      - id: flake8
-        types:
-          - python
-        additional_dependencies: ["flake8-pyproject", "wemake-python-styleguide"]
+      - id: ruff
+        args: [ --fix, --config=pyproject.toml ]
+        exclude: docs/examples/.*
+      - id: ruff-format
+        args: [ --config=pyproject.toml ]
+        exclude: docs/examples/.*

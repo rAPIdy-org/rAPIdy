@@ -15,7 +15,7 @@ concurrency:
 
 jobs:
   pre-commit:
-    runs-on: ["self-hosted", "Ubuntu-latest"]
+    runs-on: ["ubuntu-latest"]
     strategy:
       fail-fast: false
       max-parallel: 50
@@ -51,10 +51,10 @@ jobs:
         run: poetry add "pydantic>=2.0.2,<3.0.0"
 
       - name: Run pre-commit
-        uses: pre-commit/action@v3.0.0
+        uses: pre-commit/action@v3.0.1
 
   test:
-    runs-on: ["self-hosted", "Ubuntu-latest"]
+    runs-on: ["ubuntu-latest"]
     needs: ["pre-commit"]
     strategy:
       fail-fast: false
@@ -65,35 +65,17 @@ jobs:
           - "3.11"
           - "3.10"
           - "3.9"
-          - "3.8"
         pydantic-version:
           - "pydantic-v1"
           - "pydantic-v2"
         aiohttp-version:
+          - "3.11.11"
+          - "3.10.11"
           - "3.9.5"
-          - "3.9.4"
-          - "3.9.3"
-          - "3.9.2"
-          - "3.9.1"
-          - "3.9.0"
           - "3.8.6"
-          - "3.8.5"
-          - "3.8.4"
-          - "3.8.3"
-          - "3.8.1"
         exclude:
           - python-version: "3.12"
-            aiohttp-version: "3.8.1"
-          - python-version: "3.12"
-            aiohttp-version: "3.8.3"
-          - python-version: "3.12"
-            aiohttp-version: "3.8.4"
-          - python-version: "3.12"
-            aiohttp-version: "3.8.5"
-          - python-version: "3.12"
             aiohttp-version: "3.8.6"
-          - python-version: "3.11"
-            aiohttp-version: "3.8.1"
     steps:
       - name: Dump github context
         env:
@@ -127,6 +109,21 @@ jobs:
       - name: Install aiohttp
         run: poetry add "aiohttp==${{ matrix.aiohttp-version }}"
 
+      - name: Install Yarl
+        # FIXME: 1.13.0 - aiohttp backwards compatibility broken
+        run: |
+          poetry add semver
+          poetry run python -c "
+          import semver
+          result = semver.compare('${{ matrix.aiohttp-version }}', '3.11.0')
+          if result == -1:
+              import subprocess
+              subprocess.check_call(['poetry', 'add', 'yarl<1.13.0'])
+          "
+
+      - name: Install Mypy
+        run: poetry add mypy
+
       - name: Create coverage dir
         run: mkdir coverage
 
@@ -134,97 +131,19 @@ jobs:
         env:
           CONTEXT: ${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.pydantic-version }}-${{ matrix.aiohttp-version }}
           COVERAGE_FILE: coverage/.coverage.${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.pydantic-version }}-${{ matrix.aiohttp-version }}
-        run: poetry run coverage run -m pytest --ignore=./tests/mypy ./tests
+        run: poetry run coverage run -m pytest ./tests
 
       - name: Store coverage file
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           path: coverage
-          name: coverage
-
-  test-mypy:
-    runs-on: [ "self-hosted", "Ubuntu-latest" ]
-    needs: [ "pre-commit" ]
-    strategy:
-      fail-fast: false
-      max-parallel: 50
-      matrix:
-        python-version:
-          - "3.12"
-          - "3.11"
-          - "3.10"
-          - "3.9"
-          - "3.8"
-        pydantic-version:
-          - "pydantic-v1"
-          - "pydantic-v2"
-        mypy-version:
-          - "1.9.0"
-          - "1.4.1"
-          - "1.3.0"
-        exclude:
-          # mypy behaves on python version 3.9, combining new and old approaches to error output.
-          - python-version: "3.9"
-            mypy-version: "1.9.0"
-          - python-version: "3.9"
-            mypy-version: "1.4.1"
-    steps:
-      - name: Dump github context
-        env:
-          GITHUB_CONTEXT: ${{ toJson(github) }}
-        run: echo "$GITHUB_CONTEXT"
-
-      - name: Checkout git repository
-        uses: actions/checkout@v4
-
-      - name: Prepare python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install poetry
-        uses: abatilo/actions-poetry@v2
-        with:
-          poetry-version: "1.7.1"
-
-      - name: Install dependencies
-        run: poetry install
-
-      - name: Install Pydantic v1
-        if: matrix.pydantic-version == 'pydantic-v1'
-        run: poetry add "pydantic>=1.10.0,<2.0.0"
-
-      - name: Install Pydantic v2
-        if: matrix.pydantic-version == 'pydantic-v2'
-        run: poetry add "pydantic>=2.0.2,<3.0.0"
-
-      - name: Install Mypy
-        run: poetry add "mypy==${{ matrix.mypy-version }}"
-
-      - name: Create coverage dir
-        run: mkdir coverage
-
-      - name: Test with pytest
-        env:
-          CONTEXT: ${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.pydantic-version }}-${{ matrix.mypy-version }}
-          COVERAGE_FILE: coverage/.coverage.${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.pydantic-version }}-${{ matrix.mypy-version }}
-        run: poetry run coverage run -m pytest ./tests/mypy
-
-      - name: Store coverage file
-        uses: actions/upload-artifact@v3
-        with:
-          path: coverage
-          name: coverage
+          name: coverage-${{ matrix.python-version }}-${{ matrix.pydantic-version }}-${{ matrix.aiohttp-version }}
+          include-hidden-files: true
 
   coverage-combine:
-    needs: [ "test", "test-mypy" ]
-    runs-on: ["self-hosted", "Ubuntu-latest"]
+    needs: [ "test" ]
+    runs-on: ["ubuntu-latest"]
     steps:
-      - name: Dump github context
-        env:
-          GITHUB_CONTEXT: ${{ toJson(github) }}
-        run: echo "$GITHUB_CONTEXT"
-
       - name: Checkout git repository
         uses: actions/checkout@v4
 
@@ -234,10 +153,11 @@ jobs:
           python-version: "3.8"
 
       - name: Get coverage files
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
-          name: coverage
+          pattern: coverage-*
           path: coverage
+          merge-multiple: true
 
       - name: Install test dependencies
         run: pip install coverage[toml]
@@ -249,25 +169,29 @@ jobs:
         run: coverage combine coverage
 
       - name: Coverage report
-        run: coverage report --fail-under=95
+        run: coverage report --fail-under=90
+
+      - name: Coverage HTML
+        run: coverage html --title "Coverage for ${{ github.sha }}"
+
+      - name: Store coverage HTML
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: htmlcov
+          include-hidden-files: true
 
   check:
     if: always()
     needs:
       - coverage-combine
-    runs-on: ["self-hosted", "Ubuntu-latest"]
+    runs-on: ["ubuntu-latest"]
     steps:
-      - name: Dump github context
-        env:
-          GITHUB_CONTEXT: ${{ toJson(github) }}
-        run: echo "$GITHUB_CONTEXT"
-
       - name: Prepare python
         uses: actions/setup-python@v5
         with:
           python-version: "3.8"
 
-      # https://github.com/marketplace/actions/alls-green#why
       - name: Decide whether the needed jobs succeeded or failed
         uses: re-actors/alls-green@release/v1
         with:

@@ -1,0 +1,6 @@
+...
+@get('/')
+async def handler() -> ...:
+    response = Response()
+    charset = response.charset
+    ...

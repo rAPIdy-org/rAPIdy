@@ -1,81 +1,76 @@
-from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple, Type, TYPE_CHECKING, Union
+from enum import Enum
+from typing import Any, Awaitable, Callable, Dict, Final, List, Optional, Tuple, Type, TYPE_CHECKING, Union
+from typing_extensions import Literal, TypeAlias
 
-from aiohttp.abc import AbstractView, Request
-from aiohttp.typedefs import (
-    Byteish,
-    DEFAULT_JSON_DECODER,
-    DEFAULT_JSON_ENCODER,
-    JSONDecoder,
-    JSONEncoder,
-    LooseCookies,
-    LooseCookiesIterables,
-    LooseCookiesMappings,
-    LooseHeaders,
-    PathLike,
-    RawHeaders,
-    StrOrURL,
-)
-from typing_extensions import TypeAlias
+from aiohttp.abc import AbstractView
+from pydantic import BaseModel
 
-from rapidy.constants import PYDANTIC_V1, PYDANTIC_V2
+from rapidy.constants import PYDANTIC_IS_V1
 
 if TYPE_CHECKING:
+    from rapidy.lifespan import LifespanCTX, LifespanHook  # noqa: TC004
+    from rapidy.routing.http.base import BaseHTTPRouter
+    from rapidy.web_request import Request
     from rapidy.web_response import StreamResponse
 
+    if PYDANTIC_IS_V1:
+        from pydantic.dataclasses import Dataclass
+
+
 __all__ = (
-    'Byteish',
-    'DEFAULT_JSON_DECODER',
-    'DEFAULT_JSON_ENCODER',
-    'JSONEncoder',
-    'JSONDecoder',
-    'LooseHeaders',
-    'RawHeaders',
-    'StrOrURL',
-    'LooseCookiesMappings',
-    'LooseCookiesIterables',
-    'LooseCookies',
+    'Deprecated',
     'Middleware',
+    'CallNext',
     'Handler',
-    'PathLike',
     'DictStrAny',
     'DictStrStr',
-    'DictStrListAny',
-    'DictStrListStr',
-    'MethodHandler',
-    'HandlerType',
-    'HandlerOrMethod',
+    'NoArgAnyCallable',
+    'HandlerOrView',
+    'LifespanCTX',
+    'LifespanHook',
+    'ResultValidate',
+    'ValidationErrorList',
+    'ValidateReturn',
+    'JSONEncoder',
+    'JSONDecoder',
+    'Unset',
+    'UnsetType',
 )
 
-DictStrAny = Dict[str, Any]
-DictStrStr = Dict[str, str]
-DictStrListAny = Dict[str, List[Any]]
-DictStrListStr = Dict[str, List[str]]
+# support types
+DictStrAny: TypeAlias = Dict[str, Any]
+DictStrStr: TypeAlias = Dict[str, str]
 
-Handler = Callable[..., Awaitable['StreamResponse']]
-MethodHandler = Callable[..., Awaitable['StreamResponse']]
-HandlerType = Union[Handler, Type[AbstractView]]
-Middleware = Callable[[Request, Handler], Awaitable['StreamResponse']]
+# rapidy types
+Handler: TypeAlias = Callable[..., Awaitable[Any]]
+Middleware: TypeAlias = Handler
+CallNext: TypeAlias = Callable[['Request'], Awaitable['StreamResponse']]
 
-HandlerOrMethod = Union[Handler, MethodHandler]
+# inner types
+HandlerOrView: TypeAlias = Union[Handler, Type[AbstractView]]
+RouterDeco = Callable[[HandlerOrView], HandlerOrView]
 
-ResultValidate: TypeAlias = Dict[str, Any]
-ValidationErrorList: TypeAlias = List[Dict[str, Any]]
+ControllerHTTPRouterType = Any  # Not `any` of course, but `mypy` doesn't recognise the `controller` class decorator
+BaseHTTPRouterType = Union['BaseHTTPRouter', ControllerHTTPRouterType]
+
+# validation types
+LocStr = Union[Tuple[Union[int, str], ...], str]
+ModelOrDc = Type[Union[BaseModel, 'Dataclass']]
+ResultValidate = DictStrAny
+ValidationErrorList: TypeAlias = List[DictStrAny]
 ValidateReturn: TypeAlias = Tuple[Optional[ResultValidate], Optional[ValidationErrorList]]
 
-RouterDeco = Callable[[HandlerType], HandlerType]
+# model types
+NoArgAnyCallable: TypeAlias = Callable[[], Any]
 
-NoArgAnyCallable = Callable[[], Any]
+if PYDANTIC_IS_V1:
+    from typing_extensions import deprecated as Deprecated  # noqa: N812
 
-if PYDANTIC_V1:
-    from pydantic.error_wrappers import ErrorWrapper as ErrorWrapper
-    from pydantic.fields import (
-        Required as Required,
-        Undefined as Undefined,
-        UndefinedType as UndefinedType,
-        Validator as Validator,
-    )
+    from pydantic.error_wrappers import ErrorWrapper
+    from pydantic.fields import Required, Undefined, UndefinedType, Validator
 
-elif PYDANTIC_V2:
+else:
+    from pydantic.fields import Deprecated  # type: ignore[no-redef]
     from pydantic_core import PydanticUndefined, PydanticUndefinedType
 
     Required = PydanticUndefined
@@ -83,8 +78,20 @@ elif PYDANTIC_V2:
     UndefinedType = PydanticUndefinedType
     Validator = Any  # type: ignore[assignment,unused-ignore]
 
-    class ErrorWrapper(Exception):  # type: ignore[no-redef]  # noqa: N818 WPS440
+    class ErrorWrapper(Exception):  # type: ignore[no-redef]  # noqa: N818
         pass
 
-else:
-    raise Exception
+
+class _Unset(Enum):
+    """A sentinel enum used as placeholder."""
+
+    UNSET = 0
+
+
+Unset: Final = _Unset.UNSET
+UnsetType = Literal[_Unset.UNSET]
+
+
+# json
+JSONEncoder = Callable[[Any], str]
+JSONDecoder = Callable[[str], Any]

@@ -1,9 +1,11 @@
-from rapidy._version import AIOHTTP_VERSION_TUPLE
+from aiohttp.typedefs import DEFAULT_JSON_ENCODER, LooseHeaders
+
+from rapidy._client_errors import normalize_errors
+from rapidy.version import AIOHTTP_VERSION_TUPLE
 
 if AIOHTTP_VERSION_TUPLE >= (3, 9, 0):
     from aiohttp.web_exceptions import HTTPMove, NotAppKeyWarning
 
-import json
 from typing import Any, Optional
 
 from aiohttp.web_exceptions import (
@@ -66,10 +68,9 @@ from aiohttp.web_exceptions import (
     HTTPVersionNotSupported,
 )
 
-from rapidy.media_types import ApplicationJSON
-from rapidy.typedefs import LooseHeaders, ValidationErrorList
+from rapidy.typedefs import ValidationErrorList
 
-__all = [
+__all__ = [
     'HTTPException',
     'HTTPError',
     'HTTPRedirection',
@@ -131,35 +132,60 @@ __all = [
 ]
 
 if AIOHTTP_VERSION_TUPLE >= (3, 9, 0):
-    __all.extend([
+    __all__ += [
         'HTTPMove',
         'NotAppKeyWarning',
-    ])
-
-__all__ = tuple(__all)
+    ]
 
 
 class HTTPValidationFailure(HTTPUnprocessableEntity):
+    """Exception raised for HTTP validation failure.
+
+    This exception is used to report validation errors in HTTP requests. It inherits from
+    `HTTPUnprocessableEntity` and returns a detailed error message in JSON format.
+
+    Attributes:
+        validation_failure_field_name (str): The name of the field that holds validation errors.
+        _errors (ValidationErrorList): List of validation errors.
+
+    Args:
+        errors (ValidationErrorList): A list of validation errors.
+        headers (Optional[LooseHeaders], optional): Custom headers for the HTTP response. Defaults to None.
+        reason (Optional[str], optional): Reason phrase for the HTTP response. Defaults to None.
+        body (Any, optional): The body content of the HTTP response. Defaults to None.
+        text (Optional[str], optional): The text content of the HTTP response. Defaults to None.
+        content_type (Optional[str], optional): The content type of the HTTP response. Defaults to 'application/json'.
+    """
+
+    validation_failure_field_name: str = 'errors'
+
     def __init__(
-            self,
-            validation_failure_field_name: str,
-            errors: ValidationErrorList,
-            *,
-            headers: Optional[LooseHeaders] = None,
-            reason: Optional[str] = None,
-            body: Any = None,
-            text: Optional[str] = None,
-            content_type: Optional[str] = None,
+        self,
+        errors: ValidationErrorList,
+        *,
+        headers: Optional[LooseHeaders] = None,
+        reason: Optional[str] = None,
+        body: Any = None,
+        text: Optional[str] = None,
+        content_type: Optional[str] = None,
     ) -> None:
-        self._errors = errors
+        self._errors = normalize_errors(errors)
+        if text is None:
+            text = DEFAULT_JSON_ENCODER({self.validation_failure_field_name: self._errors}, default=str)
+
         super().__init__(
             headers=headers,
             reason=reason,
             body=body,
-            text=json.dumps({validation_failure_field_name: errors}) if text is None else text,
-            content_type=ApplicationJSON if content_type is None else content_type,
+            text=text,
+            content_type='application/json' if content_type is None else content_type,
         )
 
     @property
     def validation_errors(self) -> ValidationErrorList:
+        """Return the validation errors.
+
+        Returns:
+            ValidationErrorList: The list of validation errors associated with the failure.
+        """
         return self._errors

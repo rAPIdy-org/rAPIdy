@@ -1,0 +1,6 @@
+...
+@get('/')
+async def handler() -> ...:
+    response = Response()
+    last_modified = response.last_modified
+    ...

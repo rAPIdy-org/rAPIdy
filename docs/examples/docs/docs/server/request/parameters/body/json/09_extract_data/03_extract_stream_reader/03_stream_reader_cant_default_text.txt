@@ -1,0 +1,7 @@
+------------------------------
+Handler attribute with Type `Body` cannot have a default value.
+
+Handler path: `<full_path>/main.py`
+Handler name: `handler`
+Attribute name: `data`
+------------------------------
