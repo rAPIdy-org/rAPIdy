@@ -1,0 +1,19 @@
+POST /  HTTP/1.1
+Host: localhost:8080
+Content-Type: multipart/form-data; boundary=---WD9146A
+Content-Length: ...
+
+---WD9146A
+Content-Disposition: form-data; name="username"
+
+User
+---WD9146A
+Content-Disposition: form-data; name="password"
+
+myAwesomePass
+---WD9146A
+Content-Disposition: form-data; name="image"; filename="image.png";
+Content-Type: image/png
+
+<... binary data ...>
+---WD9146A

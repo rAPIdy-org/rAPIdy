@@ -1,6 +1,7 @@
 # Contributing Guidelines
 
-Thank you for considering contributing to this project! Your help is greatly appreciated. Please follow these guidelines to ensure a smooth contribution process.
+Thank you for considering contributing to this project! Your help is greatly appreciated. Please follow these guidelines
+to ensure a smooth contribution process.
 
 ## Table of Contents
 
@@ -21,7 +22,7 @@ Thank you for considering contributing to this project! Your help is greatly app
     For more installation options, refer to the [Poetry documentation](https://python-poetry.org/docs/#installation).
 3. Create a virtual environment:
     ```sh
-    poetry env use python3.8
+    poetry env use python3.12
     ```
 4. Install dependencies using Poetry:
     ```sh
@@ -85,5 +86,8 @@ applicable.
 - Before opening an issue, check if it already exists.
 - Provide clear steps to reproduce bugs.
 - Suggest possible solutions if applicable.
+
+### Discussion links
+- <a href="https://t.me/+PsAvQnlVIcJlOGU6" target="_blank">telegram (en)</a>
 
 Thank you for contributing! 🎉

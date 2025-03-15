@@ -1,0 +1,11 @@
+< HTTP/1.1 422 Unprocessable Entity ...
+{
+    "errors": [
+        {
+            "loc": ["body", "data"],
+            "type": "string_too_short",
+            "msg": "String should have at least 3 characters",
+            "ctx": {"min_length": 3}
+        }
+    ]
+}

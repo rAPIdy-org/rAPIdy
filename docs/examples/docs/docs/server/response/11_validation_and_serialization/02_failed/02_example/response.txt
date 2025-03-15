@@ -1,0 +1,10 @@
+------------------------------
+Validation errors:
+ [{'ctx': {'max_length': 10},
+  'loc': ('body', 'data'),
+  'msg': 'String should have at most 10 characters',
+  'type': 'string_too_long'}]
+
+Handler path: `main.py`
+Handler name: `handler`
+------------------------------

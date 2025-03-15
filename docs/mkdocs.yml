@@ -1,0 +1,148 @@
+site_name: rAPIdy
+repo_name: daniil-grois/rAPIdy
+repo_url: https://github.com/daniil-grois/rAPIdy
+
+theme:
+  logo: assets/logo.png
+  favicon: assets/logo.png
+  name: material
+  palette:
+  - media: '(prefers-color-scheme: dark)'
+    scheme: default
+    primary: deep purple
+    accent: deep purple
+    toggle:
+      icon: material/weather-night
+      name: Switch to dark mode
+  - media: '(prefers-color-scheme: light)'
+    scheme: slate
+    primary: deep purple
+    accent: deep purple
+    toggle:
+      icon: material/weather-sunny
+      name: Switch to light mode
+  features:
+    # navigation
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant.progress
+    - navigation.indexes
+    - navigation.path
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.tabs.sticky
+    - navigation.expand
+    - navigation.top
+    - toc.follow
+
+    # search
+    - search.suggest
+    - search.highlight
+    - search.share
+
+    # content
+    - content.tabs.link
+    - content.tooltips  # вот с этим разобраться  https://squidfunk.github.io/mkdocs-material/reference/tooltips/?h=tooltips
+
+    # content.code
+    - content.code.annotate  # аннотации к коду https://squidfunk.github.io/mkdocs-material/reference/code-blocks/?h=code#__codelineno-4-1
+    - content.code.copy
+    - content.code.select
+
+    # https://squidfunk.github.io/mkdocs-material/reference/data-tables/ - таблицы данных
+    # https://squidfunk.github.io/mkdocs-material/reference/diagrams/ - диаграммы
+    # https://squidfunk.github.io/mkdocs-material/reference/lists/ - списки и тд
+plugins:
+  - search
+  - mike:
+      # These fields are all optional; the defaults are as below...
+      alias_type: symlink
+      redirect_template: null
+      deploy_prefix: ''
+      canonical_version: latest
+      version_selector: true
+      css_dir: css
+      javascript_dir: js
+  - i18n:
+      docs_structure: folder
+      languages:
+        - locale: en
+          default: true  # TODO
+          name: English
+          link: /
+          build: true
+        - locale: ru
+          name: Русский
+          link: /ru/
+          build: true
+
+extra_css: [extra.css]
+
+extra:
+  version:
+    provider: mike  # TODO: донастроить версионирование
+    default: latest
+    # https://squidfunk.github.io/mkdocs-material/setup/setting-up-versioning/#publishing-a-new-version
+    # https://github.com/jimporter/mike
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - mdx_include:
+      base_path: ./examples
+
+nav:
+- rAPIdy: index.md
+- Quickstart: quickstart/index.md
+#- Examples:
+#  - examples/index.md
+#  - HTTP-caching: examples/http_caching.md
+#  - Templates:
+#    - examples/templates/index.md
+#    - Base: examples/templates/base.md
+- Docs:
+  - docs/index.md
+  - HTTP Server:
+    - docs/server/index.md
+    - Application:
+      - docs/server/application/index.md
+      - Handlers and Routing:
+        - docs/server/handlers/index.md
+        - HTTPRouter: docs/server/handlers/http_router.md
+      - HTTP-Request:
+        - docs/server/request/index.md
+        - Parameters:
+          - docs/server/request/parameters/index.md
+          - Path: docs/server/request/parameters/path.md
+          - Headers: docs/server/request/parameters/headers.md
+          - Cookies: docs/server/request/parameters/cookies.md
+          - Query: docs/server/request/parameters/query.md
+          - Body:
+            - docs/server/request/parameters/body/index.md
+            - JSON: docs/server/request/parameters/body/json.md
+            - X-WWW-Form: docs/server/request/parameters/body/x_www_form_urlencoded.md
+            - Multipart Form Data: docs/server/request/parameters/body/multipart.md
+            - Text: docs/server/request/parameters/body/text.md
+            - Binary: docs/server/request/parameters/body/binary.md
+      - HTTP-Response:
+        - docs/server/response/index.md
+        - Handler Response: docs/server/response/handler_response.md
+        - Response object: docs/server/response/response_object.md
+      - Middlewares: docs/server/middlewares/index.md
+      - HTTP errors: docs/server/http_errors/index.md
+      - Testing: docs/server/testing/index.md
+  - Jsonify Encoder: docs/encoders/index.md
+  - Lifespan: docs/lifespan/index.md
+  - Enums: docs/enums/index.md
+  - Mypy Plugin: docs/mypy/index.md
+- Why Rapidy: why/index.md
+- Aiohttp migration: aiohttp_migration/index.md
+- About: about/index.md

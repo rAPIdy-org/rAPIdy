@@ -3,14 +3,17 @@ repos:
     rev: v3.1.0
     hooks:
       - id: add-trailing-comma
+        exclude: docs/examples/.*
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.4.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
+        exclude: docs/examples/.*
       - id: check-added-large-files
       - id: check-ast
+        exclude: docs/examples/.*
       - id: check-json
       - id: check-toml
       - id: check-yaml
@@ -30,7 +33,7 @@ repos:
           - python
           - pyi
         require_serial: true
-        exclude: ^tests/mypy/cases/
+        exclude: docs/examples/.*|^tests/mypy/cases/
         additional_dependencies: ["attrs==24.2.0"]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
@@ -38,5 +41,7 @@ repos:
     hooks:
       - id: ruff
         args: [ --fix, --config=pyproject.toml ]
+        exclude: docs/examples/.*
       - id: ruff-format
         args: [ --config=pyproject.toml ]
+        exclude: docs/examples/.*

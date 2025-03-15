@@ -1,7 +1,20 @@
 import contextlib
 import logging
 import warnings
-from typing import Any, AsyncGenerator, Callable, Coroutine, Iterable, Iterator, List, Mapping, Optional, Tuple, Union
+from typing import (
+    Any,
+    AsyncGenerator,
+    Callable,
+    Coroutine,
+    Iterable,
+    Iterator,
+    List,
+    Mapping,
+    Optional,
+    Tuple,
+    TypeVar,
+    Union,
+)
 
 from aiohttp.log import web_logger
 from aiohttp.web_app import (
@@ -28,6 +41,26 @@ __all__ = (
 )
 
 InnerDeco = Callable[[], Coroutine[Any, Any, None]]
+
+TApplication = TypeVar('TApplication')
+
+
+def ignore_inherited_warning_aio_init_subclass() -> Callable[[TApplication], Callable[[], None]]:
+    """Suppresses `DeprecationWarning` when a subclass of `AiohttpApplication` is initialized.
+
+    Returns:
+        Callable[[TApplication], Callable[[TApplication], None]]: A function that suppresses warnings when called.
+    """
+
+    def inner(cls: TApplication) -> Callable[[], None]:
+        with warnings.catch_warnings():
+            warnings.simplefilter('ignore', DeprecationWarning)
+            return cls.__init_subclass__
+
+    return inner
+
+
+AiohttpApplication.__init_subclass__ = ignore_inherited_warning_aio_init_subclass
 
 
 def server_info_wrapper(*, show_info: bool = False) -> Callable[[Any], InnerDeco]:
@@ -98,8 +131,7 @@ class Application(AiohttpApplication):
             handler_args (Optional[Mapping[str, Any]]): Arguments to pass to `make_handler()`.
             client_max_size: Client`s maximum size in a request, in bytes.
             server_info_in_response (bool): Whether to include server info in response headers.
-            lifespan: A list of callables returning async context managers,
-                      wrapping the lifespan of the application.
+            lifespan: List of asynchronous context managers that support application lifecycle management.
                 >>> @asynccontextmanager
                 >>> async def lifespan_ctx(rapidy: Rapidy) -> AsyncGenerator[None, None]:
                 >>>     try:
@@ -107,7 +139,6 @@ class Application(AiohttpApplication):
                 >>>             yield
                 >>>     finally:
                 >>>         await shutdown_func()
-
                 You can set this in two ways:
                 >>> rapidy = Rapidy(lifespan=[lifespan_ctx, ...], ...)
                 or
@@ -184,8 +215,10 @@ class Application(AiohttpApplication):
 
         self._cleanup_ctx.insert(0, self._create_lifespan_cleanup_ctx(self.lifespan))
 
+        # NOTE: override aiohttp router
         self._router = UrlDispatcher()
 
+        # It is hidden by default, as I believe showing server information is a potential vulnerability.
         self._hide_server_info_deco = server_info_wrapper(show_info=server_info_in_response)
 
         self.add_http_routers(http_route_handlers)

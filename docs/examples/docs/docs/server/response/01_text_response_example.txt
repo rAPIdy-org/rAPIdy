@@ -1,0 +1,13 @@
+HTTP/1.1 200 OK
+Server: Nginx
+Content-Type: text/html; charset=utf-8
+Date: Wed, 10 Aug 2024 11:00:00 GMT
+Keep-Alive: timeout=5, max=1000
+Connection: Keep-Alive
+Age: 3464
+Date: Wed, 10 Aug 2024 11:10:00 GMT
+X-Cache-Info: caching
+Content-Length: 220
+
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN>">
+(... more body data ...)
