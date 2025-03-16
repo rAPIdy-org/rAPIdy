@@ -80,7 +80,7 @@ If an HTTP request does not contain a body, the parameter will receive the speci
 
 If a parameter is annotated as `bytes` or `StreamReader`, data is extracted differently.
 
-!!! note "More details about the `StreamReader` object can be found **<a href=\"https://docs.aiohttp.org/en/stable/streams.html\" target=\"_blank\">here</a>**."
+!!! note "More details about the `StreamReader` object can be found **<a href="https://docs.aiohttp.org/en/stable/streams.html" target="_blank">here</a>**."
 
 ### `bytes`
 ```python

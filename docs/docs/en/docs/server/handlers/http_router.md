@@ -77,7 +77,7 @@ applied to all handlers, including child routers.
 ## Lifecycle Management
 `HTTPRouter` supports lifecycle management just like the main application.
 
-!!! info "Read more about `Lifespan` [here](../../lifespan)."
+!!! info "Read more about `Lifespan` [here](../../../lifespan)."
 
 #### on_startup
 **`on_startup`**: `Optional[List[LifespanHook]]` — a list of tasks executed when the application starts.

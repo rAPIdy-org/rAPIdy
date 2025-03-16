@@ -88,7 +88,7 @@ You can extract and validate any HTTP request parameter using `pydantic` and `Ra
         {!> ./docs/docs/server/request/01_import/03_example.py !}
         ```
 
-!!! tip "For more details, see the **[Parameters](parameters.md)** section."
+!!! tip "For more details, see the **[Parameters](parameters)** section."
 
 ### Retrieving Data via the Request Object
 You can also retrieve data directly from the `rapidy.http.Request` object by adding it as an argument to your HTTP handler.
