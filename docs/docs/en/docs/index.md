@@ -5,7 +5,7 @@ Welcome to the **<span class="base-color">Rapidy</span>** documentation.
 It provides built-in **validation**, **serialization**, and **asynchronous support**, making API development easy and efficient.
 
 !!! tip ""
-    A quick overview of features is available in the **[Quickstart](../quickstart.md)** section.
+    A quick overview of features is available in the **[Quickstart](../quickstart)** section.
 
 **Rapidy** is built on two powerful tools:
 

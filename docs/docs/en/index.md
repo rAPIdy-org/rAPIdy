@@ -111,4 +111,4 @@ pip install rapidy
 {!> ./docs/index/curl_incorrect__response.txt !}
 ```
 
-**Quickstart Guide [Quickstart](quickstart.md)**<br/>
+**Quickstart Guide [Quickstart](quickstart)**<br/>

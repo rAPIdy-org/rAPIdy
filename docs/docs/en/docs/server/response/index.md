@@ -73,7 +73,7 @@ A simple HTTP handler response might look like this:
     {!> ./docs/docs/server/response/handler_response/response_validate.py !}
     ```
 
-    !!! info "More about response attributes for HTTP handlers can be read [here](handler_attributes)."
+    !!! info "More about response attributes for HTTP handlers can be read [here](handler_response)."
 
 ??? example "Examples of successful responses"
     ```python
@@ -120,7 +120,7 @@ The `Response` object can be created either by `Rapidy` internally to form a res
 ```
 
 This gives the developer more flexibility in managing HTTP responses, allowing, for example, setting status codes, cookies, and other parameters.
-Learn more about the `Response` object attributes [here](response_object/attributes.md).
+Learn more about the `Response` object attributes [here](response_object/#_1).
 
 ```python hl_lines="5 9 12"
 {!> ./docs/docs/server/response/05_response_inject_ext.py !}

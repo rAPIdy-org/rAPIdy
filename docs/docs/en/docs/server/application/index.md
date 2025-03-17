@@ -26,7 +26,7 @@ An **endpoint** is a final point of a web service that a client application inte
 ```python
 {!> ./docs/docs/server/application/02_simple_auth_middleware.py !}
 ```
-!!! info "For more details on creating `middleware`, see the [Middlewares](../middlewares/index) section."
+!!! info "For more details on creating `middleware`, see the [Middlewares](../middlewares/) section."
 
 ??? example "Applying `middleware` for different API versions."
     ```python

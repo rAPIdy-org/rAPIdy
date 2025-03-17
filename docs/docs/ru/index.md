@@ -112,4 +112,4 @@ pip install rapidy
 {!> ./docs/index/curl_incorrect__response.txt !}
 ```
 
-**Быстрый старт [Quickstart](quickstart.md)**<br/>
+**Быстрый старт [Quickstart](quickstart)**<br/>

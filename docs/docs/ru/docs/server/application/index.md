@@ -27,7 +27,7 @@
 ```python
 {!> ./docs/docs/server/application/02_simple_auth_middleware.py !}
 ```
-!!! info "Подробнее о создании `middleware` смотрите в разделе [Middlewares](../middlewares/index)."
+!!! info "Подробнее о создании `middleware` смотрите в разделе [Middlewares](../middlewares/)."
 
 ??? example "Применение `middleware` для разных версий API."
     ```python
