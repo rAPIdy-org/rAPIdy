@@ -5,7 +5,6 @@ from typing import Any, Dict, List, Optional, Union
 from pydantic.fields import FieldInfo
 
 from rapidy.annotation_checkers import is_annotated, is_not_none_and_unset
-from rapidy.constants import PYDANTIC_IS_V1
 from rapidy.typedefs import Deprecated, NoArgAnyCallable, Undefined, Unset, UnsetType
 from rapidy.version import PYDANTIC_VERSION_TUPLE
 
@@ -112,21 +111,17 @@ class RapidyFieldInfo(FieldInfo):
 
         current_json_schema_extra = json_schema_extra or extra
 
-        if PYDANTIC_IS_V1:
-            kwargs['regex'] = self._get_pattern(pattern=pattern, regex=regex)
-            kwargs.update(**current_json_schema_extra)
-        else:
-            kwargs.update(
-                {
-                    'annotation': annotation,
-                    'alias_priority': alias_priority,
-                    'validation_alias': validation_alias,
-                    'serialization_alias': serialization_alias,
-                    'strict': strict,
-                    'json_schema_extra': current_json_schema_extra,
-                },
-            )
-            kwargs['pattern'] = self._get_pattern(pattern=pattern, regex=regex)
+        kwargs.update(
+            {
+                'annotation': annotation,
+                'alias_priority': alias_priority,
+                'validation_alias': validation_alias,
+                'serialization_alias': serialization_alias,
+                'strict': strict,
+                'json_schema_extra': current_json_schema_extra,
+            },
+        )
+        kwargs['pattern'] = self._get_pattern(pattern=pattern, regex=regex)
 
         if PYDANTIC_VERSION_TUPLE < ('2', '7'):
             self.deprecated = deprecated if deprecated is not Unset else None
@@ -136,9 +131,6 @@ class RapidyFieldInfo(FieldInfo):
         super().__init__(
             **{key: value for key, value in kwargs.items() if value is not Unset},
         )
-
-        if PYDANTIC_IS_V1:
-            self._validate()  # check specify both default and default_factory
 
     def _get_pattern(self, pattern: Union[str, None, UnsetType], regex: Optional[str]) -> Any:
         """Retrieves the appropriate pattern for validation, handling deprecations.
@@ -164,27 +156,20 @@ class RapidyFieldInfo(FieldInfo):
         return Unset
 
 
-if PYDANTIC_IS_V1:
+def copy_field_info(*, field_info: RapidyFieldInfo, annotation: Any) -> RapidyFieldInfo:
+    # FIXME:
+    #  If the desired data type is of type `Union` (pydantic.UUID4, ...), the metadata will be assembled according
+    #  to the parameter definition.
+    #  Example: `data: Annotated[UUID4, Body(regex='some')`
+    #  >> field_info.metadata = [UuidVersion(uuid_version=4), _PydanticGeneralMetadata(pattern=re.compile('test'))]
+    #  Example: `data UUID4 = Body(regex='some')`
+    #  >> field_info.metadata = [_PydanticGeneralMetadata(pattern=re.compile('some'))]
+    #  Note: It's not affecting anything yet, but it's something to look out for.
+    copied_param_field_info = deepcopy(field_info)
 
-    def copy_field_info(*, field_info: RapidyFieldInfo, annotation: Any) -> RapidyFieldInfo:  # noqa: ARG001
-        return deepcopy(field_info)
+    if is_annotated(annotation):
+        merged_field_info = type(field_info).from_annotation(annotation)
+        copied_param_field_info.metadata = merged_field_info.metadata
+        copied_param_field_info.annotation = merged_field_info.annotation
 
-else:
-
-    def copy_field_info(*, field_info: RapidyFieldInfo, annotation: Any) -> RapidyFieldInfo:
-        # FIXME:
-        #  If the desired data type is of type `Union` (pydantic.UUID4, ...), the metadata will be assembled according
-        #  to the parameter definition.
-        #  Example: `data: Annotated[UUID4, Body(regex='some')`
-        #  >> field_info.metadata = [UuidVersion(uuid_version=4), _PydanticGeneralMetadata(pattern=re.compile('test'))]
-        #  Example: `data UUID4 = Body(regex='some')`
-        #  >> field_info.metadata = [_PydanticGeneralMetadata(pattern=re.compile('some'))]
-        #  Note: It's not affecting anything yet, but it's something to look out for.
-        copied_param_field_info = deepcopy(field_info)
-
-        if is_annotated(annotation):
-            merged_field_info = type(field_info).from_annotation(annotation)
-            copied_param_field_info.metadata = merged_field_info.metadata
-            copied_param_field_info.annotation = merged_field_info.annotation
-
-        return copied_param_field_info
+    return copied_param_field_info

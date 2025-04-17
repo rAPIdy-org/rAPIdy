@@ -3,14 +3,10 @@ from functools import partial
 from typing import Any, Callable, Tuple, Union
 from typing_extensions import Annotated, get_args, get_origin
 
-from rapidy.constants import PYDANTIC_IS_V1
+from pydantic._internal._utils import lenient_issubclass
+
 from rapidy.typedefs import Unset, UnsetType
 from rapidy.version import PY_VERSION_TUPLE
-
-if PYDANTIC_IS_V1:
-    from pydantic.utils import lenient_issubclass
-else:
-    from pydantic._internal._utils import lenient_issubclass
 
 __all__ = (
     'lenient_issubclass',

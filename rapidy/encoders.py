@@ -14,30 +14,19 @@ from pydantic import BaseModel
 from pydantic.color import Color
 from pydantic.networks import AnyUrl, NameEmail
 from pydantic.types import SecretBytes, SecretStr
+from pydantic_core import Url
 
-from rapidy.constants import DEFAULT_JSON_ENCODER, PYDANTIC_IS_V1
+from rapidy.constants import DEFAULT_JSON_ENCODER
 from rapidy.enums import Charset
 from rapidy.typedefs import JSONEncoder
 
-if PYDANTIC_IS_V1:
-    from pydantic import AnyUrl as Url
 
-    def pydantic_model_dump(
-        model: BaseModel,
-        mode: Literal['json', 'python'] = 'json',  # noqa: ARG001
-        **kwargs: Any,
-    ) -> Any:
-        return model.dict(**kwargs)
-
-else:
-    from pydantic_core import Url
-
-    def pydantic_model_dump(
-        model: BaseModel,
-        mode: Literal['json', 'python'] = 'json',
-        **kwargs: Any,
-    ) -> Any:
-        return model.model_dump(mode=mode, **kwargs)
+def pydantic_model_dump(
+    model: BaseModel,
+    mode: Literal['json', 'python'] = 'json',
+    **kwargs: Any,
+) -> Any:
+    return model.model_dump(mode=mode, **kwargs)
 
 
 __all__ = (
@@ -281,7 +270,7 @@ def jsonify(
     return result
 
 
-def _prepare_to_json(  # noqa: PLR0912 C901
+def _prepare_to_json(  # noqa: C901 PLR0912
     obj: Any,
     *,
     include: Optional[Include],
@@ -315,7 +304,6 @@ def _prepare_to_json(  # noqa: PLR0912 C901
             exclude_unset=exclude_unset,
             exclude_defaults=exclude_defaults,
             exclude_none=exclude_none,
-            custom_encoder=custom_encoder,
             byte_preparation_charset=byte_preparation_charset,
         )
 
@@ -395,15 +383,8 @@ def prepare_base_model(
     exclude_unset: bool,
     exclude_none: bool,
     exclude_defaults: bool,
-    custom_encoder: Optional[CustomEncoder],
     byte_preparation_charset: str,
 ) -> Any:
-    encoders: Dict[Any, Any] = {}
-    if PYDANTIC_IS_V1:
-        encoders = getattr(obj.__config__, 'json_encoders', {})
-        if custom_encoder:
-            encoders.update(custom_encoder)
-
     obj_dict = pydantic_model_dump(
         obj,
         mode='json',
@@ -425,7 +406,7 @@ def prepare_base_model(
         exclude_unset=False,
         exclude_none=exclude_none,
         exclude_defaults=exclude_defaults,
-        custom_encoder=encoders,  # NOTE: only for p1
+        custom_encoder=None,
         byte_preparation_charset=byte_preparation_charset,
     )
 

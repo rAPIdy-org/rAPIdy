@@ -6,7 +6,6 @@ from pydantic import BaseModel, Field
 from pytest_aiohttp.plugin import AiohttpClient
 
 from rapidy import web
-from rapidy.constants import PYDANTIC_IS_V1
 from rapidy.parameters.http import (
     Body,
     Cookie,
@@ -102,130 +101,10 @@ async def _test(aiohttp_client: AiohttpClient, handler: HandlerOrView) -> None:
     assert resp.status == HTTPStatus.UNPROCESSABLE_ENTITY
     resp_json = await resp.json()
 
-    if PYDANTIC_IS_V1:
-        pydantic_v1_err_check(resp_json)
-    else:
-        pydantic_v2_err_check(resp_json)
+    pydantic_err_check(resp_json)
 
 
-def pydantic_v1_err_check(resp_json: Dict[str, Any]) -> None:
-    assert resp_json == {
-        'errors': [
-            {
-                'ctx': {'limit_value': 2},
-                'loc': ['path', 'attr1'],
-                'msg': 'ensure this value has at least 2 characters',
-                'type': 'value_error.any_str.min_length',
-            },
-            {
-                'ctx': {'limit_value': 1},
-                'loc': ['path', 'attr2'],
-                'msg': 'ensure this value is greater than or equal to 1',
-                'type': 'value_error.number.not_ge',
-            },
-            {
-                'loc': ['path', 'attr3'],
-                'msg': 'value is not a valid list',
-                'type': 'type_error.list',
-            },
-            {
-                'loc': ['path', 'attr4'],
-                'msg': 'field required',
-                'type': 'value_error.missing',
-            },
-            {
-                'ctx': {'limit_value': 2},
-                'loc': ['header', 'attr1'],
-                'msg': 'ensure this value has at least 2 characters',
-                'type': 'value_error.any_str.min_length',
-            },
-            {
-                'ctx': {'limit_value': 1},
-                'loc': ['header', 'attr2'],
-                'msg': 'ensure this value is greater than or equal to 1',
-                'type': 'value_error.number.not_ge',
-            },
-            {
-                'loc': ['header', 'attr3'],
-                'msg': 'value is not a valid list',
-                'type': 'type_error.list',
-            },
-            {
-                'loc': ['header', 'attr4'],
-                'msg': 'field required',
-                'type': 'value_error.missing',
-            },
-            {
-                'ctx': {'limit_value': 2},
-                'loc': ['cookie', 'attr1'],
-                'msg': 'ensure this value has at least 2 characters',
-                'type': 'value_error.any_str.min_length',
-            },
-            {
-                'ctx': {'limit_value': 1},
-                'loc': ['cookie', 'attr2'],
-                'msg': 'ensure this value is greater than or equal to 1',
-                'type': 'value_error.number.not_ge',
-            },
-            {
-                'loc': ['cookie', 'attr3'],
-                'msg': 'value is not a valid list',
-                'type': 'type_error.list',
-            },
-            {
-                'loc': ['cookie', 'attr4'],
-                'msg': 'field required',
-                'type': 'value_error.missing',
-            },
-            {
-                'ctx': {'limit_value': 2},
-                'loc': ['query', 'attr1'],
-                'msg': 'ensure this value has at least 2 characters',
-                'type': 'value_error.any_str.min_length',
-            },
-            {
-                'ctx': {'limit_value': 1},
-                'loc': ['query', 'attr2'],
-                'msg': 'ensure this value is greater than or equal to 1',
-                'type': 'value_error.number.not_ge',
-            },
-            {
-                'loc': ['query', 'attr3'],
-                'msg': 'value is not a valid list',
-                'type': 'type_error.list',
-            },
-            {
-                'loc': ['query', 'attr4'],
-                'msg': 'field required',
-                'type': 'value_error.missing',
-            },
-            {
-                'ctx': {'limit_value': 2},
-                'loc': ['body', 'attr1'],
-                'msg': 'ensure this value has at least 2 characters',
-                'type': 'value_error.any_str.min_length',
-            },
-            {
-                'ctx': {'limit_value': 1},
-                'loc': ['body', 'attr2'],
-                'msg': 'ensure this value is greater than or equal to 1',
-                'type': 'value_error.number.not_ge',
-            },
-            {
-                'loc': ['body', 'attr3'],
-                'msg': 'value is not a valid list',
-                'type': 'type_error.list',
-            },
-            {
-                'loc': ['body', 'attr4'],
-                'msg': 'field required',
-                'type': 'value_error.missing',
-            },
-        ],
-    }
-
-
-def pydantic_v2_err_check(resp_json: Dict[str, Any]) -> None:
+def pydantic_err_check(resp_json: Dict[str, Any]) -> None:
     assert resp_json == {
         'errors': [
             {
