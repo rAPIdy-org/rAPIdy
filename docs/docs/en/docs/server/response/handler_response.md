@@ -207,7 +207,7 @@ match the default values, even if explicitly set.
 
 ### response_custom_encoder
 
-**response_custom_encoder**: `Callable | None = None` — the Pydantic `custom_encoder` parameter, specifying a custom data encoder.
+**response_custom_encoder**: `Dict[Any, Callable[Any], Any]] | None = None` — the Pydantic `custom_encoder` parameter, specifying a custom data encoder.
 
 ---
 

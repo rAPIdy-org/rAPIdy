@@ -307,7 +307,7 @@ To get `etag`, use the `etag` getter of the `Response` object.
 ---
 
 ### custom_encoder
-**custom_encoder**: `Callable | None = None` — the `custom_encoder` parameter from Pydantic, allowing you to specify a custom encoder.
+**custom_encoder**: `Dict[Any, Callable[Any], Any]] | None = None` — the `custom_encoder` parameter from Pydantic, allowing you to specify a custom encoder.
 
 ---
 

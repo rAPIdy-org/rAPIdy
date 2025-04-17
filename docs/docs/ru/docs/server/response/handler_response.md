@@ -207,7 +207,7 @@
 
 ### response_custom_encoder
 
-**response_custom_encoder**: `Callable | None = None` — параметр Pydantic `custom_encoder`, задающий пользовательский кодировщик данных.
+**response_custom_encoder**: `Dict[Any, Callable[Any], Any]] | None = None` — параметр Pydantic `custom_encoder`, задающий пользовательский кодировщик данных.
 
 ---
 

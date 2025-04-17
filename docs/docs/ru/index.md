@@ -31,9 +31,6 @@ hide:
         <img src="https://img.shields.io/badge/license-_MIT-%237e56c2?style=flat" alt="Лицензия">
     </a>
     <a href="https://docs.pydantic.dev/latest/" target="blank">
-        <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/pydantic/pydantic/main/docs/badge/v1.json&logoColor=%237e56c2&color=%237e56c2" alt="Pydantic V1">
-    </a>
-    <a href="https://docs.pydantic.dev/latest/" target="blank">
         <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/pydantic/pydantic/main/docs/badge/v2.json&logoColor=%237e56c2&color=%237e56c2" alt="Pydantic V2">
     </a>
 </p>
