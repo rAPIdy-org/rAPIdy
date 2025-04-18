@@ -9,7 +9,6 @@ from aiohttp.pytest_plugin import AiohttpClient
 from pydantic import BaseModel, ConfigDict, Field
 
 from rapidy import Rapidy, web
-from rapidy.constants import PYDANTIC_IS_V1
 from rapidy.encoders import Exclude, Include
 from rapidy.enums import ContentType, HeaderName
 from rapidy.http import Response
@@ -33,13 +32,7 @@ class BaseModelTest(BaseModel):
     test: str = Field('test', alias='Test')
     test_none: None = None
 
-    if PYDANTIC_IS_V1:
-
-        class Config:
-            allow_population_by_field_name = True
-
-    else:
-        model_config: ConfigDict = ConfigDict(populate_by_name=True)
+    model_config: ConfigDict = ConfigDict(populate_by_name=True)
 
 
 class BodySetterName(str, Enum):

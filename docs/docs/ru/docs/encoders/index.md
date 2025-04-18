@@ -101,5 +101,5 @@
 ---
 
 ### custom_encoder
-**custom_encoder**: `Callable | None = None` — параметр Pydantic `custom_encoder`, передаваемый в модели Pydantic для
+**custom_encoder**: `Dict[Any, Callable[Any], Any]] | None = None` — параметр Pydantic `custom_encoder`, передаваемый в модели Pydantic для
 определения пользовательского кодировщика.

@@ -471,4 +471,4 @@ _(не относится к атрибутам `path` и `allow_head` для м
 ---
 
 #### response_custom_encoder
-**`response_custom_encoder`**: `Callable | None = None` — параметр custom_encoder из `Pydantic`, позволяющий задать пользовательский кодировщик.
+**`response_custom_encoder`**: `Dict[Any, Callable[Any], Any]] | None = None` — параметр custom_encoder из `Pydantic`, позволяющий задать пользовательский кодировщик.
