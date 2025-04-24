@@ -70,7 +70,7 @@ def middleware(
     *,
     status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
     response_validate: bool = True,
-    response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
+    response_type: Union[Type[Any], None, UnsetType] = Unset,
     response_content_type: Union[str, ContentType, None] = None,
     response_charset: Union[str, Charset] = Charset.utf8,
     response_zlib_executor: Optional[Executor] = None,
@@ -91,7 +91,7 @@ def middleware(
     *,
     status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
     response_validate: bool = True,
-    response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
+    response_type: Union[Type[Any], None, UnsetType] = Unset,
     response_content_type: Union[str, ContentType, None] = None,
     response_charset: Union[str, Charset] = Charset.utf8,
     response_zlib_executor: Optional[Executor] = None,

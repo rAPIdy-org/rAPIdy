@@ -469,4 +469,4 @@ Automatically applied to any Python object after validation through `pydantic`.
 ---
 
 #### response_custom_encoder
-**`response_custom_encoder`**: `Callable | None = None` — `custom_encoder` parameter from `Pydantic`, allowing a custom encoder to be specified.
+**`response_custom_encoder`**: `Dict[Any, Callable[Any], Any]] | None = None` — `custom_encoder` parameter from `Pydantic`, allowing a custom encoder to be specified.

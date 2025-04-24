@@ -100,5 +100,5 @@ the object is already a `json` string.
 ---
 
 ### custom_encoder
-**custom_encoder**: `Callable | None = None` — Pydantic's `custom_encoder` parameter, passed to Pydantic models to
+**custom_encoder**: `Dict[Any, Callable[Any], Any]] | None = None` — Pydantic's `custom_encoder` parameter, passed to Pydantic models to
 define a custom encoder.

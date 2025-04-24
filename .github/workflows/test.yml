@@ -19,10 +19,6 @@ jobs:
     strategy:
       fail-fast: false
       max-parallel: 50
-      matrix:
-        pydantic-version:
-          - "pydantic-v1"
-          - "pydantic-v2"
     steps:
       - name: Dump github context
         env:
@@ -42,14 +38,6 @@ jobs:
         with:
           poetry-version: "1.7.1"
 
-      - name: Install Pydantic v1
-        if: matrix.pydantic-version == 'pydantic-v1'
-        run: poetry add "pydantic>=1.10.0,<2.0.0"
-
-      - name: Install Pydantic v2
-        if: matrix.pydantic-version == 'pydantic-v2'
-        run: poetry add "pydantic>=2.0.2,<3.0.0"
-
       - name: Run pre-commit
         uses: pre-commit/action@v3.0.1
 
@@ -65,9 +53,6 @@ jobs:
           - "3.11"
           - "3.10"
           - "3.9"
-        pydantic-version:
-          - "pydantic-v1"
-          - "pydantic-v2"
         aiohttp-version:
           - "3.11.11"
           - "3.10.11"
@@ -98,14 +83,6 @@ jobs:
       - name: Install dependencies
         run: poetry install
 
-      - name: Install Pydantic v1
-        if: matrix.pydantic-version == 'pydantic-v1'
-        run: poetry add "pydantic>=1.10.0,<2.0.0"
-
-      - name: Install Pydantic v2
-        if: matrix.pydantic-version == 'pydantic-v2'
-        run: poetry add "pydantic>=2.0.2,<3.0.0"
-
       - name: Install aiohttp
         run: poetry add "aiohttp==${{ matrix.aiohttp-version }}"
 
@@ -129,15 +106,15 @@ jobs:
 
       - name: Test with pytest
         env:
-          CONTEXT: ${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.pydantic-version }}-${{ matrix.aiohttp-version }}
-          COVERAGE_FILE: coverage/.coverage.${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.pydantic-version }}-${{ matrix.aiohttp-version }}
+          CONTEXT: ${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.aiohttp-version }}
+          COVERAGE_FILE: coverage/.coverage.${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.aiohttp-version }}
         run: poetry run coverage run -m pytest ./tests
 
       - name: Store coverage file
         uses: actions/upload-artifact@v4
         with:
           path: coverage
-          name: coverage-${{ matrix.python-version }}-${{ matrix.pydantic-version }}-${{ matrix.aiohttp-version }}
+          name: coverage-${{ matrix.python-version }}-${{ matrix.aiohttp-version }}
           include-hidden-files: true
 
   coverage-combine:

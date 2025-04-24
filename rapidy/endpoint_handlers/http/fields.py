@@ -158,9 +158,12 @@ def create_request_model_field(field_info: RequestParamFieldInfo) -> RequestMode
     Returns:
         RequestModelField: A new instance of RequestModelField or StreamReaderModelField.
     """
-    if field_info.param_type == HTTPRequestParamType.body and is_stream_reader(field_info.annotation):
-        model_field = create_stream_reader_model_field(field_info=field_info)
-    else:
+    body_is_stream_reader = field_info.param_type == HTTPRequestParamType.body and is_stream_reader(
+        field_info.annotation,
+    )
+    if not body_is_stream_reader:
         model_field = create_model_field(field_info=field_info, class_=_RequestModelField)
+    else:
+        model_field = create_stream_reader_model_field(field_info=field_info)  # type: ignore[assignment]
 
     return cast(RequestModelField, model_field)
