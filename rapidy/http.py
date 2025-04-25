@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from rapidy.enums import Charset, ContentType, HeaderName
 from rapidy.parameters.http import (
     Body,

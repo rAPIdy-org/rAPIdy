@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Any, Optional, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from rapidy._base_exceptions import RapidyException
 
@@ -58,7 +60,7 @@ class BaseHTTPRouter(ABC):
                               (path is inherited from the controller router).
     """
 
-    def __init__(self, path: Optional[str]) -> None:
+    def __init__(self, path: str | None) -> None:
         """Initializes the BaseHTTPRouter instance.
 
         Args:
@@ -75,7 +77,7 @@ class BaseHTTPRouter(ABC):
         self.path = path
 
     @abstractmethod
-    def route_register(self, application: 'Rapidy') -> None:
+    def route_register(self, application: Rapidy) -> None:
         """Registers the router with the given application.
 
         This is an abstract method that must be implemented by subclasses to register the

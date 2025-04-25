@@ -1,5 +1,3 @@
-from typing import Union
-
 import pytest
 from aiohttp.pytest_plugin import AiohttpClient
 
@@ -18,13 +16,13 @@ async def test_union_stream_response(
 ) -> None:
     path = '/'
 
-    async def handler() -> Union[Response, str]:
+    async def handler() -> Response | str:
         if create_web_response:
             return Response(DEFAULT_RETURN_VALUE)
         return DEFAULT_RETURN_VALUE
 
     @middleware
-    async def inner_middleware(request: Request, call_next: CallNext) -> Union[StreamResponse, str]:
+    async def inner_middleware(request: Request, call_next: CallNext) -> StreamResponse | str:
         if return_middleware:
             if create_web_response:
                 return Response(DEFAULT_RETURN_VALUE)

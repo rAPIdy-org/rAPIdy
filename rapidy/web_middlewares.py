@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from concurrent.futures import Executor
 from functools import wraps
 from http import HTTPStatus
-from typing import Any, Callable, cast, NamedTuple, Optional, overload, Type, TypeVar, Union
+from typing import Any, Callable, cast, NamedTuple, overload, Type, TypeVar
 from urllib.request import Request
 
 from aiohttp.web_middlewares import (
@@ -44,20 +46,20 @@ class MiddlewareAttrData(NamedTuple):
         response_json_encoder (JSONEncoder): JSON encoder callable for the response.
     """
 
-    status_code: Union[int, HTTPStatus]
+    status_code: int | HTTPStatus
     response_validate: bool
-    response_type: Union[Type[Any], None, UnsetType]
-    response_content_type: Union[str, ContentType, None]
-    response_charset: Union[str, Charset]
-    response_zlib_executor: Optional[Executor]
-    response_zlib_executor_size: Optional[int]
-    response_include_fields: Optional[Include]
-    response_exclude_fields: Optional[Exclude]
+    response_type: Type[Any] | None | UnsetType
+    response_content_type: str | ContentType | None
+    response_charset: str | Charset
+    response_zlib_executor: Executor | None
+    response_zlib_executor_size: int | None
+    response_include_fields: Include | None
+    response_exclude_fields: Exclude | None
     response_by_alias: bool
     response_exclude_unset: bool
     response_exclude_defaults: bool
     response_exclude_none: bool
-    response_custom_encoder: Optional[CustomEncoder]
+    response_custom_encoder: CustomEncoder | None
     response_json_encoder: JSONEncoder
 
 
@@ -68,43 +70,43 @@ def middleware(middleware: TMiddleware) -> TMiddleware: ...
 @overload
 def middleware(
     *,
-    status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
+    status_code: int | HTTPStatus = HTTPStatus.OK,
     response_validate: bool = True,
-    response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
-    response_content_type: Union[str, ContentType, None] = None,
-    response_charset: Union[str, Charset] = Charset.utf8,
-    response_zlib_executor: Optional[Executor] = None,
-    response_zlib_executor_size: Optional[int] = None,
-    response_include_fields: Optional[Include] = None,
-    response_exclude_fields: Optional[Exclude] = None,
+    response_type: Type[Any] | None | UnsetType = Unset,  # type: ignore[has-type]
+    response_content_type: str | ContentType | None = None,
+    response_charset: str | Charset = Charset.utf8,
+    response_zlib_executor: Executor | None = None,
+    response_zlib_executor_size: int | None = None,
+    response_include_fields: Include | None = None,
+    response_exclude_fields: Exclude | None = None,
     response_by_alias: bool = True,
     response_exclude_unset: bool = False,
     response_exclude_defaults: bool = False,
     response_exclude_none: bool = False,
-    response_custom_encoder: Optional[CustomEncoder] = None,
+    response_custom_encoder: CustomEncoder | None = None,
     response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
 ) -> Callable[[Any], TMiddleware]: ...
 
 
 def middleware(
-    middleware: Optional[TMiddleware] = None,
+    middleware: TMiddleware | None = None,
     *,
-    status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
+    status_code: int | HTTPStatus = HTTPStatus.OK,
     response_validate: bool = True,
-    response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
-    response_content_type: Union[str, ContentType, None] = None,
-    response_charset: Union[str, Charset] = Charset.utf8,
-    response_zlib_executor: Optional[Executor] = None,
-    response_zlib_executor_size: Optional[int] = None,
-    response_include_fields: Optional[Include] = None,
-    response_exclude_fields: Optional[Exclude] = None,
+    response_type: Type[Any] | None | UnsetType = Unset,  # type: ignore[has-type]
+    response_content_type: str | ContentType | None = None,
+    response_charset: str | Charset = Charset.utf8,
+    response_zlib_executor: Executor | None = None,
+    response_zlib_executor_size: int | None = None,
+    response_include_fields: Include | None = None,
+    response_exclude_fields: Exclude | None = None,
     response_by_alias: bool = True,
     response_exclude_unset: bool = False,
     response_exclude_defaults: bool = False,
     response_exclude_none: bool = False,
-    response_custom_encoder: Optional[CustomEncoder] = None,
+    response_custom_encoder: CustomEncoder | None = None,
     response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-) -> Union[TMiddleware, Callable[[Any], TMiddleware]]:
+) -> TMiddleware | Callable[[Any], TMiddleware]:
     """Create a `rapidy` middleware decorator.
 
     This function allows the creation of a middleware in the `rapidy` framework with various customizable options

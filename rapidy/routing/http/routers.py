@@ -1,13 +1,16 @@
+from __future__ import annotations
+
 from abc import ABC
 from concurrent.futures import Executor
 from functools import partial
 from http import HTTPStatus
-from typing import Any, Iterable, List, Optional, Type, Union
+from typing import Any, Iterable, List, Type
 
 from aiohttp.web_routedef import RouteDef
 
 from rapidy._base_exceptions import RapidyException, RapidyHandlerException
 from rapidy.constants import CLIENT_MAX_SIZE, DEFAULT_JSON_ENCODER
+from rapidy.depends import inject_http
 from rapidy.encoders import CustomEncoder, Exclude, Include
 from rapidy.enums import Charset, ContentType, MethodName
 from rapidy.lifespan import is_async_callable, LifespanCTX, LifespanHook
@@ -81,23 +84,23 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
 
     def __init__(
         self,
-        path: Optional[str] = None,
+        path: str | None = None,
         *,
-        status_code: Union[int, HTTPStatus, UnsetType] = Unset,
-        response_validate: Union[bool, UnsetType] = Unset,
-        response_type: Union[Type[Any], None, UnsetType] = Unset,
-        response_content_type: Union[str, ContentType, None, UnsetType] = Unset,
-        response_charset: Union[str, Charset, UnsetType] = Unset,
-        response_zlib_executor: Union[Executor, None, UnsetType] = Unset,
-        response_zlib_executor_size: Union[int, None, UnsetType] = Unset,
-        response_include_fields: Union[Include, None, UnsetType] = Unset,
-        response_exclude_fields: Union[Exclude, None, UnsetType] = Unset,
-        response_by_alias: Union[bool, UnsetType] = Unset,
-        response_exclude_unset: Union[bool, UnsetType] = Unset,
-        response_exclude_defaults: Union[bool, UnsetType] = Unset,
-        response_exclude_none: Union[bool, UnsetType] = Unset,
-        response_custom_encoder: Union[CustomEncoder, None, UnsetType] = Unset,
-        response_json_encoder: Union[JSONEncoder, UnsetType] = Unset,
+        status_code: int | HTTPStatus | UnsetType = Unset,
+        response_validate: bool | UnsetType = Unset,
+        response_type: Type[Any] | None | UnsetType = Unset,
+        response_content_type: str | ContentType | None | UnsetType = Unset,
+        response_charset: str | Charset | UnsetType = Unset,
+        response_zlib_executor: Executor | None | UnsetType = Unset,
+        response_zlib_executor_size: int | None | UnsetType = Unset,
+        response_include_fields: Include | None | UnsetType = Unset,
+        response_exclude_fields: Exclude | None | UnsetType = Unset,
+        response_by_alias: bool | UnsetType = Unset,
+        response_exclude_unset: bool | UnsetType = Unset,
+        response_exclude_defaults: bool | UnsetType = Unset,
+        response_exclude_none: bool | UnsetType = Unset,
+        response_custom_encoder: CustomEncoder | None | UnsetType = Unset,
+        response_json_encoder: JSONEncoder | UnsetType = Unset,
         **kwargs: Any,
     ) -> None:
         """Initialize the HTTPRouteHandler.
@@ -143,22 +146,22 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
 
     def init(
         self,
-        path: Optional[str] = None,
+        path: str | None = None,
         *,
-        status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
+        status_code: int | HTTPStatus = HTTPStatus.OK,
         response_validate: bool = True,
-        response_type: Union[Type[Any], None, UnsetType] = Unset,
-        response_content_type: Union[str, ContentType, None] = None,
-        response_charset: Union[str, Charset] = Charset.utf8,
-        response_zlib_executor: Optional[Executor] = None,
-        response_zlib_executor_size: Optional[int] = None,
-        response_include_fields: Optional[Include] = None,
-        response_exclude_fields: Optional[Exclude] = None,
+        response_type: Type[Any] | None | UnsetType = Unset,
+        response_content_type: str | ContentType | None = None,
+        response_charset: str | Charset = Charset.utf8,
+        response_zlib_executor: Executor | None = None,
+        response_zlib_executor_size: int | None = None,
+        response_include_fields: Include | None = None,
+        response_exclude_fields: Exclude | None = None,
         response_by_alias: bool = True,
         response_exclude_unset: bool = False,
         response_exclude_defaults: bool = False,
         response_exclude_none: bool = False,
-        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_custom_encoder: CustomEncoder | None = None,
         response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
         **kwargs: Any,
     ) -> None:
@@ -204,7 +207,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         super().__init__(path=path)
         self._pre_route_def = partial(RouteDef, method=self._method_name.value)
 
-    def __call__(self, handler: Any) -> 'HTTPRouteHandler':
+    def __call__(self, handler: Any) -> HTTPRouteHandler:
         self._handler = handler
         return self
 
@@ -212,25 +215,25 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
     def reg(
         cls,
         path: str,
-        handler: Union[Handler, ControllerHTTPRouterType],
+        handler: Handler | ControllerHTTPRouterType,
         *,
-        status_code: Union[int, HTTPStatus, UnsetType] = Unset,
-        response_validate: Union[bool, UnsetType] = Unset,
-        response_type: Union[Type[Any], None, UnsetType] = Unset,
-        response_content_type: Union[str, ContentType, None, UnsetType] = Unset,
-        response_charset: Union[str, Charset, UnsetType] = Unset,
-        response_zlib_executor: Union[Executor, None, UnsetType] = Unset,
-        response_zlib_executor_size: Union[int, None, UnsetType] = Unset,
-        response_include_fields: Union[Include, None, UnsetType] = Unset,
-        response_exclude_fields: Union[Exclude, None, UnsetType] = Unset,
-        response_by_alias: Union[bool, UnsetType] = Unset,
-        response_exclude_unset: Union[bool, UnsetType] = Unset,
-        response_exclude_defaults: Union[bool, UnsetType] = Unset,
-        response_exclude_none: Union[bool, UnsetType] = Unset,
-        response_custom_encoder: Union[CustomEncoder, None, UnsetType] = Unset,
-        response_json_encoder: Union[JSONEncoder, UnsetType] = Unset,
+        status_code: int | HTTPStatus | UnsetType = Unset,
+        response_validate: bool | UnsetType = Unset,
+        response_type: Type[Any] | None | UnsetType = Unset,
+        response_content_type: str | ContentType | None | UnsetType = Unset,
+        response_charset: str | Charset | UnsetType = Unset,
+        response_zlib_executor: Executor | None | UnsetType = Unset,
+        response_zlib_executor_size: int | None | UnsetType = Unset,
+        response_include_fields: Include | None | UnsetType = Unset,
+        response_exclude_fields: Exclude | None | UnsetType = Unset,
+        response_by_alias: bool | UnsetType = Unset,
+        response_exclude_unset: bool | UnsetType = Unset,
+        response_exclude_defaults: bool | UnsetType = Unset,
+        response_exclude_none: bool | UnsetType = Unset,
+        response_custom_encoder: CustomEncoder | None | UnsetType = Unset,
+        response_json_encoder: JSONEncoder | UnsetType = Unset,
         **kwargs: Any,
-    ) -> 'HTTPRouteHandler':
+    ) -> HTTPRouteHandler:
         init = cls(
             path=path,
             status_code=status_code,
@@ -270,9 +273,12 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
 
                 handler_attr = getattr(controller_instance, handler_attr_name)
                 if isinstance(handler_attr, HTTPRouteHandler):
+                    # FIXME: later - after remove handler partial
+                    handler_with_di = inject_http(handler_attr._handler)  # noqa: SLF001
+
                     handler_attr._handler = HandlerPartial(  # noqa: SLF001
                         controller_instance=controller_instance,
-                        handler=handler_attr._handler,  # noqa: SLF001
+                        handler=handler_with_di,
                     )
                     handler_attr.path = self._create_sub_route_path(sub_path=handler_attr.path)
                     handler_attr._route_kwargs = self._extend_kw(  # noqa: SLF001
@@ -285,7 +291,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
 
         route_def.register(application.router)
 
-    def _create_sub_route_path(self, sub_path: Optional[str]) -> str:
+    def _create_sub_route_path(self, sub_path: str | None) -> str:
         if sub_path is None:
             assert self.path  # only for `mypy`  # noqa: S101
             return self.path
@@ -321,14 +327,14 @@ class HTTPRouter(BaseHTTPRouter):
         self,
         path: str,
         # FIXME: Fix `Any` after mypy improves type checking for cls deco
-        route_handlers: Iterable[Union[BaseHTTPRouter, Any]] = (),
+        route_handlers: Iterable[BaseHTTPRouter | Any] = (),
         *,
-        middlewares: Optional[Iterable[Middleware]] = None,
+        middlewares: Iterable[Middleware] | None = None,
         client_max_size: int = CLIENT_MAX_SIZE,
-        lifespan: Optional[List[LifespanCTX]] = None,
-        on_startup: Optional[List[LifespanHook]] = None,
-        on_shutdown: Optional[List[LifespanHook]] = None,
-        on_cleanup: Optional[List[LifespanHook]] = None,
+        lifespan: List[LifespanCTX] | None = None,
+        on_startup: List[LifespanHook] | None = None,
+        on_shutdown: List[LifespanHook] | None = None,
+        on_cleanup: List[LifespanHook] | None = None,
     ) -> None:
         """Create an `rapidy` HTTPRouter instance.
 
@@ -477,21 +483,21 @@ class controller(HTTPRouteHandler):
         self,
         path: str,
         *,
-        status_code: Union[int, HTTPStatus, UnsetType] = Unset,
-        response_validate: Union[bool, UnsetType] = Unset,
-        response_type: Union[Type[Any], None, UnsetType] = Unset,
-        response_content_type: Union[str, ContentType, None, UnsetType] = Unset,
-        response_charset: Union[str, Charset, UnsetType] = Unset,
-        response_zlib_executor: Union[Executor, None, UnsetType] = Unset,
-        response_zlib_executor_size: Union[int, None, UnsetType] = Unset,
-        response_include_fields: Union[Include, None, UnsetType] = Unset,
-        response_exclude_fields: Union[Exclude, None, UnsetType] = Unset,
-        response_by_alias: Union[bool, UnsetType] = Unset,
-        response_exclude_unset: Union[bool, UnsetType] = Unset,
-        response_exclude_defaults: Union[bool, UnsetType] = Unset,
-        response_exclude_none: Union[bool, UnsetType] = Unset,
-        response_custom_encoder: Union[CustomEncoder, None, UnsetType] = Unset,
-        response_json_encoder: Union[JSONEncoder, UnsetType] = Unset,
+        status_code: int | HTTPStatus | UnsetType = Unset,
+        response_validate: bool | UnsetType = Unset,
+        response_type: Type[Any] | None | UnsetType = Unset,
+        response_content_type: str | ContentType | None | UnsetType = Unset,
+        response_charset: str | Charset | UnsetType = Unset,
+        response_zlib_executor: Executor | None | UnsetType = Unset,
+        response_zlib_executor_size: int | None | UnsetType = Unset,
+        response_include_fields: Include | None | UnsetType = Unset,
+        response_exclude_fields: Exclude | None | UnsetType = Unset,
+        response_by_alias: bool | UnsetType = Unset,
+        response_exclude_unset: bool | UnsetType = Unset,
+        response_exclude_defaults: bool | UnsetType = Unset,
+        response_exclude_none: bool | UnsetType = Unset,
+        response_custom_encoder: CustomEncoder | None | UnsetType = Unset,
+        response_json_encoder: JSONEncoder | UnsetType = Unset,
         **kwargs: Any,
     ) -> None:
         """Create a new RouteDef item for adding class-based view handler.
@@ -569,24 +575,24 @@ class get(HTTPMethodRouteHandler):
 
     def __init__(
         self,
-        path: Optional[str] = None,
+        path: str | None = None,
         *,
         allow_head: bool = True,
-        status_code: Union[int, HTTPStatus, UnsetType] = Unset,
-        response_validate: Union[bool, UnsetType] = Unset,
-        response_type: Union[Type[Any], None, UnsetType] = Unset,
-        response_content_type: Union[str, ContentType, None, UnsetType] = Unset,
-        response_charset: Union[str, Charset, UnsetType] = Unset,
-        response_zlib_executor: Union[Executor, None, UnsetType] = Unset,
-        response_zlib_executor_size: Union[int, None, UnsetType] = Unset,
-        response_include_fields: Union[Include, None, UnsetType] = Unset,
-        response_exclude_fields: Union[Exclude, None, UnsetType] = Unset,
-        response_by_alias: Union[bool, UnsetType] = Unset,
-        response_exclude_unset: Union[bool, UnsetType] = Unset,
-        response_exclude_defaults: Union[bool, UnsetType] = Unset,
-        response_exclude_none: Union[bool, UnsetType] = Unset,
-        response_custom_encoder: Union[CustomEncoder, None, UnsetType] = Unset,
-        response_json_encoder: Union[JSONEncoder, UnsetType] = Unset,
+        status_code: int | HTTPStatus | UnsetType = Unset,
+        response_validate: bool | UnsetType = Unset,
+        response_type: Type[Any] | None | UnsetType = Unset,
+        response_content_type: str | ContentType | None | UnsetType = Unset,
+        response_charset: str | Charset | UnsetType = Unset,
+        response_zlib_executor: Executor | None | UnsetType = Unset,
+        response_zlib_executor_size: int | None | UnsetType = Unset,
+        response_include_fields: Include | None | UnsetType = Unset,
+        response_exclude_fields: Exclude | None | UnsetType = Unset,
+        response_by_alias: bool | UnsetType = Unset,
+        response_exclude_unset: bool | UnsetType = Unset,
+        response_exclude_defaults: bool | UnsetType = Unset,
+        response_exclude_none: bool | UnsetType = Unset,
+        response_custom_encoder: CustomEncoder | None | UnsetType = Unset,
+        response_json_encoder: JSONEncoder | UnsetType = Unset,
         **kwargs: Any,
     ) -> None:
         """Create a new RouteDef item for registering GET web-handler.
@@ -667,23 +673,23 @@ class post(HTTPMethodRouteHandler):
 
     def __init__(
         self,
-        path: Optional[str] = None,
+        path: str | None = None,
         *,
-        status_code: Union[int, HTTPStatus, UnsetType] = Unset,
-        response_validate: Union[bool, UnsetType] = Unset,
-        response_type: Union[Type[Any], None, UnsetType] = Unset,
-        response_content_type: Union[str, ContentType, None, UnsetType] = Unset,
-        response_charset: Union[str, Charset, UnsetType] = Unset,
-        response_zlib_executor: Union[Executor, None, UnsetType] = Unset,
-        response_zlib_executor_size: Union[int, None, UnsetType] = Unset,
-        response_include_fields: Union[Include, None, UnsetType] = Unset,
-        response_exclude_fields: Union[Exclude, None, UnsetType] = Unset,
-        response_by_alias: Union[bool, UnsetType] = Unset,
-        response_exclude_unset: Union[bool, UnsetType] = Unset,
-        response_exclude_defaults: Union[bool, UnsetType] = Unset,
-        response_exclude_none: Union[bool, UnsetType] = Unset,
-        response_custom_encoder: Union[CustomEncoder, None, UnsetType] = Unset,
-        response_json_encoder: Union[JSONEncoder, UnsetType] = Unset,
+        status_code: int | HTTPStatus | UnsetType = Unset,
+        response_validate: bool | UnsetType = Unset,
+        response_type: Type[Any] | None | UnsetType = Unset,
+        response_content_type: str | ContentType | None | UnsetType = Unset,
+        response_charset: str | Charset | UnsetType = Unset,
+        response_zlib_executor: Executor | None | UnsetType = Unset,
+        response_zlib_executor_size: int | None | UnsetType = Unset,
+        response_include_fields: Include | None | UnsetType = Unset,
+        response_exclude_fields: Exclude | None | UnsetType = Unset,
+        response_by_alias: bool | UnsetType = Unset,
+        response_exclude_unset: bool | UnsetType = Unset,
+        response_exclude_defaults: bool | UnsetType = Unset,
+        response_exclude_none: bool | UnsetType = Unset,
+        response_custom_encoder: CustomEncoder | None | UnsetType = Unset,
+        response_json_encoder: JSONEncoder | UnsetType = Unset,
         **kwargs: Any,
     ) -> None:
         """Create a new RouteDef item for registering POST web-handler.
@@ -761,23 +767,23 @@ class put(HTTPMethodRouteHandler):
 
     def __init__(
         self,
-        path: Optional[str] = None,
+        path: str | None = None,
         *,
-        status_code: Union[int, HTTPStatus, UnsetType] = Unset,
-        response_validate: Union[bool, UnsetType] = Unset,
-        response_type: Union[Type[Any], None, UnsetType] = Unset,
-        response_content_type: Union[str, ContentType, None, UnsetType] = Unset,
-        response_charset: Union[str, Charset, UnsetType] = Unset,
-        response_zlib_executor: Union[Executor, None, UnsetType] = Unset,
-        response_zlib_executor_size: Union[int, None, UnsetType] = Unset,
-        response_include_fields: Union[Include, None, UnsetType] = Unset,
-        response_exclude_fields: Union[Exclude, None, UnsetType] = Unset,
-        response_by_alias: Union[bool, UnsetType] = Unset,
-        response_exclude_unset: Union[bool, UnsetType] = Unset,
-        response_exclude_defaults: Union[bool, UnsetType] = Unset,
-        response_exclude_none: Union[bool, UnsetType] = Unset,
-        response_custom_encoder: Union[CustomEncoder, None, UnsetType] = Unset,
-        response_json_encoder: Union[JSONEncoder, UnsetType] = Unset,
+        status_code: int | HTTPStatus | UnsetType = Unset,
+        response_validate: bool | UnsetType = Unset,
+        response_type: Type[Any] | None | UnsetType = Unset,
+        response_content_type: str | ContentType | None | UnsetType = Unset,
+        response_charset: str | Charset | UnsetType = Unset,
+        response_zlib_executor: Executor | None | UnsetType = Unset,
+        response_zlib_executor_size: int | None | UnsetType = Unset,
+        response_include_fields: Include | None | UnsetType = Unset,
+        response_exclude_fields: Exclude | None | UnsetType = Unset,
+        response_by_alias: bool | UnsetType = Unset,
+        response_exclude_unset: bool | UnsetType = Unset,
+        response_exclude_defaults: bool | UnsetType = Unset,
+        response_exclude_none: bool | UnsetType = Unset,
+        response_custom_encoder: CustomEncoder | None | UnsetType = Unset,
+        response_json_encoder: JSONEncoder | UnsetType = Unset,
         **kwargs: Any,
     ) -> None:
         """Create a new RouteDef item for registering PUT web-handler.
@@ -855,23 +861,23 @@ class patch(HTTPMethodRouteHandler):
 
     def __init__(
         self,
-        path: Optional[str] = None,
+        path: str | None = None,
         *,
-        status_code: Union[int, HTTPStatus, UnsetType] = Unset,
-        response_validate: Union[bool, UnsetType] = Unset,
-        response_type: Union[Type[Any], None, UnsetType] = Unset,
-        response_content_type: Union[str, ContentType, None, UnsetType] = Unset,
-        response_charset: Union[str, Charset, UnsetType] = Unset,
-        response_zlib_executor: Union[Executor, None, UnsetType] = Unset,
-        response_zlib_executor_size: Union[int, None, UnsetType] = Unset,
-        response_include_fields: Union[Include, None, UnsetType] = Unset,
-        response_exclude_fields: Union[Exclude, None, UnsetType] = Unset,
-        response_by_alias: Union[bool, UnsetType] = Unset,
-        response_exclude_unset: Union[bool, UnsetType] = Unset,
-        response_exclude_defaults: Union[bool, UnsetType] = Unset,
-        response_exclude_none: Union[bool, UnsetType] = Unset,
-        response_custom_encoder: Union[CustomEncoder, None, UnsetType] = Unset,
-        response_json_encoder: Union[JSONEncoder, UnsetType] = Unset,
+        status_code: int | HTTPStatus | UnsetType = Unset,
+        response_validate: bool | UnsetType = Unset,
+        response_type: Type[Any] | None | UnsetType = Unset,
+        response_content_type: str | ContentType | None | UnsetType = Unset,
+        response_charset: str | Charset | UnsetType = Unset,
+        response_zlib_executor: Executor | None | UnsetType = Unset,
+        response_zlib_executor_size: int | None | UnsetType = Unset,
+        response_include_fields: Include | None | UnsetType = Unset,
+        response_exclude_fields: Exclude | None | UnsetType = Unset,
+        response_by_alias: bool | UnsetType = Unset,
+        response_exclude_unset: bool | UnsetType = Unset,
+        response_exclude_defaults: bool | UnsetType = Unset,
+        response_exclude_none: bool | UnsetType = Unset,
+        response_custom_encoder: CustomEncoder | None | UnsetType = Unset,
+        response_json_encoder: JSONEncoder | UnsetType = Unset,
         **kwargs: Any,
     ) -> None:
         """Create a new RouteDef item for registering PATCH web-handler.
@@ -949,23 +955,23 @@ class delete(HTTPMethodRouteHandler):
 
     def __init__(
         self,
-        path: Optional[str] = None,
+        path: str | None = None,
         *,
-        status_code: Union[int, HTTPStatus, UnsetType] = Unset,
-        response_validate: Union[bool, UnsetType] = Unset,
-        response_type: Union[Type[Any], None, UnsetType] = Unset,
-        response_content_type: Union[str, ContentType, None, UnsetType] = Unset,
-        response_charset: Union[str, Charset, UnsetType] = Unset,
-        response_zlib_executor: Union[Executor, None, UnsetType] = Unset,
-        response_zlib_executor_size: Union[int, None, UnsetType] = Unset,
-        response_include_fields: Union[Include, None, UnsetType] = Unset,
-        response_exclude_fields: Union[Exclude, None, UnsetType] = Unset,
-        response_by_alias: Union[bool, UnsetType] = Unset,
-        response_exclude_unset: Union[bool, UnsetType] = Unset,
-        response_exclude_defaults: Union[bool, UnsetType] = Unset,
-        response_exclude_none: Union[bool, UnsetType] = Unset,
-        response_custom_encoder: Union[CustomEncoder, None, UnsetType] = Unset,
-        response_json_encoder: Union[JSONEncoder, UnsetType] = Unset,
+        status_code: int | HTTPStatus | UnsetType = Unset,
+        response_validate: bool | UnsetType = Unset,
+        response_type: Type[Any] | None | UnsetType = Unset,
+        response_content_type: str | ContentType | None | UnsetType = Unset,
+        response_charset: str | Charset | UnsetType = Unset,
+        response_zlib_executor: Executor | None | UnsetType = Unset,
+        response_zlib_executor_size: int | None | UnsetType = Unset,
+        response_include_fields: Include | None | UnsetType = Unset,
+        response_exclude_fields: Exclude | None | UnsetType = Unset,
+        response_by_alias: bool | UnsetType = Unset,
+        response_exclude_unset: bool | UnsetType = Unset,
+        response_exclude_defaults: bool | UnsetType = Unset,
+        response_exclude_none: bool | UnsetType = Unset,
+        response_custom_encoder: CustomEncoder | None | UnsetType = Unset,
+        response_json_encoder: JSONEncoder | UnsetType = Unset,
         **kwargs: Any,
     ) -> None:
         """Create a new RouteDef item for registering DELETE web-handler.
@@ -1043,23 +1049,23 @@ class head(HTTPMethodRouteHandler):
 
     def __init__(
         self,
-        path: Optional[str] = None,
+        path: str | None = None,
         *,
-        status_code: Union[int, HTTPStatus, UnsetType] = Unset,
-        response_validate: Union[bool, UnsetType] = Unset,
-        response_type: Union[Type[Any], None, UnsetType] = Unset,
-        response_content_type: Union[str, ContentType, None, UnsetType] = Unset,
-        response_charset: Union[str, Charset, UnsetType] = Unset,
-        response_zlib_executor: Union[Executor, None, UnsetType] = Unset,
-        response_zlib_executor_size: Union[int, None, UnsetType] = Unset,
-        response_include_fields: Union[Include, None, UnsetType] = Unset,
-        response_exclude_fields: Union[Exclude, None, UnsetType] = Unset,
-        response_by_alias: Union[bool, UnsetType] = Unset,
-        response_exclude_unset: Union[bool, UnsetType] = Unset,
-        response_exclude_defaults: Union[bool, UnsetType] = Unset,
-        response_exclude_none: Union[bool, UnsetType] = Unset,
-        response_custom_encoder: Union[CustomEncoder, None, UnsetType] = Unset,
-        response_json_encoder: Union[JSONEncoder, UnsetType] = Unset,
+        status_code: int | HTTPStatus | UnsetType = Unset,
+        response_validate: bool | UnsetType = Unset,
+        response_type: Type[Any] | None | UnsetType = Unset,
+        response_content_type: str | ContentType | None | UnsetType = Unset,
+        response_charset: str | Charset | UnsetType = Unset,
+        response_zlib_executor: Executor | None | UnsetType = Unset,
+        response_zlib_executor_size: int | None | UnsetType = Unset,
+        response_include_fields: Include | None | UnsetType = Unset,
+        response_exclude_fields: Exclude | None | UnsetType = Unset,
+        response_by_alias: bool | UnsetType = Unset,
+        response_exclude_unset: bool | UnsetType = Unset,
+        response_exclude_defaults: bool | UnsetType = Unset,
+        response_exclude_none: bool | UnsetType = Unset,
+        response_custom_encoder: CustomEncoder | None | UnsetType = Unset,
+        response_json_encoder: JSONEncoder | UnsetType = Unset,
         **kwargs: Any,
     ) -> None:
         """Create a new RouteDef item for registering HEAD web-handler.
@@ -1137,23 +1143,23 @@ class options(HTTPMethodRouteHandler):
 
     def __init__(
         self,
-        path: Optional[str] = None,
+        path: str | None = None,
         *,
-        status_code: Union[int, HTTPStatus, UnsetType] = Unset,
-        response_validate: Union[bool, UnsetType] = Unset,
-        response_type: Union[Type[Any], None, UnsetType] = Unset,
-        response_content_type: Union[str, ContentType, None, UnsetType] = Unset,
-        response_charset: Union[str, Charset, UnsetType] = Unset,
-        response_zlib_executor: Union[Executor, None, UnsetType] = Unset,
-        response_zlib_executor_size: Union[int, None, UnsetType] = Unset,
-        response_include_fields: Union[Include, None, UnsetType] = Unset,
-        response_exclude_fields: Union[Exclude, None, UnsetType] = Unset,
-        response_by_alias: Union[bool, UnsetType] = Unset,
-        response_exclude_unset: Union[bool, UnsetType] = Unset,
-        response_exclude_defaults: Union[bool, UnsetType] = Unset,
-        response_exclude_none: Union[bool, UnsetType] = Unset,
-        response_custom_encoder: Union[CustomEncoder, None, UnsetType] = Unset,
-        response_json_encoder: Union[JSONEncoder, UnsetType] = Unset,
+        status_code: int | HTTPStatus | UnsetType = Unset,
+        response_validate: bool | UnsetType = Unset,
+        response_type: Type[Any] | None | UnsetType = Unset,
+        response_content_type: str | ContentType | None | UnsetType = Unset,
+        response_charset: str | Charset | UnsetType = Unset,
+        response_zlib_executor: Executor | None | UnsetType = Unset,
+        response_zlib_executor_size: int | None | UnsetType = Unset,
+        response_include_fields: Include | None | UnsetType = Unset,
+        response_exclude_fields: Exclude | None | UnsetType = Unset,
+        response_by_alias: bool | UnsetType = Unset,
+        response_exclude_unset: bool | UnsetType = Unset,
+        response_exclude_defaults: bool | UnsetType = Unset,
+        response_exclude_none: bool | UnsetType = Unset,
+        response_custom_encoder: CustomEncoder | None | UnsetType = Unset,
+        response_json_encoder: JSONEncoder | UnsetType = Unset,
         **kwargs: Any,
     ) -> None:
         """Create a new RouteDef item for registering OPTIONS web-handler.

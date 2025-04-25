@@ -1,14 +1,18 @@
+from __future__ import annotations
+
 from concurrent.futures import Executor
 from functools import partial, wraps
 from http import HTTPStatus
-from typing import Any, cast, Optional, Type, TYPE_CHECKING, Union
+from typing import Any, cast, Type, TYPE_CHECKING
 
 from aiohttp.hdrs import METH_ALL
 
 from rapidy._base_exceptions import RapidyHandlerException
+from rapidy.depends import inject_http
 from rapidy.encoders import CustomEncoder, Exclude, Include
 from rapidy.endpoint_handlers.http.controller import controller_factory
 from rapidy.enums import Charset, ContentType, MethodName
+from rapidy.routing.http.helper_types import HandlerPartial
 from rapidy.typedefs import CallNext, Handler, JSONEncoder, Middleware, UnsetType
 from rapidy.web_middlewares import middleware as middleware_deco
 from rapidy.web_response import Response, StreamResponse
@@ -50,20 +54,20 @@ def handler_validation_wrapper(
     # response
     status_code: HTTPStatus,
     response_validate: bool,
-    response_type: Optional[Type[Any]],
-    response_content_type: Union[str, ContentType, None],
-    response_charset: Union[str, Charset],
-    response_zlib_executor: Optional[Executor],
-    response_zlib_executor_size: Optional[int],
+    response_type: Type[Any] | None,
+    response_content_type: str | ContentType | None,
+    response_charset: str | Charset,
+    response_zlib_executor: Executor | None,
+    response_zlib_executor_size: int | None,
     response_json_encoder: JSONEncoder,
     # response json preparer
-    response_include_fields: Optional[Include],
-    response_exclude_fields: Optional[Exclude],
+    response_include_fields: Include | None,
+    response_exclude_fields: Exclude | None,
     response_by_alias: bool,
     response_exclude_unset: bool,
     response_exclude_defaults: bool,
     response_exclude_none: bool,
-    response_custom_encoder: Optional[CustomEncoder],
+    response_custom_encoder: CustomEncoder | None,
 ) -> Handler:
     """Wraps the handler with validation and response preparation.
 
@@ -88,9 +92,13 @@ def handler_validation_wrapper(
     Returns:
         Handler: The wrapped handler function.
     """
+
+    if not isinstance(handler, HandlerPartial):
+        handler = inject_http(handler)
+
     handler_controller = controller_factory(
         handler,
-        request_attr_can_declare=True,
+        request_attr_can_declare_fst=True,
         status_code=status_code,
         response_validate=response_validate,
         response_type=response_type,
@@ -109,7 +117,7 @@ def handler_validation_wrapper(
     )
 
     @wraps(handler)
-    async def inner(request: 'Request') -> StreamResponse:
+    async def inner(request: Request) -> StreamResponse:
         """Inner function to handle the request, validate, and create a response.
 
         Args:
@@ -118,7 +126,7 @@ def handler_validation_wrapper(
         Returns:
             StreamResponse: The response to be sent back.
         """
-        pre_response: Optional[Response] = None
+        pre_response: Response | None = None
 
         validated_data = await handler_controller.validate_request(request)
 
@@ -151,27 +159,27 @@ def handler_validation_wrapper(
 
 
 def view_validation_wrapper(  # noqa: C901
-    view: Type['View'],
+    view: Type[View],
     *,
     method: MethodName,
     # response
     status_code: HTTPStatus,
     response_validate: bool,
-    response_type: Optional[Type[Any]],
-    response_content_type: Union[str, ContentType, None],
-    response_charset: Union[str, Charset],
-    response_zlib_executor: Optional[Executor],
-    response_zlib_executor_size: Optional[int],
+    response_type: Type[Any] | None,
+    response_content_type: str | ContentType | None,
+    response_charset: str | Charset,
+    response_zlib_executor: Executor | None,
+    response_zlib_executor_size: int | None,
     response_json_encoder: JSONEncoder,
     # response json preparer
-    response_include_fields: Optional[Include],
-    response_exclude_fields: Optional[Exclude],
+    response_include_fields: Include | None,
+    response_exclude_fields: Exclude | None,
     response_by_alias: bool,
     response_exclude_unset: bool,
     response_exclude_defaults: bool,
     response_exclude_none: bool,
-    response_custom_encoder: Optional[CustomEncoder],
-) -> Type['View']:
+    response_custom_encoder: CustomEncoder | None,
+) -> Type[View]:
     """Wraps the view with validation for HTTP methods and response preparation.
 
     Args:
@@ -215,6 +223,10 @@ def view_validation_wrapper(  # noqa: C901
         except AttributeError as method_not_found_error:
             raise MethodNotFoundInViewError(method_name=method_name) from method_not_found_error
 
+        method_handler = inject_http(method_handler)
+
+        setattr(view, method_name, method_handler)
+
         # FIXME(daniil.grois): duplicate code
         handler_controllers[method_name] = controller_factory(
             method_handler,
@@ -251,6 +263,10 @@ def view_validation_wrapper(  # noqa: C901
             except AttributeError as method_not_found_error:
                 raise MethodNotFoundInViewError(method_name=method_name) from method_not_found_error
 
+            method_handler = inject_http(method_handler)
+
+            setattr(view, method_name, method_handler)
+
             handler_controllers[method_name] = controller_factory(
                 method_handler,
                 status_code=status_code,
@@ -271,7 +287,7 @@ def view_validation_wrapper(  # noqa: C901
             )
 
     @wraps(view)
-    async def inner(request: 'Request') -> StreamResponse:
+    async def inner(request: Request) -> StreamResponse:
         """Inner function to handle the request and create a response.
 
         Args:
@@ -280,7 +296,7 @@ def view_validation_wrapper(  # noqa: C901
         Returns:
             StreamResponse: The response to be sent back.
         """
-        pre_response: Optional[Response] = None
+        pre_response: Response | None = None
 
         instance_view = view(request)
         method_name = request.method.lower()
@@ -298,6 +314,9 @@ def view_validation_wrapper(  # noqa: C901
             raise  # for linters only
 
         validated_data = await endpoint_handler.validate_request(request)
+
+        if endpoint_handler.request_attribute_name:
+            validated_data[endpoint_handler.request_attribute_name] = request
 
         if endpoint_handler.response_attribute_name:
             pre_response = Response(
@@ -332,22 +351,22 @@ def middleware_validation_wrapper(
     middleware: Middleware,
     *,
     # response
-    status_code: Union[int, HTTPStatus],
+    status_code: int | HTTPStatus,
     response_validate: bool,
-    response_type: Union[Type[Any], None, UnsetType],
-    response_content_type: Union[str, ContentType, None],
-    response_charset: Union[str, Charset],
-    response_zlib_executor: Optional[Executor],
-    response_zlib_executor_size: Optional[int],
+    response_type: Type[Any] | None | UnsetType,
+    response_content_type: str | ContentType | None,
+    response_charset: str | Charset,
+    response_zlib_executor: Executor | None,
+    response_zlib_executor_size: int | None,
     response_json_encoder: JSONEncoder,
     # response json preparer
-    response_include_fields: Optional[Include],
-    response_exclude_fields: Optional[Exclude],
+    response_include_fields: Include | None,
+    response_exclude_fields: Exclude | None,
     response_by_alias: bool,
     response_exclude_unset: bool,
     response_exclude_defaults: bool,
     response_exclude_none: bool,
-    response_custom_encoder: Optional[CustomEncoder],
+    response_custom_encoder: CustomEncoder | None,
 ) -> Middleware:
     """Wraps a middleware with validation and response preparation.
 
@@ -372,6 +391,7 @@ def middleware_validation_wrapper(
     Returns:
         Middleware: The wrapped middleware function.
     """
+    middleware = inject_http(middleware)
 
     handler_controller = controller_factory(
         middleware,
@@ -393,8 +413,8 @@ def middleware_validation_wrapper(
     )
 
     @middleware_deco
-    async def inner(request: 'Request', call_next: CallNext) -> StreamResponse:
-        pre_response: Optional[Response] = None
+    async def inner(request: Request, call_next: CallNext) -> StreamResponse:
+        pre_response: Response | None = None
 
         validated_data = await handler_controller.validate_request(request=request)
         if handler_controller.response_attribute_name:

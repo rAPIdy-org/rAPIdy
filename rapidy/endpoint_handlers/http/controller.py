@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from concurrent.futures import Executor
 from http import HTTPStatus
 from pprint import pformat
-from typing import Any, cast, Dict, Optional, Type, Union
+from typing import Any, cast, Dict, Type
 from typing_extensions import TypeAlias
 
 from rapidy._base_exceptions import RapidyHandlerException
@@ -45,7 +47,7 @@ class ResponseValidationError(RapidyHandlerException):
         *,
         errors: ValidationErrorList,
         **format_fields: str,
-    ) -> 'RapidyHandlerException':
+    ) -> RapidyHandlerException:
         """Creates a `ResponseValidationError` instance with handler-specific validation errors.
 
         Args:
@@ -99,23 +101,23 @@ class HandlerController:
         request_validator: RequestValidator,
         result_validator: ResultValidator,
         # injected attr names
-        request_attribute_name: Optional[str],
-        response_attribute_name: Optional[str],
+        request_attribute_name: str | None,
+        response_attribute_name: str | None,
         # response
-        status_code: Union[int, HTTPStatus],
+        status_code: int | HTTPStatus,
         response_validate: bool,
-        response_content_type: Union[str, ContentType, None],
+        response_content_type: str | ContentType | None,
         response_charset: str,
-        response_zlib_executor: Optional[Executor],
-        response_zlib_executor_size: Optional[int],
+        response_zlib_executor: Executor | None,
+        response_zlib_executor_size: int | None,
         # response json preparer
-        response_include_fields: Optional[Include],
-        response_exclude_fields: Optional[Exclude],
+        response_include_fields: Include | None,
+        response_exclude_fields: Exclude | None,
         response_by_alias: bool,
         response_exclude_unset: bool,
         response_exclude_defaults: bool,
         response_exclude_none: bool,
-        response_custom_encoder: Optional[CustomEncoder],
+        response_custom_encoder: CustomEncoder | None,
         response_json_encoder: JSONEncoder,
     ) -> None:
         """Initializes the HandlerController with various parameters for request and response handling.
@@ -183,7 +185,7 @@ class HandlerController:
 
         return cast(Dict[AttributeName, AttributeValue], values)
 
-    async def create_response(self, handler_result: Any, current_response: Optional[Response]) -> StreamResponse:
+    async def create_response(self, handler_result: Any, current_response: Response | None) -> StreamResponse:
         """Creates and validates the response based on the handler result.
 
         Args:
@@ -234,30 +236,30 @@ class HandlerController:
 def controller_factory(
     endpoint_handler: Handler,
     *,
-    request_attr_can_declare: bool = False,
+    request_attr_can_declare_fst: bool = False,
     # response
-    status_code: Union[int, HTTPStatus],
+    status_code: int | HTTPStatus,
     response_validate: bool,
-    response_type: Union[Type[Any], None, UnsetType],
-    response_content_type: Union[str, ContentType, None],
+    response_type: Type[Any] | None | UnsetType,
+    response_content_type: str | ContentType | None,
     response_charset: str,
-    response_zlib_executor: Optional[Executor],
-    response_zlib_executor_size: Optional[int],
+    response_zlib_executor: Executor | None,
+    response_zlib_executor_size: int | None,
     response_json_encoder: JSONEncoder,
     # response json preparer
-    response_include_fields: Optional[Include],
-    response_exclude_fields: Optional[Exclude],
+    response_include_fields: Include | None,
+    response_exclude_fields: Exclude | None,
     response_by_alias: bool,
     response_exclude_unset: bool,
     response_exclude_defaults: bool,
     response_exclude_none: bool,
-    response_custom_encoder: Optional[CustomEncoder],
+    response_custom_encoder: CustomEncoder | None,
 ) -> HandlerController:
     """Factory function for creating a HandlerController instance.
 
     Args:
         endpoint_handler (Handler): The endpoint handler for which to create the controller.
-        request_attr_can_declare (bool): Flag indicating whether request attributes can be declared.
+        request_attr_can_declare_fst (bool): Flag indicating whether request attributes can be declared fst.
         status_code (int): The default status code to be used for the response.
         response_validate (bool): Flag to indicate whether the response should be validated.
         response_type (Union[Type[Any], None, UnsetType]): The expected response type.
@@ -277,7 +279,10 @@ def controller_factory(
     Returns:
         HandlerController: The created HandlerController instance.
     """
-    http_handler_info = get_http_handler_info(endpoint_handler, request_attr_can_declare=request_attr_can_declare)
+    http_handler_info = get_http_handler_info(
+        endpoint_handler,
+        request_attr_can_declare_fst=request_attr_can_declare_fst,
+    )
 
     # validators
     request_validator = request_validator_factory(

@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 import asyncio
 import inspect
 from contextlib import AbstractAsyncContextManager, asynccontextmanager, AsyncExitStack
 from functools import partial
-from typing import Any, AsyncGenerator, Awaitable, Callable, List, Optional, TYPE_CHECKING, Union
+from typing import Any, AsyncGenerator, Awaitable, Callable, List, TYPE_CHECKING, Union
 from typing_extensions import TypeAlias
 
 from rapidy.annotation_checkers import is_async_callable
@@ -22,13 +24,10 @@ __all__ = (
 )
 
 CallableAsyncCTX = Callable[['Application'], 'ABCAContextManager']  # type: ignore[type-arg]  # py3.8
-SyncOrAsync: TypeAlias = Union[Any, Awaitable[Any]]
+SyncOrAsync: TypeAlias = Any | Awaitable[Any]
 
 LifespanCTX = Union[CallableAsyncCTX, 'ABCAContextManager']  # type: ignore[type-arg]  # py3.8
-LifespanHook: TypeAlias = Union[
-    Callable[['Application'], SyncOrAsync],
-    Callable[[], SyncOrAsync],
-]
+LifespanHook: TypeAlias = Callable[['Application'], SyncOrAsync] | Callable[[], SyncOrAsync]
 
 
 class Lifespan:
@@ -53,7 +52,7 @@ class Lifespan:
 
     def __init__(
         self,
-        app: 'Application',
+        app: Application,
         on_startup: List[LifespanHook],
         on_shutdown: List[LifespanHook],
         on_cleanup: List[LifespanHook],
@@ -69,7 +68,7 @@ class Lifespan:
             lifespan_managers (List[LifespanCTX]): List of lifespan context managers.
         """
         self._app = app
-        self._lifespan_status_queue: Optional[asyncio.Queue[Any]] = None
+        self._lifespan_status_queue: asyncio.Queue[Any] | None = None
 
         self.lifespan_managers = lifespan_managers
         self.on_startup = on_startup

@@ -1,9 +1,8 @@
 from http import HTTPStatus
-from typing import Any, Final, Tuple, Type
+from typing import Any, Final, Tuple, Type, TYPE_CHECKING
 from typing_extensions import Annotated
 
 import pytest
-from aiohttp.pytest_plugin import AiohttpClient
 
 from rapidy import web
 from rapidy._base_exceptions import RapidyHandlerException
@@ -15,6 +14,9 @@ from rapidy.endpoint_handlers.attr_extractor import (
 )
 from rapidy.parameters.http import RequestParamFieldInfo
 from rapidy.typedefs import Handler
+
+if TYPE_CHECKING:
+    from aiohttp.pytest_plugin import AiohttpClient
 
 DEFAULT_VALUE: Final[str] = 'DEFAULT'
 
@@ -51,7 +53,7 @@ async def base_test_incorrect_define_default_annotated_def(
 
 
 async def base_test_can_default(
-    aiohttp_client: AiohttpClient,
+    aiohttp_client: 'AiohttpClient',
     *,
     type_: Type[RequestParamFieldInfo],
     annotation: Any = Any,

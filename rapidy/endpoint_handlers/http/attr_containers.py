@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from functools import cached_property
 from typing import Any
 
@@ -22,7 +24,7 @@ class HTTPRequestAttr(DataAttr):
     field_info: RequestParamFieldInfo
 
     @classmethod
-    def create_by_data_attr(cls, data_attr: DataAttr) -> 'HTTPRequestAttr':
+    def create_by_data_attr(cls, data_attr: DataAttr) -> HTTPRequestAttr:
         """Creates an instance of `HTTPRequestAttr` using a `DataAttr` instance.
 
         Args:

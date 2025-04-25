@@ -1,5 +1,8 @@
+from __future__ import annotations
+
 from functools import partial
 from typing import Any
+from typing_extensions import Self
 
 from rapidy.typedefs import Handler
 
@@ -11,7 +14,7 @@ class HandlerPartial(partial):  # type: ignore[type-arg]
     and the controller instance, to streamline the registration of handler functions.
     """
 
-    def __new__(cls, *, controller_instance: Any, handler: Handler) -> 'HandlerPartial':
+    def __new__(cls, *, controller_instance: Any, handler: Handler) -> Self:
         """Create a new `HandlerPartial`.
 
         Args:

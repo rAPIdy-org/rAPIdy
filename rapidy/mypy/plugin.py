@@ -1,4 +1,4 @@
-from typing import Callable, cast, Optional
+from typing import Callable, cast
 
 from mypy.nodes import EllipsisExpr
 from mypy.plugin import FunctionContext, Plugin
@@ -16,7 +16,7 @@ from rapidy.mypy._type_helpers import _name_is_rapidy_param_name, _param_can_def
 class RapidyPlugin(Plugin):
     """A mypy plugin for processing Rapidy-specific parameter types and validations."""
 
-    def get_function_hook(self, fullname: str) -> Optional[Callable[[FunctionContext], Type]]:
+    def get_function_hook(self, fullname: str) -> Callable[[FunctionContext], Type] | None:
         """Retrieves a function hook for a given fully qualified function name.
 
         Args:

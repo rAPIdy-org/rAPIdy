@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, cast, Dict, Optional
+from typing import Any, cast, Dict
 
 from rapidy.endpoint_handlers.http.annotation_checkers import is_stream_reader
 from rapidy.enums import HTTPRequestParamType
@@ -116,7 +118,7 @@ class StreamReaderModelField(ABCRapidyModelField):
         values: Dict[str, Any],
         *,
         loc: LocStr,
-        cls: Optional[ModelOrDc] = None,
+        cls: ModelOrDc | None = None,
     ) -> ValidateReturn:
         """Validates the stream reader model field.
 

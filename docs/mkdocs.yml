@@ -139,6 +139,7 @@ nav:
       - Middlewares: docs/server/middlewares/index.md
       - HTTP errors: docs/server/http_errors/index.md
       - Testing: docs/server/testing/index.md
+  - Dependency Injection: docs/dependency_injection/index.md
   - Jsonify Encoder: docs/encoders/index.md
   - Lifespan: docs/lifespan/index.md
   - Enums: docs/enums/index.md

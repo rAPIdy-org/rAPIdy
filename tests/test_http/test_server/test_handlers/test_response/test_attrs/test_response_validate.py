@@ -1,5 +1,5 @@
 import inspect
-from typing import Any, Union
+from typing import Any
 
 import pytest
 from aiohttp.pytest_plugin import AiohttpClient
@@ -26,7 +26,7 @@ async def test_validation_flag(aiohttp_client: AiohttpClient, response_validate:
     [
         int,
         str,
-        Union[int, str],
+        int | str,
     ],
 )  # no point to check everything
 @pytest.mark.parametrize('response_validate', [True, False])

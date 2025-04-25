@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Any, Dict, Type, Union
+from typing import Any, Dict, Type
 
 import pytest
 from aiohttp.pytest_plugin import AiohttpClient
@@ -21,11 +21,11 @@ class SchemaB(BaseModel):
 @pytest.mark.parametrize(
     'annotation, param_type, params, expected_type_pydantic_v1, expected_type_pydantic_v2',
     (
-        (Union[int, str], QueryParam, {'p': 1}, int, str),
-        (Union[int, str], QueryParam, {'p': '1'}, int, str),
-        (Union[int, str], QueryParam, {'p': '1s'}, str, str),
-        (Union[SchemaA, SchemaB], QueryParams, {'a': 1}, SchemaA, SchemaA),
-        (Union[SchemaA, SchemaB], QueryParams, {'b': 1}, SchemaB, SchemaB),
+        (int | str, QueryParam, {'p': 1}, int, str),
+        (int | str, QueryParam, {'p': '1'}, int, str),
+        (int | str, QueryParam, {'p': '1s'}, str, str),
+        (SchemaA | SchemaB, QueryParams, {'a': 1}, SchemaA, SchemaA),
+        (SchemaA | SchemaB, QueryParams, {'b': 1}, SchemaB, SchemaB),
     ),
 )
 async def test_union_datatype(
