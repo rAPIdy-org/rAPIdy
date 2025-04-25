@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 import inspect
 from abc import ABC, abstractmethod
 from dataclasses import is_dataclass
-from typing import Any, cast, Dict, get_args, Iterable, List, Mapping, Optional, Type, Union
+from typing import Any, cast, Dict, get_args, Iterable, List, Mapping, Type, Union
 
 from multidict import MultiDict, MultiDictProxy
 
@@ -189,7 +191,7 @@ class RequestAllDataParameterValidator(BaseRequestParameterValidator):
     ) -> ValidateReturn:
         model_field = list(required_fields_map.values())[0]  # noqa: RUF015
 
-        if is_dataclass(model_field.type_) and isinstance(raw_data, (MultiDict, MultiDictProxy, Mapping)):
+        if is_dataclass(model_field.type_) and isinstance(raw_data, MultiDict | MultiDictProxy | Mapping):
             raw_data = self._create_dataclass_raw_data_by_multidict(raw_data, model_field_type=model_field.type_)
 
         validated_data, validated_errors = validate_data_by_model(
@@ -270,9 +272,9 @@ class ResultValidator(Validator[Any]):
     def __init__(
         self,
         handler: Handler,
-        return_annotation: Optional[Type[Any]],
+        return_annotation: Type[Any] | None,
         *,
-        response_type: Union[Type[Any], None, UnsetType],
+        response_type: Type[Any] | None | UnsetType,
     ) -> None:
         self._handler = handler
 
@@ -294,7 +296,7 @@ class ResultValidator(Validator[Any]):
             return self._model_field.validate(data, {}, loc=(self._model_field.name,))
         return data, []
 
-    def _create_return_model(self, annotation: Any) -> Optional[RapidyModelField]:
+    def _create_return_model(self, annotation: Any) -> RapidyModelField | None:
         """Creates a model field based on the return annotation.
 
         Args:
@@ -308,7 +310,7 @@ class ResultValidator(Validator[Any]):
 
         if is_union(annotation):
             union_annotations = get_args(annotation)
-            annotation = Union[
+            annotation = Union[  # noqa: UP007
                 tuple(annotation for annotation in union_annotations if not annotation_is_stream_response(annotation))
             ]
 
@@ -378,8 +380,8 @@ def request_validator_factory(
 
 def result_validator_factory(
     handler: Handler,
-    return_annotation: Optional[Type[Any]],
-    response_type: Union[Type[Any], None, UnsetType],
+    return_annotation: Type[Any] | None,
+    response_type: Type[Any] | None | UnsetType,
 ) -> ResultValidator:
     """Creates a result validator for the handler's response.
 

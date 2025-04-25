@@ -44,7 +44,6 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.9",
 ]
 packages = [
   {include = "rapidy"},
@@ -52,9 +51,10 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.9"
+python = ">=3.10"
 aiohttp = ">=3.8.1"
-pydantic = ">=1.7.4,!=1.8,!=1.8.1,!=1.8.2,!=2.0.0,!=2.0.1,!=2.1.0,<3.0.0"
+pydantic = ">=2.0.0,!=2.0.1,!=2.1.0,<3.0.0"
+dishka = "^1.5.3"
 
 [tool.poetry.group.dev.dependencies]
 pre-commit = "^4.1.0"
@@ -76,7 +76,7 @@ mkdocs-material = "^9.6.3"
 src = ["rapidy", "tests"]
 line-length = 120
 indent-width = 4
-target-version = "py39"
+target-version = "py310"
 exclude = ["docs/*"]
 
 [tool.ruff.lint]
@@ -87,6 +87,7 @@ ignore = [
     "ANN401",   # Dynamically typed expressions (typing.Any) are disallowed in `**handler_kwargs`
     "D100",     # Missing docstring in public module
     "D104",     # Missing docstring in public package
+    "COM812",   # Checks for the absence of trailing commas.
     "EM101",    # Exception must not use a string literal, assign to variable first
     "FA100",    # Add `from __future__ import annotations` to simplify `typing.Dict`
     "FA102",    # Missing `from __future__ import annotations`, but uses PEP 604 union

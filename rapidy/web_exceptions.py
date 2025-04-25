@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from aiohttp.typedefs import DEFAULT_JSON_ENCODER, LooseHeaders
 
 from rapidy._client_errors import normalize_errors
@@ -163,11 +165,11 @@ class HTTPValidationFailure(HTTPUnprocessableEntity):
         self,
         errors: ValidationErrorList,
         *,
-        headers: Optional[LooseHeaders] = None,
-        reason: Optional[str] = None,
+        headers: LooseHeaders | None = None,
+        reason: str | None = None,
         body: Any = None,
-        text: Optional[str] = None,
-        content_type: Optional[str] = None,
+        text: str | None = None,
+        content_type: str | None = None,
     ) -> None:
         self._errors = normalize_errors(errors)
         if text is None:

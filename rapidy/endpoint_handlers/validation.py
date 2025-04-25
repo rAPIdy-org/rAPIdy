@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Any, Generic, List, Optional, Tuple, TypeVar
+from typing import Any, Generic, List, Tuple, TypeVar
 
 from rapidy._client_errors import regenerate_error_with_loc, RequiredFieldIsMissingError
 from rapidy.fields.model_fields import RapidyModelField
@@ -36,7 +38,7 @@ def validate_data_by_model(
     raw_data: Any,
     loc: LocStr,
     values: DictStrAny,
-) -> Tuple[Optional[Any], List[Any]]:
+) -> Tuple[Any | None, List[Any]]:
     """Validates data according to a model field's rules and returns any validation errors.
 
     This function handles different cases based on the presence of raw data, model field settings,

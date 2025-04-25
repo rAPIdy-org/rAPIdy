@@ -4,13 +4,13 @@
         {
             "loc": ["body", "username"],
             "type": "string_too_short",
-            "msg": "Строка должна содержать как минимум 3 символа",
+            "msg": "String must contain at least 3 characters,
             "ctx": {"min_length": 3}
         },
         {
             "type": "string_too_short",
             "loc": ["body", "password"],
-            "msg": "Строка должна содержать как минимум 8 символов",
+            "msg": "String must contain at least 8 characters",
             "ctx": {"min_length": 8}
         }
     ]

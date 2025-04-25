@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 import warnings
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List
 
 from pydantic.fields import FieldInfo
 
@@ -28,30 +30,30 @@ class RapidyFieldInfo(FieldInfo):
         self,
         default: Any = Undefined,
         *,
-        default_factory: Union[NoArgAnyCallable, None, UnsetType] = Unset,
-        annotation: Union[Any, None, UnsetType] = Unset,
-        alias: Union[str, None, UnsetType] = Unset,
-        alias_priority: Union[int, None, UnsetType] = Unset,
-        validation_alias: Union[str, None, UnsetType] = Unset,
-        serialization_alias: Union[str, None, UnsetType] = Unset,
-        title: Union[str, None, UnsetType] = Unset,
-        description: Union[str, None, UnsetType] = Unset,
-        gt: Union[float, None, UnsetType] = Unset,
-        ge: Union[float, None, UnsetType] = Unset,
-        lt: Union[float, None, UnsetType] = Unset,
-        le: Union[float, None, UnsetType] = Unset,
-        min_length: Union[int, None, UnsetType] = Unset,
-        max_length: Union[int, None, UnsetType] = Unset,
-        pattern: Union[str, None, UnsetType] = Unset,
-        discriminator: Union[str, None, UnsetType] = Unset,
-        strict: Union[bool, None, UnsetType] = Unset,
-        multiple_of: Union[float, None, UnsetType] = Unset,
-        allow_inf_nan: Union[bool, None, UnsetType] = Unset,
-        max_digits: Union[int, None, UnsetType] = Unset,
-        decimal_places: Union[int, None, UnsetType] = Unset,
-        deprecated: Union[Deprecated, str, bool, None, UnsetType] = Unset,
-        examples: Union[List[Any], None, UnsetType] = Unset,
-        json_schema_extra: Union[Dict[str, Any], None, UnsetType] = Unset,
+        default_factory: NoArgAnyCallable | None | UnsetType = Unset,
+        annotation: Any | None | UnsetType = Unset,
+        alias: str | None | UnsetType = Unset,
+        alias_priority: int | None | UnsetType = Unset,
+        validation_alias: str | None | UnsetType = Unset,
+        serialization_alias: str | None | UnsetType = Unset,
+        title: str | None | UnsetType = Unset,
+        description: str | None | UnsetType = Unset,
+        gt: float | None | UnsetType = Unset,
+        ge: float | None | UnsetType = Unset,
+        lt: float | None | UnsetType = Unset,
+        le: float | None | UnsetType = Unset,
+        min_length: int | None | UnsetType = Unset,
+        max_length: int | None | UnsetType = Unset,
+        pattern: str | None | UnsetType = Unset,
+        discriminator: str | None | UnsetType = Unset,
+        strict: bool | None | UnsetType = Unset,
+        multiple_of: float | None | UnsetType = Unset,
+        allow_inf_nan: bool | None | UnsetType = Unset,
+        max_digits: int | None | UnsetType = Unset,
+        decimal_places: int | None | UnsetType = Unset,
+        deprecated: Deprecated | str | bool | None | UnsetType = Unset,
+        examples: List[Any] | None | UnsetType = Unset,
+        json_schema_extra: Dict[str, Any] | None | UnsetType = Unset,
         validate: bool = True,
         **extra: Any,
     ) -> None:
@@ -140,7 +142,7 @@ class RapidyFieldInfo(FieldInfo):
         if PYDANTIC_IS_V1:
             self._validate()  # check specify both default and default_factory
 
-    def _get_pattern(self, pattern: Union[str, None, UnsetType], regex: Optional[str]) -> Any:
+    def _get_pattern(self, pattern: str | None | UnsetType, regex: str | None) -> Any:
         """Retrieves the appropriate pattern for validation, handling deprecations.
 
         Args:

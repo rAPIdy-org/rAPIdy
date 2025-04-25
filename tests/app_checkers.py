@@ -1,6 +1,6 @@
 from concurrent.futures import Executor
 from http import HTTPStatus
-from typing import Any, Awaitable, Callable, Optional, Tuple, Type, Union
+from typing import Any, Awaitable, Callable, Tuple, Type
 from typing_extensions import TypeAlias
 
 from aiohttp.pytest_plugin import AiohttpClient
@@ -225,7 +225,7 @@ async def check_fabric(
     # handler factories attrs
     handler_path: str,
     handler_return_type: Any,
-    handler_return_value: Optional[Any] = None,
+    handler_return_value: Any | None = None,
     expected_return_value: Any = DEFAULT_RETURN_VALUE,
     expected_status_code: int,
     **handler_kwargs: Any,
@@ -261,21 +261,21 @@ async def check_handlers(
     status_code: int = HTTPStatus.OK,
     handler_path: str = '/',
     handler_return_type: Any = DEFAULT_RETURN_TYPE,
-    handler_return_value: Optional[Any] = DEFAULT_RETURN_VALUE,
+    handler_return_value: Any | None = DEFAULT_RETURN_VALUE,
     # handler attrs
     response_validate: bool = True,
-    response_type: Union[Type[Any], None, UnsetType] = Unset,
-    response_content_type: Union[str, ContentType, None] = None,
-    response_charset: Union[str, Charset] = Charset.utf8,
-    response_zlib_executor: Optional[Executor] = None,
-    response_zlib_executor_size: Optional[int] = None,
-    response_include_fields: Optional[Include] = None,
-    response_exclude_fields: Optional[Exclude] = None,
+    response_type: Type[Any] | None | UnsetType = Unset,
+    response_content_type: str | ContentType | None = None,
+    response_charset: str | Charset = Charset.utf8,
+    response_zlib_executor: Executor | None = None,
+    response_zlib_executor_size: int | None = None,
+    response_include_fields: Include | None = None,
+    response_exclude_fields: Exclude | None = None,
     response_by_alias: bool = True,
     response_exclude_unset: bool = False,
     response_exclude_defaults: bool = False,
     response_exclude_none: bool = False,
-    response_custom_encoder: Optional[CustomEncoder] = None,
+    response_custom_encoder: CustomEncoder | None = None,
     response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
 ) -> None:
     for web_method_name in WEB_METHOD_NAMES:
@@ -326,20 +326,20 @@ async def check_handlers_all_response_models(
     status_code: int = HTTPStatus.OK,
     handler_path: str = '/',
     handler_return_type: Any = DEFAULT_RETURN_TYPE,
-    handler_return_value: Optional[Any] = DEFAULT_RETURN_VALUE,
+    handler_return_value: Any | None = DEFAULT_RETURN_VALUE,
     # handler attrs
     response_validate: bool = True,
-    response_content_type: Union[str, ContentType, None] = None,
-    response_charset: Union[str, Charset] = Charset.utf8,
-    response_zlib_executor: Optional[Executor] = None,
-    response_zlib_executor_size: Optional[int] = None,
-    response_include_fields: Optional[Include] = None,
-    response_exclude_fields: Optional[Exclude] = None,
+    response_content_type: str | ContentType | None = None,
+    response_charset: str | Charset = Charset.utf8,
+    response_zlib_executor: Executor | None = None,
+    response_zlib_executor_size: int | None = None,
+    response_include_fields: Include | None = None,
+    response_exclude_fields: Exclude | None = None,
     response_by_alias: bool = True,
     response_exclude_unset: bool = False,
     response_exclude_defaults: bool = False,
     response_exclude_none: bool = False,
-    response_custom_encoder: Optional[CustomEncoder] = None,
+    response_custom_encoder: CustomEncoder | None = None,
     response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
 ) -> None:
     for attr_name in ('handler_return_type', 'response_type'):

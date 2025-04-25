@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from aiohttp.streams import DataQueue, EMPTY_PAYLOAD, EofStream, FlowControlDataQueue, StreamReader
 
 __all__ = (

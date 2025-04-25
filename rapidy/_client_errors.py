@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Type, Union
+from typing import Any, Dict, List, Type
 
 from pydantic import BaseModel, create_model
 
@@ -136,7 +138,7 @@ if PYDANTIC_IS_V1:
                 use_errors.append(error)
         return use_errors
 
-    def normalize_errors(errors: Union[Any, List[Any]]) -> ValidationErrorList:
+    def normalize_errors(errors: Any | List[Any]) -> ValidationErrorList:
         """Normalize a list or single error.
 
         Args:
@@ -215,7 +217,7 @@ else:
         error.pop('url', None)
         error.pop('input', None)
 
-    def normalize_errors(errors: Union[Any, List[Any]]) -> ValidationErrorList:
+    def normalize_errors(errors: Any | List[Any]) -> ValidationErrorList:
         """Normalize a list or single error, removing unnecessary keys for Pydantic V2.
 
         Args:

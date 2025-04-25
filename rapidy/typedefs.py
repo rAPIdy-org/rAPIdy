@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from enum import Enum
-from typing import Any, Awaitable, Callable, Dict, Final, List, Optional, Tuple, Type, TYPE_CHECKING, Union
+from typing import Any, Awaitable, Callable, Dict, Final, List, Tuple, Type, TYPE_CHECKING, Union
 from typing_extensions import Literal, TypeAlias
 
 from aiohttp.abc import AbstractView
@@ -47,18 +49,18 @@ Middleware: TypeAlias = Handler
 CallNext: TypeAlias = Callable[['Request'], Awaitable['StreamResponse']]
 
 # inner types
-HandlerOrView: TypeAlias = Union[Handler, Type[AbstractView]]
+HandlerOrView: TypeAlias = Handler | Type[AbstractView]
 RouterDeco = Callable[[HandlerOrView], HandlerOrView]
 
 ControllerHTTPRouterType = Any  # Not `any` of course, but `mypy` doesn't recognise the `controller` class decorator
 BaseHTTPRouterType = Union['BaseHTTPRouter', ControllerHTTPRouterType]
 
 # validation types
-LocStr = Union[Tuple[Union[int, str], ...], str]
+LocStr = Tuple[int | str, ...] | str
 ModelOrDc = Type[Union[BaseModel, 'Dataclass']]
 ResultValidate = DictStrAny
 ValidationErrorList: TypeAlias = List[DictStrAny]
-ValidateReturn: TypeAlias = Tuple[Optional[ResultValidate], Optional[ValidationErrorList]]
+ValidateReturn: TypeAlias = Tuple[ResultValidate | None, ValidationErrorList | None]
 
 # model types
 NoArgAnyCallable: TypeAlias = Callable[[], Any]

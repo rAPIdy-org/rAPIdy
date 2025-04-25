@@ -1,14 +1,17 @@
+from __future__ import annotations
+
 import inspect
 from abc import ABC
-from typing import Any, List
+from typing import Any, get_type_hints, List
 from typing_extensions import get_args
 
 from attrs import define, Factory
 
 from rapidy._base_exceptions import RapidyHandlerException
-from rapidy.annotation_checkers import is_annotated, is_empty, is_optional
+from rapidy.annotation_checkers import get_base_annotations, is_annotated, is_empty, is_optional
 from rapidy.endpoint_handlers.attr_containers import Attr, DataAttr
 from rapidy.fields.field_info import copy_field_info, RapidyFieldInfo
+from rapidy.routing.http.helper_types import HandlerPartial
 from rapidy.typedefs import Handler, Required, Undefined
 
 
@@ -348,7 +351,7 @@ class HandlerRawInfo:
     data_attrs: List[DataAttr] = Factory(list)
 
 
-def get_handler_raw_info(handler: Handler) -> HandlerRawInfo:
+def get_handler_raw_info(handler: Handler) -> HandlerRawInfo:  # noqa: C901
     """Gets the raw information about a handler's attributes and return annotation.
 
     Args:
@@ -357,58 +360,70 @@ def get_handler_raw_info(handler: Handler) -> HandlerRawInfo:
     Returns:
         HandlerRawInfo: The raw information about the handler's attributes.
     """
-    endpoint_signature = inspect.signature(handler)
-    endpoint_signature_data = endpoint_signature.parameters
-    return_annotation = endpoint_signature.return_annotation
+    try:
+        hints = get_type_hints(handler, include_extras=True)
+    except TypeError as get_hints_exc:
+        if not isinstance(handler, HandlerPartial):  # FIXME: Remove after remove HandlerPartial
+            raise get_hints_exc  # noqa: TRY201
+
+        hints = get_type_hints(handler.handler, include_extras=True)
+
+    sig = inspect.signature(handler)
+
+    return_annotation = hints.get('return', sig.return_annotation)
 
     handler_raw_info = HandlerRawInfo(return_annotation=return_annotation)
 
     attribute_idx = -1
-    for attribute in endpoint_signature_data.values():
+    for param_name, parameter in sig.parameters.items():
         attribute_idx += 1
+        annotation = hints.get(param_name, parameter.annotation)
 
-        if not is_empty(attribute.default):
-            if isinstance(attribute.default, RapidyFieldInfo):
+        if not is_empty(parameter.default):
+            if isinstance(parameter.default, RapidyFieldInfo):
                 data_attr = create_data_attr(
-                    attribute=attribute,
+                    attribute=parameter,
                     attribute_idx=attribute_idx,
-                    type_annotation=attribute.annotation,
-                    raw_field_info=attribute.default,
+                    type_annotation=annotation,
+                    raw_field_info=parameter.default,
                     annotation_def_as_annotated=False,
-                    # only to create context with exception
                     handler=handler,
                 )
                 handler_raw_info.data_attrs.append(data_attr)
                 continue
 
-            if is_rapidy_type(attribute.default):
-                raise ParameterNotInstanceError.create(handler=handler, attr_name=attribute.name)
+            if is_rapidy_type(parameter.default):
+                raise ParameterNotInstanceError.create(handler=handler, attr_name=param_name)
 
-        if is_annotated(attribute.annotation):
-            annotated_args = get_args(attribute.annotation)
+        if is_annotated(annotation) or is_optional(annotation):
+            if is_optional(annotation):  # FIXME: double check
+                base_annotations = get_base_annotations(annotation)
+                if base_annotations:
+                    annotation = base_annotations[0]
+
+            annotated_args = get_args(annotation)
             type_annotation = annotated_args[0]
             last_attr = annotated_args[-1]
 
             if isinstance(last_attr, RapidyFieldInfo):
                 data_attr = create_data_attr(
-                    attribute=attribute,
+                    attribute=parameter,
                     attribute_idx=attribute_idx,
                     type_annotation=type_annotation,
                     raw_field_info=last_attr,
                     annotation_def_as_annotated=True,
-                    # only to create context with exception
                     handler=handler,
                 )
                 handler_raw_info.data_attrs.append(data_attr)
                 continue
 
             if is_rapidy_type(last_attr):
-                raise ParameterNotInstanceError.create(handler=handler, attr_name=attribute.name)
+                raise ParameterNotInstanceError.create(handler=handler, attr_name=param_name)
 
         attr = Attr(
-            attribute_name=attribute.name,
+            attribute_name=parameter.name,
             attribute_idx=attribute_idx,
-            attribute_annotation=attribute.annotation,
+            attribute_annotation=annotation,
         )
 
         handler_raw_info.attrs.append(attr)

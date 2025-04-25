@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from rapidy.version import AIOHTTP_VERSION_TUPLE
 
 if AIOHTTP_VERSION_TUPLE >= (3, 9, 0):

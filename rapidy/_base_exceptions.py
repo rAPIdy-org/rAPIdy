@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from abc import ABC
-from typing import Any, Final, Optional
+from typing import Any, Final
 
 from rapidy.routing.http.helper_types import HandlerPartial
 
@@ -20,7 +22,7 @@ class RapidyException(Exception, ABC):  # noqa: N818
     border = '\n' + '-' * BORDER_LEN + '\n'
     message: str
 
-    def __init__(self, message: Optional[str] = None, **format_fields: str) -> None:
+    def __init__(self, message: str | None = None, **format_fields: str) -> None:
         """Initialize a RapidyException instance.
 
         Args:
@@ -67,9 +69,9 @@ class RapidyHandlerException(RapidyException, ABC):
         cls,
         *,
         handler: Any,
-        attr_name: Optional[str] = None,
+        attr_name: str | None = None,
         **format_fields: str,
-    ) -> 'RapidyHandlerException':
+    ) -> RapidyHandlerException:
         """Create a new RapidyHandlerException with detailed handler information.
 
         Args:

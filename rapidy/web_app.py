@@ -1,6 +1,9 @@
+from __future__ import annotations
+
 import contextlib
 import logging
 import warnings
+from asyncio import Lock
 from typing import (
     Any,
     AsyncGenerator,
@@ -10,21 +13,25 @@ from typing import (
     Iterator,
     List,
     Mapping,
-    Optional,
+    Sequence,
     Tuple,
+    TYPE_CHECKING,
     TypeVar,
-    Union,
 )
 
 from aiohttp.log import web_logger
 from aiohttp.web_app import (
+    _Middlewares,
     Application as AiohttpApplication,
     CleanupError,
 )
 from aiohttp.web_middlewares import _fix_request_current_app
-from aiohttp.web_request import Request
+from dishka import AsyncContainer, BaseScope, make_async_container, Scope, ValidationSettings
+from dishka.entities.validation_settigs import DEFAULT_VALIDATION
+from frozenlist import FrozenList
 
 from rapidy.constants import CLIENT_MAX_SIZE
+from rapidy.depends import CONTAINER_KEY, di_middleware, RapidyProvider
 from rapidy.endpoint_handlers.http.handlers import middleware_validation_wrapper
 from rapidy.enums import HeaderName
 from rapidy.lifespan import Lifespan, LifespanCTX, LifespanHook
@@ -34,6 +41,10 @@ from rapidy.version import SERVER_INFO
 from rapidy.web_middlewares import get_middleware_attr_data, is_aiohttp_new_style_middleware, is_rapidy_middleware
 from rapidy.web_response import StreamResponse
 from rapidy.web_urldispatcher import UrlDispatcher
+
+if TYPE_CHECKING:
+    from aiohttp.web_request import Request
+    from dishka.provider import BaseProvider
 
 __all__ = (
     'Application',
@@ -112,16 +123,25 @@ class Application(AiohttpApplication):
         self,
         *,
         logger: logging.Logger = web_logger,
-        middlewares: Optional[Iterable[Middleware]] = None,
-        handler_args: Optional[Mapping[str, Any]] = None,
+        middlewares: Iterable[Middleware] | None = None,
+        handler_args: Mapping[str, Any] | None = None,
         client_max_size: int = CLIENT_MAX_SIZE,
         server_info_in_response: bool = False,
-        lifespan: Optional[List[LifespanCTX]] = None,
-        on_startup: Optional[List[LifespanHook]] = None,
-        on_shutdown: Optional[List[LifespanHook]] = None,
-        on_cleanup: Optional[List[LifespanHook]] = None,
+        lifespan: List[LifespanCTX] | None = None,
+        on_startup: List[LifespanHook] | None = None,
+        on_shutdown: List[LifespanHook] | None = None,
+        on_cleanup: List[LifespanHook] | None = None,
         # FIXME(daniil_grois): Fix `Any` after mypy improves type checking for cls deco
-        http_route_handlers: Iterable[Union[BaseHTTPRouterType, Any]] = (),
+        http_route_handlers: Iterable[BaseHTTPRouterType | Any] = (),
+        # di
+        di_container: AsyncContainer | None = None,
+        di_providers: Sequence[BaseProvider] = (),
+        di_scopes: type[BaseScope] = Scope,
+        di_context: dict[Any, Any] | None = None,
+        di_lock_factory: Callable[[], contextlib.AbstractAsyncContextManager[Any]] | None = Lock,
+        di_skip_validation: bool = False,
+        di_start_scope: BaseScope | None = None,
+        di_validation_settings: ValidationSettings = DEFAULT_VALIDATION,
     ) -> None:
         """Initializes the Application instance with various configuration options.
 
@@ -197,6 +217,17 @@ class Application(AiohttpApplication):
 
                 >>> rapidy = Rapidy(on_cleanup=[on_cleanup, ...], ...)
             http_route_handlers (Iterable[BaseHTTPRouterType]): HTTP route handlers to register.
+            di_container (Optional[AsyncContainer]): External DI container.
+                          If you provide a custom DI container, Rapidy will not create a new one even if other DI params
+                          are specified.
+                          You are responsible for managing its lifecycle (startup/shutdown) manually.
+            di_providers (Sequence[BaseProvider]): Providers to register in the DI container.
+            di_scopes (Type[BaseScope]): Scope class used by the DI container.
+            di_context (Optional[Dict[Any, Any]]): Additional context for DI.
+            di_lock_factory (Optional[Callable]): Factory creating locks for DI.
+            di_skip_validation (bool): Whether to skip DI providers validation.
+            di_start_scope (Optional[BaseScope]): DI scope to start the container with.
+            di_validation_settings (Optional[ValidationSettings]): Settings for DI validation.
         """
         super().__init__(
             logger=logger,
@@ -223,10 +254,19 @@ class Application(AiohttpApplication):
 
         self.add_http_routers(http_route_handlers)
 
+        self._di_container = di_container
+        self._di_providers = di_providers
+        self._di_scopes = di_scopes
+        self._di_context = di_context
+        self._di_lock_factory = di_lock_factory
+        self._di_skip_validation = di_skip_validation
+        self._di_start_scope = di_start_scope
+        self._di_validation_settings = di_validation_settings
+
     def add_http_router(
         self,
         # FIXME(daniil_grois): Fix `Any` after mypy improves type checking for cls deco
-        http_router: Union[BaseHTTPRouterType, Any],
+        http_router: BaseHTTPRouterType | Any,
     ) -> None:
         """Adds an HTTP router to the application.
 
@@ -243,7 +283,7 @@ class Application(AiohttpApplication):
     def add_http_routers(
         self,
         # FIXME: Fix `Any` after mypy improves type checking for cls deco
-        route_handlers: Iterable[Union[BaseHTTPRouterType, Any]],
+        route_handlers: Iterable[BaseHTTPRouterType | Any],
     ) -> None:
         """Adds multiple HTTP routers to the application.
 
@@ -262,7 +302,7 @@ class Application(AiohttpApplication):
         """
         return self._router
 
-    def _create_lifespan_cleanup_ctx(self, lifespan: Lifespan) -> Callable[['Application'], AsyncGenerator[None, None]]:
+    def _create_lifespan_cleanup_ctx(self, lifespan: Lifespan) -> Callable[[Application], AsyncGenerator[None, None]]:
         """Creates a cleanup context manager for lifespan management.
 
         Args:
@@ -272,7 +312,7 @@ class Application(AiohttpApplication):
             Callable: A function that manages lifespan cleanup.
         """
 
-        async def lifespan_cleanup_ctx(app: 'Application') -> AsyncGenerator[None, None]:  # noqa: ARG001
+        async def lifespan_cleanup_ctx(app: Application) -> AsyncGenerator[None, None]:  # noqa: ARG001
             lifespan_ctx_generator = lifespan.ctx_manager().gen
 
             await lifespan_ctx_generator.__anext__()
@@ -340,6 +380,57 @@ class Application(AiohttpApplication):
         """
         resp._prepare_headers = self._hide_server_info_deco(resp._prepare_headers)  # noqa: SLF001
         return resp
+
+    def _setup_di(self) -> None:
+        """Initialize dependency injection container."""
+        if not self._di_container:
+            self._di_container = make_async_container(
+                *self._di_providers,
+                RapidyProvider(),
+                scopes=self._di_scopes,
+                context=self._di_context,
+                lock_factory=self._di_lock_factory,
+                skip_validation=self._di_skip_validation,
+                start_scope=self._di_start_scope,
+                validation_settings=self._di_validation_settings,
+            )
+
+            async def _shutdown_di_container() -> None:
+                await self[CONTAINER_KEY].close()
+
+            self.lifespan.on_shutdown.append(_shutdown_di_container)
+
+        self[CONTAINER_KEY] = self._di_container
+        self._middlewares: _Middlewares = FrozenList((di_middleware, *self.middlewares))
+
+    @property
+    def di_container(self) -> AsyncContainer | None:
+        """Get the DI container instance.
+
+        Note:
+            None will be returned if you try to get the container using subapp.
+            >>> from rapidy import Rapidy
+            >>>
+            >>> root_app = Rapidy()
+            >>> v1_app = Rapidy()
+            >>> root_app.add_subapp('/v1', v1_app)
+            >>>
+            >>> root_app.di_container  # AsyncContainer
+            >>> v1_app.di_container  # None
+
+        Returns:
+            The configured AsyncContainer or None
+        """
+        return self.get(CONTAINER_KEY)
+
+    async def startup(self) -> None:
+        """Causes on_startup signal.
+
+        Should be called in the event loop along with the request handler.
+        """
+        # Note: Since the creation happens through startup, the container will be created only in the root application.
+        self._setup_di()
+        await super().startup()
 
     async def _handle(self, request: Request) -> StreamResponse:
         resp = await super()._handle(request)

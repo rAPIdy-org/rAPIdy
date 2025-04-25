@@ -1,4 +1,4 @@
-from typing import Any, Final, Optional, Union
+from typing import Any, Final
 
 import pytest
 from aiohttp import web as aiohttp_web
@@ -186,10 +186,10 @@ async def test_success_rapidy_catch_aiohttp_not_allowed(aiohttp_client: AiohttpC
 
 async def _test(
     aiohttp_client: AiohttpClient,
-    app: Union[aiohttp_web.Application, rapidy_web.Application],
+    app: aiohttp_web.Application | rapidy_web.Application,
     expected_text: str,
     web_module: Any = rapidy_web,
-    handler: Optional[Handler] = None,
+    handler: Handler | None = None,
 ) -> None:
     if not handler:
 

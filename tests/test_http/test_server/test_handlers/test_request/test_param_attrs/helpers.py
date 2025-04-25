@@ -1,5 +1,5 @@
 from http import HTTPStatus
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, List, Type
 from typing_extensions import Annotated
 
 from aiohttp.pytest_plugin import AiohttpClient
@@ -23,7 +23,7 @@ class TestCase:
 
 def create_test_cases(
     correct_value: Any,
-    incorrect_value: Optional[Any] = None,
+    incorrect_value: Any | None = None,
     skip_only_str_params: bool = False,
     data_key: str = 'data',
 ) -> List[TestCase]:

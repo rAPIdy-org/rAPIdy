@@ -17,16 +17,16 @@ async def error_catch_middleware(
 
     except HTTPValidationFailure as validation_failure_error:
         validation_errors = validation_failure_error.validation_errors
-        logger.debug('Ошибка валидации: `%s request: %s`', str(request.rel_url), validation_errors)
+        logger.debug('Validation error: `%s request: %s`', str(request.rel_url), validation_errors)
         raise validation_failure_error
 
     except HTTPInternalServerError as server_error:
-        logger.info('Внутренняя ошибка сервера: %s', server_error)
+        logger.info('Internal server error: %s', server_error)
         raise server_error
 
     except HTTPException as unhandled_http_error:
         raise unhandled_http_error
 
     except Exception as unhandled_error:
-        logger.exception('Ошибка при обработке `%s`: %s', str(request.rel_url), unhandled_error)
+        logger.exception('Unhandled error `%s`: %s', str(request.rel_url), unhandled_error)
         raise HTTPInternalServerError

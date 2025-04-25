@@ -88,11 +88,15 @@
 server_info_in_response: bool = False
 ```
 
+---
+
 ##### lifespan
 Список фоновых задач, которые запускаются и завершаются вместе с сервером.
 ```python
 lifespan: Optional[List[LifespanCTX]] = None
 ```
+
+---
 
 ##### on_startup
 Список задач, запускаемых сразу после старта приложения.
@@ -100,11 +104,15 @@ lifespan: Optional[List[LifespanCTX]] = None
 on_startup: Optional[List[LifespanHook]] = None
 ```
 
+---
+
 ##### on_shutdown
 Задачи, выполняемые при остановке сервера.
 ```python
 on_shutdown: Optional[List[LifespanHook]] = None
 ```
+
+---
 
 ##### on_cleanup
 Задачи, выполняемые после `on_shutdown`.
@@ -112,11 +120,142 @@ on_shutdown: Optional[List[LifespanHook]] = None
 on_cleanup: Optional[List[LifespanHook]] = None
 ```
 
+---
+
 ##### http_route_handlers
 HTTP-роутеры, которые могут представлять собой как отдельные обработчики, так и группы `HTTPRouter`.
 ```python
 http_route_handlers: Iterable[HTTPRouterType] = ()
 ```
+
+---
+
+### Атрибуты DI (dishka)
+
+В качестве движка для внедрения зависимостей Rapidy использует библиотеку Dishka.
+
+!!! info "Подробнее о механизме работы DI и особенностях интеграции читайте [здесь](../../dependency_injection)."
+
+---
+
+##### di_container
+Внешний DI-контейнер, который можно передать в Rapidy.
+
+```python
+di_container: AsyncContainer | None = None
+```
+
+По умолчанию Rapidy создаёт и управляет собственным контейнером.
+Если вы передаёте контейнер вручную, вам нужно самостоятельно контролировать его жизненный цикл (запуск и остановку).
+
+!!! note "Rapidy не создаст новый контейнер, даже если указаны другие DI-параметры."
+
+!!! tip "Документация Dishka — [container](https://dishka.readthedocs.io/en/stable/container/index.html)."
+
+---
+
+##### di_providers
+Провайдеры, которые будут зарегистрированы в контейнере.
+
+Провайдер — это объект, члены которого используются для построения зависимостей.
+
+```python
+di_providers: Sequence[BaseProvider] = ()
+```
+
+!!! note "Параметр будет проигнорирован, если указан `di_container`."
+
+!!! tip "Документация Dishka — [providers](https://dishka.readthedocs.io/en/stable/provider/index.html)."
+
+---
+
+##### di_scopes
+Класс `Scope`, который будет использоваться контейнером.
+
+```python
+di_scopes: type[BaseScope] = Scope
+```
+
+!!! note "Параметр будет проигнорирован, если указан `di_container`."
+
+!!! tip "Документация Dishka — [scopes](https://dishka.readthedocs.io/en/stable/advanced/scopes.html)."
+
+---
+
+##### di_context
+Словарь, позволяющий передавать дополнительный контекст внутрь уже объявленных провайдеров.
+
+```python
+di_context: dict[Any, Any] | None = None
+```
+
+!!! note "Параметр будет проигнорирован, если указан `di_container`."
+
+!!! tip "Документация Dishka — [context](https://dishka.readthedocs.io/en/stable/advanced/context.html)."
+
+---
+
+##### di_lock_factory
+Фабрика для создания блокировок, которые будет использовать контейнер.
+
+```python
+di_lock_factory: Callable[[], contextlib.AbstractAsyncContextManager[Any]] | None = Lock
+```
+
+!!! note "Параметр будет проигнорирован, если указан `di_container`."
+
+!!! tip "Документация Dishka — [lock_factory](https://dishka.readthedocs.io/en/stable/container/index.html)."
+
+```python
+{!> ./docs/docs/server/application/di_lock_factory.py !}
+```
+
+---
+
+##### di_skip_validation
+Флаг, определяющий необходимость пропуска валидации для провайдеров, имеющих один и тот же тип.
+
+```python
+di_skip_validation: bool = False
+```
+
+!!! note "Параметр будет проигнорирован, если указан `di_container`."
+
+!!! tip "Документация Dishka — [skip_validation](https://dishka.readthedocs.io/en/stable/advanced/components.html)."
+
+```python
+{!> ./docs/docs/server/application/di_skip_validation.py !}
+```
+
+---
+
+##### di_start_scope
+Параметр, определяющий начальный `Scope`.
+
+```python
+di_start_scope: BaseScope | None = None
+```
+
+!!! note "Параметр будет проигнорирован, если указан `di_container`."
+
+!!! tip "Документация Dishka — [start_scope](https://dishka.readthedocs.io/en/stable/advanced/scopes.html)."
+
+---
+
+##### di_validation_settings
+Конфигурация для переопределения настроек валидации контейнера.
+
+```python
+di_validation_settings: ValidationSettings = DEFAULT_VALIDATION
+```
+
+!!! note "Параметр будет проигнорирован, если указан `di_container`."
+
+!!! tip "Документация Dishka — [alias](https://dishka.readthedocs.io/en/latest/provider/alias.html)."
+!!! tip "Документация Dishka — [from_context](https://dishka.readthedocs.io/en/latest/provider/from_context.html)."
+!!! tip "Документация Dishka — [provide](https://dishka.readthedocs.io/en/latest/provider/provide.html)."
+
+---
 
 ### Атрибуты `aiohttp`
 ##### middlewares
@@ -125,17 +264,23 @@ http_route_handlers: Iterable[HTTPRouterType] = ()
 middlewares: Optional[Iterable[Middleware]] = None
 ```
 
+---
+
 ##### client_max_size
 Максимальный размер запроса в байтах.
 ```python
 client_max_size: int = 1024**2
 ```
 
+---
+
 ##### logger
 Логгер для приема логов от `Application`.
 ```python
 logger: logging.Logger = logging.getLogger("aiohttp.web")
 ```
+
+---
 
 ## Запуск приложения
 ### Простой запуск
@@ -151,6 +296,8 @@ logger: logging.Logger = logging.getLogger("aiohttp.web")
     ```python
     {!> ./docs/docs/server/application/08_runserver/run_app_change_host_and_port.py !}
     ```
+
+---
 
 ### WSGI запуск (Gunicorn)
 Установите `gunicorn`:

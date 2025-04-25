@@ -1,10 +1,11 @@
+from __future__ import annotations
+
 from abc import ABC
 from concurrent.futures import Executor
 from http import HTTPStatus
 from types import FunctionType
-from typing import Any, cast, Final, Optional, Type, Union
+from typing import Any, cast, Final, Type, TYPE_CHECKING
 
-from aiohttp.abc import AbstractView
 from aiohttp.hdrs import METH_ANY, METH_DELETE, METH_GET, METH_HEAD, METH_OPTIONS, METH_PATCH, METH_POST, METH_PUT
 from aiohttp.typedefs import DEFAULT_JSON_ENCODER, JSONEncoder
 from aiohttp.web_urldispatcher import (
@@ -31,6 +32,9 @@ from rapidy.enums import Charset, ContentType, MethodName
 from rapidy.routing.http.helper_types import HandlerPartial
 from rapidy.typedefs import Handler, HandlerOrView, Unset, UnsetType
 
+if TYPE_CHECKING:
+    from aiohttp.abc import AbstractView
+
 __all__ = [
     'UrlDispatcher',
     'UrlMappingMatchInfo',
@@ -50,10 +54,10 @@ HEAD_METHOD_NAME: Final[str] = 'head'
 
 def wrap_handler(
     *,
-    handler: Union[Handler, View],
+    handler: Handler | View,
     wrapper: Any,
     **kwargs: Any,
-) -> Union[Handler, View]:
+) -> Handler | View:
     """Wraps a handler with the specified wrapper function.
 
     Args:
@@ -98,7 +102,7 @@ class ResourceRoute(AioHTTPResourceRoute, ABC):
         handler: HandlerOrView,
         resource: AbstractResource,
         *,
-        expect_handler: Optional[_ExpectHandler] = None,
+        expect_handler: _ExpectHandler | None = None,
         **kwargs: Any,
     ) -> None:
         """Initializes the overridden aiohttp ResourceRoute.
@@ -110,7 +114,7 @@ class ResourceRoute(AioHTTPResourceRoute, ABC):
             expect_handler (Optional[_ExpectHandler]): Optional handler for expected request behavior.
             **kwargs (Any): Additional arguments for wrapping the handler.
         """
-        if isinstance(handler, (FunctionType, HandlerPartial)):
+        if isinstance(handler, FunctionType | HandlerPartial):
             handler = wrap_handler(handler=handler, wrapper=handler_validation_wrapper, **kwargs)
         elif lenient_issubclass(handler, View):
             handler = wrap_handler(
@@ -135,9 +139,9 @@ class Resource(AioHTTPResource, ABC):
         method: str,
         handler: HandlerOrView,
         *,
-        expect_handler: Optional[_ExpectHandler] = None,
+        expect_handler: _ExpectHandler | None = None,
         **kwargs: Any,
-    ) -> 'ResourceRoute':
+    ) -> ResourceRoute:
         """Adds a route to the overridden aiohttp Resource.
 
         Args:
@@ -176,7 +180,7 @@ class DynamicResource(Resource, AioHTTPDynamicResource):
 class UrlDispatcher(AioHTTPUrlDispatcher):
     """Custom URL dispatcher extending aiohttp's UrlDispatcher."""
 
-    def add_resource(self, path: str, *, name: Optional[str] = None) -> Resource:
+    def add_resource(self, path: str, *, name: str | None = None) -> Resource:
         """Adds a new resource.
 
         Args:
@@ -214,8 +218,8 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         path: str,
         handler: HandlerOrView,
         *,
-        name: Optional[str] = None,
-        expect_handler: Optional[_ExpectHandler] = None,
+        name: str | None = None,
+        expect_handler: _ExpectHandler | None = None,
         **kwargs: Any,
     ) -> AbstractRoute:
         """Registers a handler for a specific HTTP method and path.
@@ -239,22 +243,22 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         path: str,
         handler: HandlerOrView,
         *,
-        name: Optional[str] = None,
+        name: str | None = None,
         allow_head: bool = True,
-        status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
+        status_code: int | HTTPStatus = HTTPStatus.OK,
         response_validate: bool = True,
-        response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
-        response_content_type: Union[str, ContentType, None] = None,
-        response_charset: Union[str, Charset] = Charset.utf8,
-        response_zlib_executor: Optional[Executor] = None,
-        response_zlib_executor_size: Optional[int] = None,
-        response_include_fields: Optional[Include] = None,
-        response_exclude_fields: Optional[Exclude] = None,
+        response_type: Type[Any] | None | UnsetType = Unset,  # type: ignore[has-type]
+        response_content_type: str | ContentType | None = None,
+        response_charset: str | Charset = Charset.utf8,
+        response_zlib_executor: Executor | None = None,
+        response_zlib_executor_size: int | None = None,
+        response_include_fields: Include | None = None,
+        response_exclude_fields: Exclude | None = None,
         response_by_alias: bool = True,
         response_exclude_unset: bool = False,
         response_exclude_defaults: bool = False,
         response_exclude_none: bool = False,
-        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_custom_encoder: CustomEncoder | None = None,
         response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
         **kwargs: Any,
     ) -> AbstractRoute:
@@ -336,21 +340,21 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         path: str,
         handler: HandlerOrView,
         *,
-        name: Optional[str] = None,
-        status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
+        name: str | None = None,
+        status_code: int | HTTPStatus = HTTPStatus.OK,
         response_validate: bool = True,
-        response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
-        response_content_type: Union[str, ContentType, None] = None,
-        response_charset: Union[str, Charset] = Charset.utf8,
-        response_zlib_executor: Optional[Executor] = None,
-        response_zlib_executor_size: Optional[int] = None,
-        response_include_fields: Optional[Include] = None,
-        response_exclude_fields: Optional[Exclude] = None,
+        response_type: Type[Any] | None | UnsetType = Unset,  # type: ignore[has-type]
+        response_content_type: str | ContentType | None = None,
+        response_charset: str | Charset = Charset.utf8,
+        response_zlib_executor: Executor | None = None,
+        response_zlib_executor_size: int | None = None,
+        response_include_fields: Include | None = None,
+        response_exclude_fields: Exclude | None = None,
         response_by_alias: bool = True,
         response_exclude_unset: bool = False,
         response_exclude_defaults: bool = False,
         response_exclude_none: bool = False,
-        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_custom_encoder: CustomEncoder | None = None,
         response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
         **kwargs: Any,
     ) -> AbstractRoute:
@@ -413,21 +417,21 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         path: str,
         handler: HandlerOrView,
         *,
-        name: Optional[str] = None,
-        status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
+        name: str | None = None,
+        status_code: int | HTTPStatus = HTTPStatus.OK,
         response_validate: bool = True,
-        response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
-        response_content_type: Union[str, ContentType, None] = None,
-        response_charset: Union[str, Charset] = Charset.utf8,
-        response_zlib_executor: Optional[Executor] = None,
-        response_zlib_executor_size: Optional[int] = None,
-        response_include_fields: Optional[Include] = None,
-        response_exclude_fields: Optional[Exclude] = None,
+        response_type: Type[Any] | None | UnsetType = Unset,  # type: ignore[has-type]
+        response_content_type: str | ContentType | None = None,
+        response_charset: str | Charset = Charset.utf8,
+        response_zlib_executor: Executor | None = None,
+        response_zlib_executor_size: int | None = None,
+        response_include_fields: Include | None = None,
+        response_exclude_fields: Exclude | None = None,
         response_by_alias: bool = True,
         response_exclude_unset: bool = False,
         response_exclude_defaults: bool = False,
         response_exclude_none: bool = False,
-        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_custom_encoder: CustomEncoder | None = None,
         response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
         **kwargs: Any,
     ) -> AbstractRoute:
@@ -490,21 +494,21 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         path: str,
         handler: HandlerOrView,
         *,
-        name: Optional[str] = None,
-        status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
+        name: str | None = None,
+        status_code: int | HTTPStatus = HTTPStatus.OK,
         response_validate: bool = True,
-        response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
-        response_content_type: Union[str, ContentType, None] = None,
-        response_charset: Union[str, Charset] = Charset.utf8,
-        response_zlib_executor: Optional[Executor] = None,
-        response_zlib_executor_size: Optional[int] = None,
-        response_include_fields: Optional[Include] = None,
-        response_exclude_fields: Optional[Exclude] = None,
+        response_type: Type[Any] | None | UnsetType = Unset,  # type: ignore[has-type]
+        response_content_type: str | ContentType | None = None,
+        response_charset: str | Charset = Charset.utf8,
+        response_zlib_executor: Executor | None = None,
+        response_zlib_executor_size: int | None = None,
+        response_include_fields: Include | None = None,
+        response_exclude_fields: Exclude | None = None,
         response_by_alias: bool = True,
         response_exclude_unset: bool = False,
         response_exclude_defaults: bool = False,
         response_exclude_none: bool = False,
-        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_custom_encoder: CustomEncoder | None = None,
         response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
         **kwargs: Any,
     ) -> AbstractRoute:
@@ -567,21 +571,21 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         path: str,
         handler: HandlerOrView,
         *,
-        name: Optional[str] = None,
-        status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
+        name: str | None = None,
+        status_code: int | HTTPStatus = HTTPStatus.OK,
         response_validate: bool = True,
-        response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
-        response_content_type: Union[str, ContentType, None] = None,
-        response_charset: Union[str, Charset] = Charset.utf8,
-        response_zlib_executor: Optional[Executor] = None,
-        response_zlib_executor_size: Optional[int] = None,
-        response_include_fields: Optional[Include] = None,
-        response_exclude_fields: Optional[Exclude] = None,
+        response_type: Type[Any] | None | UnsetType = Unset,  # type: ignore[has-type]
+        response_content_type: str | ContentType | None = None,
+        response_charset: str | Charset = Charset.utf8,
+        response_zlib_executor: Executor | None = None,
+        response_zlib_executor_size: int | None = None,
+        response_include_fields: Include | None = None,
+        response_exclude_fields: Exclude | None = None,
         response_by_alias: bool = True,
         response_exclude_unset: bool = False,
         response_exclude_defaults: bool = False,
         response_exclude_none: bool = False,
-        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_custom_encoder: CustomEncoder | None = None,
         response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
         **kwargs: Any,
     ) -> AbstractRoute:
@@ -642,21 +646,21 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         path: str,
         handler: HandlerOrView,
         *,
-        name: Optional[str] = None,
-        status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
+        name: str | None = None,
+        status_code: int | HTTPStatus = HTTPStatus.OK,
         response_validate: bool = True,
-        response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
-        response_content_type: Union[str, ContentType, None] = None,
-        response_charset: Union[str, Charset] = Charset.utf8,
-        response_zlib_executor: Optional[Executor] = None,
-        response_zlib_executor_size: Optional[int] = None,
-        response_include_fields: Optional[Include] = None,
-        response_exclude_fields: Optional[Exclude] = None,
+        response_type: Type[Any] | None | UnsetType = Unset,  # type: ignore[has-type]
+        response_content_type: str | ContentType | None = None,
+        response_charset: str | Charset = Charset.utf8,
+        response_zlib_executor: Executor | None = None,
+        response_zlib_executor_size: int | None = None,
+        response_include_fields: Include | None = None,
+        response_exclude_fields: Exclude | None = None,
         response_by_alias: bool = True,
         response_exclude_unset: bool = False,
         response_exclude_defaults: bool = False,
         response_exclude_none: bool = False,
-        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_custom_encoder: CustomEncoder | None = None,
         response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
         **kwargs: Any,
     ) -> AbstractRoute:
@@ -719,21 +723,21 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         path: str,
         handler: HandlerOrView,
         *,
-        name: Optional[str] = None,
-        status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
+        name: str | None = None,
+        status_code: int | HTTPStatus = HTTPStatus.OK,
         response_validate: bool = True,
-        response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
-        response_content_type: Union[str, ContentType, None] = None,
-        response_charset: Union[str, Charset] = Charset.utf8,
-        response_zlib_executor: Optional[Executor] = None,
-        response_zlib_executor_size: Optional[int] = None,
-        response_include_fields: Optional[Include] = None,
-        response_exclude_fields: Optional[Exclude] = None,
+        response_type: Type[Any] | None | UnsetType = Unset,  # type: ignore[has-type]
+        response_content_type: str | ContentType | None = None,
+        response_charset: str | Charset = Charset.utf8,
+        response_zlib_executor: Executor | None = None,
+        response_zlib_executor_size: int | None = None,
+        response_include_fields: Include | None = None,
+        response_exclude_fields: Exclude | None = None,
         response_by_alias: bool = True,
         response_exclude_unset: bool = False,
         response_exclude_defaults: bool = False,
         response_exclude_none: bool = False,
-        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_custom_encoder: CustomEncoder | None = None,
         response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
         **kwargs: Any,
     ) -> AbstractRoute:
@@ -796,21 +800,21 @@ class UrlDispatcher(AioHTTPUrlDispatcher):
         path: str,
         handler: Type[AbstractView],
         *,
-        name: Optional[str] = None,
-        status_code: Union[int, HTTPStatus] = HTTPStatus.OK,
+        name: str | None = None,
+        status_code: int | HTTPStatus = HTTPStatus.OK,
         response_validate: bool = True,
-        response_type: Union[Type[Any], None, UnsetType] = Unset,  # type: ignore[has-type]
-        response_content_type: Union[str, ContentType, None] = None,
-        response_charset: Union[str, Charset] = Charset.utf8,
-        response_zlib_executor: Optional[Executor] = None,
-        response_zlib_executor_size: Optional[int] = None,
-        response_include_fields: Optional[Include] = None,
-        response_exclude_fields: Optional[Exclude] = None,
+        response_type: Type[Any] | None | UnsetType = Unset,  # type: ignore[has-type]
+        response_content_type: str | ContentType | None = None,
+        response_charset: str | Charset = Charset.utf8,
+        response_zlib_executor: Executor | None = None,
+        response_zlib_executor_size: int | None = None,
+        response_include_fields: Include | None = None,
+        response_exclude_fields: Exclude | None = None,
         response_by_alias: bool = True,
         response_exclude_unset: bool = False,
         response_exclude_defaults: bool = False,
         response_exclude_none: bool = False,
-        response_custom_encoder: Optional[CustomEncoder] = None,
+        response_custom_encoder: CustomEncoder | None = None,
         response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
         **kwargs: Any,
     ) -> AbstractRoute:

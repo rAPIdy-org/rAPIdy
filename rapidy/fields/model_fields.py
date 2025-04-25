@@ -1,7 +1,9 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import cached_property
-from typing import Any, Dict, Optional, Type, TypeVar
+from typing import Any, Dict, Type, TypeVar
 from typing_extensions import Annotated
 
 from rapidy._base_exceptions import RapidyException
@@ -25,7 +27,7 @@ class ModelFieldCreationError(RapidyException):
     Hint: check that `{type_info}` is a valid Pydantic field.
     """
 
-    def __init__(self, message: Optional[str] = None, *, type_: Type[Any], **format_fields: str) -> None:
+    def __init__(self, message: str | None = None, *, type_: Type[Any], **format_fields: str) -> None:
         super().__init__(message, **format_fields, type_info=f'{type_}')
 
 
@@ -122,7 +124,7 @@ class ABCRapidyModelField(ABC):
         values: Dict[str, Any],
         *,
         loc: LocStr,
-        cls: Optional[ModelOrDc] = None,
+        cls: ModelOrDc | None = None,
     ) -> ValidateReturn:
         """Validates the value of the field.
 
@@ -305,7 +307,7 @@ else:
             values: Dict[str, Any],  # noqa: ARG002
             *,
             loc: LocStr,
-            cls: Optional[ModelOrDc] = None,  # noqa: ARG002
+            cls: ModelOrDc | None = None,  # noqa: ARG002
         ) -> ValidateReturn:
             """Validates the field value using the type adapter.
 

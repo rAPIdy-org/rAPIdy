@@ -1,12 +1,12 @@
+from __future__ import annotations
+
 import dataclasses
 from concurrent.futures import Executor
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Counter, DefaultDict, Optional, Tuple, Type, Union
+from typing import Any, Counter, DefaultDict, Tuple, Type, TYPE_CHECKING
 
-from aiohttp import Payload
 from aiohttp.helpers import parse_mimetype
-from aiohttp.typedefs import LooseHeaders
 from aiohttp.web_response import (
     Response as AioHTTPResponse,
     StreamResponse,
@@ -18,6 +18,10 @@ from rapidy.constants import DEFAULT_JSON_ENCODER
 from rapidy.encoders import CustomEncoder, Exclude, Include, jsonify
 from rapidy.enums import Charset, ContentType
 from rapidy.typedefs import JSONEncoder
+
+if TYPE_CHECKING:
+    from aiohttp import Payload
+    from aiohttp.typedefs import LooseHeaders
 
 __all__ = (
     'StreamResponse',
@@ -86,24 +90,24 @@ class Response(AioHTTPResponse):
 
     def __init__(
         self,
-        body: Optional[Any] = None,
+        body: Any | None = None,
         *,
         status: int = 200,
-        headers: Optional[LooseHeaders] = None,
-        content_type: Union[str, ContentType, None] = None,
-        charset: Optional[Union[str, Charset]] = None,
-        zlib_executor: Optional[Executor] = None,
-        zlib_executor_size: Optional[int] = None,
-        include: Optional[Include] = None,
-        exclude: Optional[Exclude] = None,
+        headers: LooseHeaders | None = None,
+        content_type: str | ContentType | None = None,
+        charset: str | Charset | None = None,
+        zlib_executor: Executor | None = None,
+        zlib_executor_size: int | None = None,
+        include: Include | None = None,
+        exclude: Exclude | None = None,
         by_alias: bool = True,
         exclude_unset: bool = False,
         exclude_defaults: bool = False,
         exclude_none: bool = False,
-        custom_encoder: Optional[CustomEncoder] = None,
+        custom_encoder: CustomEncoder | None = None,
         json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
-        text: Optional[Any] = None,
-        reason: Optional[str] = None,
+        text: Any | None = None,
+        reason: str | None = None,
     ) -> None:
         """Initialize the response object with given parameters."""
         if isinstance(charset, Enum):
@@ -145,12 +149,12 @@ class Response(AioHTTPResponse):
             self.text = text
 
     @property
-    def body(self) -> Optional[Union[bytes, Payload]]:
+    def body(self) -> bytes | Payload | None:
         """Return the response body as bytes or payload."""
         return self._super.body
 
     @body.setter
-    def body(self, body: Optional[Any]) -> None:
+    def body(self, body: Any | None) -> None:
         """Set the response body as bytes or other appropriate format."""
         if body is None or isinstance(body, bytes):
             self._super.body.fset(self, body)
@@ -159,12 +163,12 @@ class Response(AioHTTPResponse):
         self._set_body(body)
 
     @property
-    def text(self) -> Optional[Union[bytes, Payload]]:
+    def text(self) -> bytes | Payload | None:
         """Return the response body as text (string format)."""
         return self._super.text
 
     @text.setter
-    def text(self, text: Optional[Any]) -> None:
+    def text(self, text: Any | None) -> None:
         """Set the response body as text (string format)."""
         if text is None or isinstance(text, str):
             self._set_text(text)
@@ -172,7 +176,7 @@ class Response(AioHTTPResponse):
 
         self._set_body(text)
 
-    def _set_body(self, body: Optional[Any]) -> None:
+    def _set_body(self, body: Any | None) -> None:
         """Helper function to set the body, handling different content types."""
         current_ctype = self.content_type if self.content_type != ContentType.stream.value else None
         if current_ctype is None:
@@ -189,7 +193,7 @@ class Response(AioHTTPResponse):
         else:
             self._process_bytes_body(body)
 
-    def _set_text(self, text: Optional[str]) -> None:
+    def _set_text(self, text: str | None) -> None:
         """Helper function to set text content."""
         self._super.text.fset(self, text)
 

@@ -2,7 +2,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Final, Optional
+from typing import Any, Final
 
 import pytest
 from aiohttp.pytest_plugin import AiohttpClient
@@ -51,15 +51,15 @@ class BodySetterName(str, Enum):
 class TestCase:
     id: str
     response_body: Any = 'test'
-    response_content_type: Optional[ContentType] = None
+    response_content_type: ContentType | None = None
     expected_data: Any = 'test'
     extract_method: ClientBodyExtractMethod = ClientBodyExtractMethod.text
     expected_content_type: str = 'text/plain; charset=utf-8'
 
     setter: BodySetterName = BodySetterName.body
 
-    include: Optional[Include] = None
-    exclude: Optional[Exclude] = None
+    include: Include | None = None
+    exclude: Exclude | None = None
     by_alias: bool = True
     exclude_unset: bool = False
     exclude_defaults: bool = False

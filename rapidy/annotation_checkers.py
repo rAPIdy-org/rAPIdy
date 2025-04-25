@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import inspect
 from functools import partial
 from typing import Any, Callable, Tuple, Union
@@ -118,7 +120,7 @@ def is_empty(obj: Any) -> bool:
     return obj is inspect.Signature.empty
 
 
-def is_not_none_and_unset(field_value: Union[Any, UnsetType]) -> bool:
+def is_not_none_and_unset(field_value: Any | UnsetType) -> bool:
     """Check if the field value is neither `None` nor `Unset`.
 
     Args:

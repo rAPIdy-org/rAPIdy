@@ -1,15 +1,14 @@
+from __future__ import annotations
+
 import traceback
 import warnings
 from abc import ABC
 from functools import partial
 from json import JSONDecodeError
-from typing import Any, Awaitable, Callable, Dict, Mapping, Optional, Type, Union
+from typing import Any, Awaitable, Callable, Dict, Mapping, Type, TYPE_CHECKING
 
 from aiohttp import helpers
 from aiohttp.abc import Request
-from aiohttp.streams import StreamReader
-from aiohttp.web_request import FileField
-from multidict import MultiDictProxy, MultiMapping
 
 from rapidy._client_errors import ClientError
 from rapidy.annotation_checkers import lenient_issubclass
@@ -17,6 +16,11 @@ from rapidy.endpoint_handlers.http.annotation_checkers import is_stream_reader
 from rapidy.enums import ContentType, HeaderName, HTTPRequestParamType
 from rapidy.parameters.http import Body, RequestParamFieldInfo
 from rapidy.typedefs import DictStrAny, DictStrStr
+
+if TYPE_CHECKING:
+    from aiohttp.streams import StreamReader
+    from aiohttp.web_request import FileField
+    from multidict import MultiDictProxy, MultiMapping
 
 ExtractFunction = Callable[[Request], Awaitable[Any]]
 ExtractBodyFunction = Callable[[Request, Body], Awaitable[Any]]
@@ -127,7 +131,7 @@ async def extract_body_stream(request: Request, body_field_info: Body) -> Stream
     return request.content
 
 
-async def extract_body_bytes(request: Request, body_field_info: Body) -> Optional[bytes]:  # noqa: ARG001
+async def extract_body_bytes(request: Request, body_field_info: Body) -> bytes | None:  # noqa: ARG001
     """Extracts the body content as bytes.
 
     Args:
@@ -143,7 +147,7 @@ async def extract_body_bytes(request: Request, body_field_info: Body) -> Optiona
     return await request.read()
 
 
-async def extract_body_text(request: Request, body_field_info: Body) -> Optional[str]:  # noqa: ARG001
+async def extract_body_text(request: Request, body_field_info: Body) -> str | None:  # noqa: ARG001
     """Extracts the body content as text.
 
     Args:
@@ -159,7 +163,7 @@ async def extract_body_text(request: Request, body_field_info: Body) -> Optional
     return await request.text()
 
 
-async def extract_body_json(request: Request, body_field_info: Body) -> Optional[DictStrAny]:
+async def extract_body_json(request: Request, body_field_info: Body) -> DictStrAny | None:
     """Extracts the body content as JSON.
 
     Args:
@@ -184,7 +188,7 @@ async def extract_body_json(request: Request, body_field_info: Body) -> Optional
 async def extract_post_data(
     request: Request,
     body_field_info: Body,  # noqa: ARG001
-) -> Optional[MultiDictProxy[Union[str, bytes, FileField]]]:
+) -> MultiDictProxy[str | bytes | FileField] | None:
     """Extracts POST data from the request.
 
     Args:
@@ -223,7 +227,7 @@ _http_simple_request_param_extractor_map: Dict[HTTPRequestParamType, ExtractFunc
 }
 
 
-def _get_body_extractor_by_annotation(annotation: Type[Any]) -> Optional[ExtractBodyFunction]:
+def _get_body_extractor_by_annotation(annotation: Type[Any]) -> ExtractBodyFunction | None:
     """Gets the body extractor function based on the annotation type.
 
     Args:
@@ -331,7 +335,7 @@ def create_checked_type_extractor(
         ExtractFunction: The wrapped extractor function with content type check.
     """
 
-    async def wrapped_extractor(request: Request) -> Optional[DictStrAny]:
+    async def wrapped_extractor(request: Request) -> DictStrAny | None:
         request_ctype = get_mimetype(request)
 
         if (

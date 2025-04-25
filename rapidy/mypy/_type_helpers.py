@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import Set
 
 from mypy.types import AnyType, TypeOfAny

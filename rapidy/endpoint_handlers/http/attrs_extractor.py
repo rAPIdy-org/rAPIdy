@@ -1,4 +1,6 @@
-from typing import List, Optional
+from __future__ import annotations
+
+from typing import List
 
 from attrs import define, Factory
 
@@ -98,15 +100,15 @@ class HTTPHandlerInfo(HandlerRawInfo):
         request_params (List[HTTPRequestAttr]): A list of HTTP request parameters.
     """
 
-    request_attribute: Optional[Attr] = None
-    response_attribute: Optional[Attr] = None
+    request_attribute: Attr | None = None
+    response_attribute: Attr | None = None
     request_params: List[HTTPRequestAttr] = Factory(list)
 
 
 def get_http_handler_info(
     handler: Handler,
     *,
-    request_attr_can_declare: bool,
+    request_attr_can_declare_fst: bool,
 ) -> HTTPHandlerInfo:
     """Generates the HTTP handler information from the given handler.
 
@@ -117,7 +119,7 @@ def get_http_handler_info(
 
     Args:
         handler (Handler): The handler to extract information from.
-        request_attr_can_declare (bool): Flag indicating whether the request attribute can be declared.
+        request_attr_can_declare_fst (bool): Flag indicating whether the request attribute can be declared fst.
 
     Returns:
         HTTPHandlerInfo: The processed information about the HTTP handler, including its attributes
@@ -151,9 +153,9 @@ def get_http_handler_info(
             http_handler_info.response_attribute = additional_attr
 
         # If the first handler attribute is empty or the attribute contains the `web.Request` annotation
-        elif request_attr_can_declare and (
-            annotation_is_request(additional_attr.attribute_annotation)
-            or (is_empty(additional_attr.attribute_annotation) and additional_attr.attribute_idx == 0)
+        elif annotation_is_request(additional_attr.attribute_annotation) or (
+            request_attr_can_declare_fst
+            and (is_empty(additional_attr.attribute_annotation) and additional_attr.attribute_idx == 0)
         ):
             # protection against double injection of `web.Request`
             if http_handler_info.request_attribute:
