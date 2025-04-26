@@ -80,7 +80,7 @@ extra_css: [extra.css]
 
 extra:
   version:
-    provider: mike  # TODO: донастроить версионирование
+    provider: mike
     default: latest
     # https://squidfunk.github.io/mkdocs-material/setup/setting-up-versioning/#publishing-a-new-version
     # https://github.com/jimporter/mike

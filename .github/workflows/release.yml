@@ -36,3 +36,26 @@ jobs:
         run: |
           poetry config pypi-token.pypi $PYPI_API_TOKEN
           poetry publish --build
+
+  deploy-docs:
+    needs: release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout git repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install dependencies for docs
+        run: |
+          pip install mike mkdocs-material mkdocs-i18n
+
+      - name: Deploy documentation with mike
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=${{ github.event.release.tag_name }}
+          mike deploy --push --update-aliases $VERSION latest
