@@ -1,6 +1,6 @@
 from rapidy import Rapidy
 from rapidy.http import get
-from rapidy.depends import Depends, provide, Provider, Scope
+from rapidy.depends import FromDI, provide, Provider, Scope
 
 class FooProvider(Provider):
     @provide(scope=Scope.REQUEST)
@@ -8,7 +8,7 @@ class FooProvider(Provider):
         return 1
 
 @get('/')
-async def handler(c: Depends[int]) -> dict:
+async def handler(c: FromDI[int]) -> dict:
     return {"value": c}
 
 app = Rapidy(

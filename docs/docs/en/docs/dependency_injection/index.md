@@ -24,7 +24,7 @@ Its key advantages include:
 
 ### Simple dependency injection example
 
-`Rapidy` provides a `Depends` wrapper _(alias for `FromDishka`)_, which can be used to inject dependencies:
+`Rapidy` provides a `FromDI` wrapper _(alias for `FromDishka`)_, which can be used to inject dependencies:
 
 ```python
 {!> ./docs/docs/dependency_injection/simple_ex.py !}
@@ -39,7 +39,7 @@ What happens here:
    The `@get('/')` decorator registers the `handler` function to handle GET requests at `/`.
 
 3. **Injecting the dependency**
-   The argument `c: Depends[int]` indicates that `c` should be obtained from the DI container at call time.
+   The argument `c: FromDI[int]` indicates that `c` should be obtained from the DI container at call time.
 
 4. **Creating the application**
    A `Rapidy` instance is created with the `handler` and the `FooProvider`.

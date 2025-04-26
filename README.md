@@ -6,9 +6,6 @@
 
 <p align="center">
     <a href="https://pypi.org/project/rapidy" target="blank">
-        <img src="https://img.shields.io/pypi/dm/rapidy?style=flat&logo=rapidy&logoColor=%237e56c2&color=%237e56c2" alt="Package downloads">
-    </a>
-    <a href="https://pypi.org/project/rapidy" target="blank">
         <img src="https://img.shields.io/pypi/v/rapidy?style=flat&logo=rapidy&logoColor=%237e56c2&color=%237e56c2&label=pypi%20rAPIdy" alt="Package version">
     </a>
     <a href="https://pypi.org/project/rapidy" target="blank">
@@ -411,7 +408,51 @@ app = Rapidy(
 
 ---
 
-## 4️⃣ Lifespan Support
+## 4️⃣ Dependency Injection
+
+`Rapidy` uses the [dishka](https://dishka.readthedocs.io/en/stable/) library as its built-in Dependency Injection (DI) mechanism.
+
+We aimed to choose a DI library aligned with the philosophy of `Rapidy`: simplicity, speed, transparency, and scalability.
+`dishka` perfectly fits these principles, offering developers a powerful tool without unnecessary complexity.
+
+In `Rapidy`, dishka is available out-of-the-box — no additional setup required.
+
+```python
+from rapidy import Rapidy
+from rapidy.http import Request, StreamResponse, get, middleware
+from rapidy.typedefs import CallNext
+from rapidy.depends import provide, Provider, Scope, FromDI
+
+class FooProvider(Provider):
+    @provide(scope=Scope.REQUEST)
+    async def some_obj(self) -> int:
+        return 1
+    
+@middleware
+async def some_middleware(
+    request: Request,
+    call_next: CallNext,
+    some_obj: FromDI[int],
+) -> StreamResponse:
+    print({"value": some_obj})
+    return await call_next(request)
+
+@get('/')
+async def handler(some_obj: FromDI[int]) -> dict:
+    return {"value": some_obj}
+
+app = Rapidy(
+    middlewares=[some_middleware],
+    http_route_handlers=[handler],
+    di_providers=[FooProvider()],
+)
+```
+
+To gain a deeper understanding of how the DI mechanism works, refer to the documentation for [Rapidy](https://rapidy.dev) and [dishka](https://dishka.readthedocs.io/en/stable/).
+
+---
+
+## 5️⃣ Lifespan Support
 Lifespan is a lifecycle manager for background tasks within Rapidy.
 
 _Although aiohttp supports the background tasks feature, rapidy does it more conveniently._
