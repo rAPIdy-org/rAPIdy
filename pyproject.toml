@@ -1,8 +1,11 @@
 [tool.poetry]
 name = "rAPIdy"
 version = "1.0.0"
-description = "rAPIdy - write quickly - write beautifully"
+description = "rAPIdy - a fast, lightweight, and modern asynchronous web framework powered by aiohttp and pydantic."
 authors = [
+    "Daniil Grois <daniil.grois@gmail.com>",
+]
+maintainers = [
     "Daniil Grois <daniil.grois@gmail.com>",
     "Lev Zaplatin <lev@zaplatin.dev>",
     "Nikita Tolstoy <nikitka.tolstoy@gmail.com>"

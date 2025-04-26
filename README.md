@@ -427,7 +427,7 @@ class FooProvider(Provider):
     @provide(scope=Scope.REQUEST)
     async def some_obj(self) -> int:
         return 1
-    
+
 @middleware
 async def some_middleware(
     request: Request,
