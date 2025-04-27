@@ -37,7 +37,7 @@ jobs:
 
       - name: Deploy documentation with mike
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
         run: |
           cd docs
           VERSION=${{ github.event.release.tag_name }}
