@@ -16,6 +16,8 @@ jobs:
 
       - name: Checkout git repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # fetch all commits/branches
 
       - name: Prepare python
         uses: actions/setup-python@v5
@@ -30,14 +32,17 @@ jobs:
       - name: Install project dependencies
         run: poetry install --with docs
 
-      - name: Set git config with mike
+      - name: Set up git author
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          git config --global user.name "github-actions"
-          git config --global user.email "github-actions@github.com"
+          remote_repo="https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git config --global user.name "${GITHUB_ACTOR}"
+          git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
 
       - name: Deploy documentation with mike
         env:
-          GITHUB_TOKEN: ${{ secrets.ACTIONS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd docs
           VERSION=${{ github.event.release.tag_name }}
