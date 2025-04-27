@@ -1,6 +1,6 @@
 <p align="center">
     <a href="https://github.com/daniil-grois/rAPIdy" target="blank">
-        <img src="https://rapidy.dev/assets/logo-teal.png" alt="rAPIdy">
+        <img src=https://github.com/rAPIdy-org/rAPIdy/blob/main/docs/docs/assets/logo-teal.png?raw=true" alt="rAPIdy">
     </a>
 </p>
 
