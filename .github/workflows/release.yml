@@ -35,7 +35,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           VERSION=${{ github.event.release.tag_name }}
-          poetry mike deploy --push --update-aliases $VERSION latest
+          poetry run mike deploy --push --update-aliases $VERSION latest
 
       - name: Build and publish
         env:
