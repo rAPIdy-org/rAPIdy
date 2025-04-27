@@ -42,34 +42,26 @@ theme:
 
     # content
     - content.tabs.link
-    - content.tooltips  # вот с этим разобраться  https://squidfunk.github.io/mkdocs-material/reference/tooltips/?h=tooltips
+    - content.tooltips
 
     # content.code
-    - content.code.annotate  # аннотации к коду https://squidfunk.github.io/mkdocs-material/reference/code-blocks/?h=code#__codelineno-4-1
+    - content.code.annotate
     - content.code.copy
     - content.code.select
 
-    # https://squidfunk.github.io/mkdocs-material/reference/data-tables/ - таблицы данных
-    # https://squidfunk.github.io/mkdocs-material/reference/diagrams/ - диаграммы
-    # https://squidfunk.github.io/mkdocs-material/reference/lists/ - списки и тд
 plugins:
   - search
+  - redirects
   - mike:
-      # These fields are all optional; the defaults are as below...
       alias_type: symlink
-      redirect_template: null
-      deploy_prefix: ''
       canonical_version: latest
-      version_selector: true
-      css_dir: css
-      javascript_dir: js
   - i18n:
       docs_structure: folder
       languages:
         - locale: en
-          default: true  # TODO
+          default: true
           name: English
-          link: /
+          link: /en/
           build: true
         - locale: ru
           name: Русский
@@ -82,8 +74,6 @@ extra:
   version:
     provider: mike
     default: latest
-    # https://squidfunk.github.io/mkdocs-material/setup/setting-up-versioning/#publishing-a-new-version
-    # https://github.com/jimporter/mike
 
 markdown_extensions:
   - admonition
@@ -100,7 +90,7 @@ markdown_extensions:
       base_path: ./examples
 
 nav:
-- rAPIdy: index.md
+- rAPIdy: home.md
 - Quickstart: quickstart/index.md
 #- Examples:
 #  - examples/index.md

@@ -12,7 +12,7 @@
         <img src="https://img.shields.io/pypi/pyversions/rapidy?style=flat&logo=rapidy&logoColor=%237e56c2&color=%237e56c2" alt="Python versions">
     </a>
     <a href="https://github.com/rAPIdy-org/rAPIdy/actions/workflows/test.yml?query=branch%3Amain" target="blank">
-        <img src="https://github.com/rAPIdy-org/rAPIdy/actions/workflows/test.yml/badge.svg?branch=main?event=push" alt="license">
+        <img src="https://github.com/rAPIdy-org/rAPIdy/actions/workflows/test.yml/badge.svg?branch=main" alt="license">
     </a>
     <a href="https://github.com/rAPIdy-org/rAPIdy/blob/main/LICENSE" target="blank">
         <img src="https://img.shields.io/badge/license-_MIT-%237e56c2?style=flat" alt="license">
