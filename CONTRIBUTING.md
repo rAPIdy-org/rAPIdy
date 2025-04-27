@@ -87,7 +87,4 @@ applicable.
 - Provide clear steps to reproduce bugs.
 - Suggest possible solutions if applicable.
 
-### Discussion links
-- <a href="https://t.me/+PsAvQnlVIcJlOGU6" target="_blank">telegram (en)</a>
-
 Thank you for contributing! 🎉

@@ -78,6 +78,11 @@ Documentation: https://rapidy.dev
 
 ---
 
+# 📢 Updates Channel
+<a href="t.me/rapidy_dev" target="_blank">telegram (en)</a>
+
+---
+
 # 🏁 Quickstart: First Simple Server
 
 Simple rAPIdy server:
