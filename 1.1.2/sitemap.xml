@@ -1,0 +1,517 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
+    <url>
+        <loc>None./</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="None"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/"/>
+    </url>
+    <url>
+        <loc>Nonehome/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonehome/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/home/"/>
+    </url>
+    <url>
+        <loc>Noneabout/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Noneabout/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/about/"/>
+    </url>
+    <url>
+        <loc>Noneaiohttp_migration/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Noneaiohttp_migration/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/aiohttp_migration/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/dependency_injection/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/dependency_injection/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/dependency_injection/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/encoders/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/encoders/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/encoders/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/enums/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/enums/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/enums/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/lifespan/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/lifespan/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/lifespan/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/mypy/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/mypy/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/mypy/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/server/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/server/application/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/application/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/application/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/server/handlers/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/handlers/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/handlers/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/server/handlers/http_router/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/handlers/http_router/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/handlers/http_router/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/server/http_errors/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/http_errors/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/http_errors/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/server/middlewares/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/middlewares/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/middlewares/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/server/request/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/request/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/request/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/server/request/parameters/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/request/parameters/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/request/parameters/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/server/request/parameters/cookies/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/request/parameters/cookies/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/request/parameters/cookies/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/server/request/parameters/headers/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/request/parameters/headers/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/request/parameters/headers/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/server/request/parameters/path/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/request/parameters/path/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/request/parameters/path/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/server/request/parameters/query/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/request/parameters/query/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/request/parameters/query/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/server/request/parameters/body/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/request/parameters/body/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/request/parameters/body/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/server/request/parameters/body/binary/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/request/parameters/body/binary/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/request/parameters/body/binary/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/server/request/parameters/body/json/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/request/parameters/body/json/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/request/parameters/body/json/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/server/request/parameters/body/multipart/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/request/parameters/body/multipart/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/request/parameters/body/multipart/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/server/request/parameters/body/text/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/request/parameters/body/text/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/request/parameters/body/text/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/server/request/parameters/body/x_www_form_urlencoded/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/request/parameters/body/x_www_form_urlencoded/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/request/parameters/body/x_www_form_urlencoded/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/server/response/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/response/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/response/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/server/response/handler_response/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/response/handler_response/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/response/handler_response/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/server/response/response_object/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/response/response_object/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/response/response_object/"/>
+    </url>
+    <url>
+        <loc>Nonedocs/server/testing/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/testing/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/testing/"/>
+    </url>
+    <url>
+        <loc>Noneexamples/http_caching/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Noneexamples/http_caching/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/examples/http_caching/"/>
+    </url>
+    <url>
+        <loc>Nonequickstart/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonequickstart/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/quickstart/"/>
+    </url>
+    <url>
+        <loc>Nonewhy/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonewhy/"/>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/why/"/>
+    </url>
+    <url>
+        <loc>Noneru/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="None"/>
+    </url>
+    <url>
+        <loc>Noneru/home/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/home/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonehome/"/>
+    </url>
+    <url>
+        <loc>Noneru/about/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/about/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Noneabout/"/>
+    </url>
+    <url>
+        <loc>Noneru/aiohttp_migration/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/aiohttp_migration/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Noneaiohttp_migration/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/dependency_injection/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/dependency_injection/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/dependency_injection/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/encoders/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/encoders/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/encoders/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/enums/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/enums/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/enums/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/lifespan/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/lifespan/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/lifespan/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/mypy/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/mypy/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/mypy/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/server/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/server/application/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/application/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/application/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/server/handlers/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/handlers/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/handlers/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/server/handlers/http_router/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/handlers/http_router/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/handlers/http_router/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/server/http_errors/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/http_errors/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/http_errors/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/server/middlewares/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/middlewares/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/middlewares/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/server/request/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/request/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/request/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/server/request/parameters/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/request/parameters/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/request/parameters/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/server/request/parameters/cookies/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/request/parameters/cookies/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/request/parameters/cookies/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/server/request/parameters/headers/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/request/parameters/headers/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/request/parameters/headers/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/server/request/parameters/path/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/request/parameters/path/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/request/parameters/path/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/server/request/parameters/query/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/request/parameters/query/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/request/parameters/query/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/server/request/parameters/body/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/request/parameters/body/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/request/parameters/body/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/server/request/parameters/body/binary/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/request/parameters/body/binary/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/request/parameters/body/binary/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/server/request/parameters/body/json/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/request/parameters/body/json/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/request/parameters/body/json/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/server/request/parameters/body/multipart/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/request/parameters/body/multipart/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/request/parameters/body/multipart/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/server/request/parameters/body/text/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/request/parameters/body/text/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/request/parameters/body/text/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/server/request/parameters/body/x_www_form_urlencoded/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/request/parameters/body/x_www_form_urlencoded/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/request/parameters/body/x_www_form_urlencoded/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/server/response/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/response/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/response/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/server/response/handler_response/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/response/handler_response/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/response/handler_response/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/server/response/response_object/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/response/response_object/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/response/response_object/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/server/testing/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/testing/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonedocs/server/testing/"/>
+    </url>
+    <url>
+        <loc>Noneru/examples/http_caching/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/examples/http_caching/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Noneexamples/http_caching/"/>
+    </url>
+    <url>
+        <loc>Noneru/quickstart/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/quickstart/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonequickstart/"/>
+    </url>
+    <url>
+        <loc>Noneru/why/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/why/"/>
+        <xhtml:link rel="alternate" hreflang="en" href="Nonewhy/"/>
+    </url>
+    <url>
+        <loc>Noneru/docs/server/routing/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/docs/server/routing/"/>
+    </url>
+    <url>
+        <loc>Noneru/examples/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/examples/"/>
+    </url>
+    <url>
+        <loc>Noneru/examples/templates/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/examples/templates/"/>
+    </url>
+    <url>
+        <loc>Noneru/examples/templates/base/</loc>
+        <lastmod>2025-04-28</lastmod>
+        <changefreq>daily</changefreq>
+        <xhtml:link rel="alternate" hreflang="ru" href="Noneru/examples/templates/base/"/>
+    </url>
+</urlset>
