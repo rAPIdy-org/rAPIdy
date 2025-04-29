@@ -35,6 +35,7 @@ from rapidy.depends import CONTAINER_KEY, di_middleware, RapidyProvider
 from rapidy.endpoint_handlers.http.handlers import middleware_validation_wrapper
 from rapidy.enums import HeaderName
 from rapidy.lifespan import Lifespan, LifespanCTX, LifespanHook
+from rapidy.openapi.utils import setup_openapi_routes
 from rapidy.routing.http.base import raise_if_not_base_http_router
 from rapidy.typedefs import BaseHTTPRouterType, Middleware
 from rapidy.version import SERVER_INFO
@@ -112,11 +113,12 @@ class Application(AiohttpApplication):
         _router (UrlDispatcher): The URL dispatcher responsible for routing requests.
         _hide_server_info_deco (Callable): A decorator function to control whether server information is included in
           response headers.
-
-    Methods:
-        add_http_router(http_router: BaseHTTPRouterType) -> None: Adds a single HTTP router to the app.
-        add_http_routers(route_handlers: Iterable[BaseHTTPRouterType]) -> None: Adds multiple HTTP routers.
-        router() -> UrlDispatcher: Returns the overridden aiohttp `UrlDispatcher`.
+        _title (str): The title of the API, used in OpenAPI documentation.
+        _version (str): The version of the API, used in OpenAPI documentation.
+        _description (str): The description of the API, used in OpenAPI documentation.
+        _openapi_url (str): The URL path for the OpenAPI JSON schema.
+        _docs_url (str): The URL path for the Swagger UI documentation.
+        _redoc_url (str): The URL path for the ReDoc documentation.
     """
 
     def __init__(
@@ -142,6 +144,13 @@ class Application(AiohttpApplication):
         di_skip_validation: bool = False,
         di_start_scope: BaseScope | None = None,
         di_validation_settings: ValidationSettings = DEFAULT_VALIDATION,
+        # openapi
+        title: str = 'Rapidy API',
+        version: str = '0.1.0',
+        description: str | None = None,
+        openapi_url: str | None = '/openapi.json',
+        docs_url: str | None = '/docs',
+        redoc_url: str | None = '/redoc',
     ) -> None:
         """Initializes the Application instance with various configuration options.
 
@@ -152,89 +161,38 @@ class Application(AiohttpApplication):
             client_max_size: Client`s maximum size in a request, in bytes.
             server_info_in_response (bool): Whether to include server info in response headers.
             lifespan: List of asynchronous context managers that support application lifecycle management.
-                >>> @asynccontextmanager
-                >>> async def lifespan_ctx(rapidy: Rapidy) -> AsyncGenerator[None, None]:
-                >>>     try:
-                >>>         await startup_func()
-                >>>             yield
-                >>>     finally:
-                >>>         await shutdown_func()
-                You can set this in two ways:
-                >>> rapidy = Rapidy(lifespan=[lifespan_ctx, ...], ...)
-                or
-                >>> rapidy.lifespan.append(lifespan_ctx)
             on_startup: A sequence of `rapidy.typedefs.LifespanHook` called during application startup.
-                        Developers may use this to run background tasks in the event loop
-                        along with the application`s request handler just after the application start-up.
-                >>> def on_startup(app):
-                >>>     pass
-
-                >>> def on_startup():
-                >>>     pass
-
-                >>> async def on_startup(app):
-                >>>     pass
-
-                >>> async def on_startup():
-                >>>     pass
-
-                You can set this in two ways:
-                >>> rapidy = Rapidy(on_startup=[on_startup, ...], ...)
-                or
-                >>> rapidy.lifespan.on_startup.append(on_startup)
             on_shutdown: A sequence of `rapidy.types.LifespanHook` called during application shutdown.
-                         Developers may use this for gracefully closing long running connections,
-                         e.g. websockets and data streaming.
-                >>> def on_shutdown(app):
-                >>>     pass
-
-                >>> def on_shutdown():
-                >>>     pass
-
-                >>> async def on_shutdown(app):
-                >>>     pass
-
-                >>> async def on_shutdown():
-                >>>     pass
-                You can set this in two ways:
-                >>> rapidy = Rapidy(on_shutdown=[on_shutdown, ...], ...)
-                or
-                >>> rapidy.lifespan.on_shutdown.append(on_shutdown)
             on_cleanup: A sequence of `rapidy.types.LifespanHook` called during application cleanup.
-                        Developers may use this for gracefully closing connections to database server etc.
-                        Signal handlers should have the following signature:
-                >>> def on_cleanup(app):
-                >>>     pass
-
-                >>> def on_cleanup():
-                >>>     pass
-
-                >>> async def on_cleanup(app):
-                >>>     pass
-
-                >>> async def on_cleanup():
-                >>>     pass
-
-                >>> rapidy = Rapidy(on_cleanup=[on_cleanup, ...], ...)
-            http_route_handlers (Iterable[BaseHTTPRouterType]): HTTP route handlers to register.
-            di_container (Optional[AsyncContainer]): External DI container.
-                          If you provide a custom DI container, Rapidy will not create a new one even if other DI params
-                          are specified.
-                          You are responsible for managing its lifecycle (startup/shutdown) manually.
-            di_providers (Sequence[BaseProvider]): Providers to register in the DI container.
-            di_scopes (Type[BaseScope]): Scope class used by the DI container.
-            di_context (Optional[Dict[Any, Any]]): Additional context for DI.
-            di_lock_factory (Optional[Callable]): Factory creating locks for DI.
-            di_skip_validation (bool): Whether to skip DI providers validation.
-            di_start_scope (Optional[BaseScope]): DI scope to start the container with.
-            di_validation_settings (Optional[ValidationSettings]): Settings for DI validation.
+            http_route_handlers: A sequence of HTTP route handlers to add to the application.
+            di_container: Optional AsyncContainer instance for dependency injection.
+            di_providers: Sequence of DI providers.
+            di_scopes: Type of DI scope to use.
+            di_context: Optional dictionary of DI context values.
+            di_lock_factory: Factory function for creating DI locks.
+            di_skip_validation: Whether to skip DI validation.
+            di_start_scope: Optional starting DI scope.
+            di_validation_settings: Settings for DI validation.
+            title: The title of the API, used in OpenAPI documentation.
+            version: The version of the API, used in OpenAPI documentation.
+            description: The description of the API, used in OpenAPI documentation.
+            openapi_url: The URL path for the OpenAPI JSON schema.
+            docs_url: The URL path for the Swagger UI documentation.
+            redoc_url: The URL path for the ReDoc documentation.
         """
         super().__init__(
             logger=logger,
-            middlewares=middlewares or [],
+            middlewares=middlewares,
             handler_args=handler_args,
             client_max_size=client_max_size,
         )
+
+        self._title = title
+        self._version = version
+        self._description = description
+        self._openapi_url = openapi_url
+        self._docs_url = docs_url
+        self._redoc_url = redoc_url
 
         self.lifespan = Lifespan(
             app=self,
@@ -430,6 +388,14 @@ class Application(AiohttpApplication):
         """
         # Note: Since the creation happens through startup, the container will be created only in the root application.
         self._setup_di()
+
+        setup_openapi_routes(
+            self,
+            openapi_url=self._openapi_url,
+            redoc_url=self._redoc_url,
+            docs_url=self._docs_url,
+        )
+
         await super().startup()
 
     async def _handle(self, request: Request) -> StreamResponse:

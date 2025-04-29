@@ -45,7 +45,7 @@ from rapidy.typedefs import CallNext
 from rapidy.version import AIOHTTP_VERSION_TUPLE
 from rapidy.web_middlewares import middleware
 from rapidy.web_request import Request
-from rapidy.web_response import StreamResponse
+from rapidy.web_response import StreamResponse, Response
 
 __all__ = [
     'DEFAULT_COMPONENT',
@@ -115,6 +115,7 @@ def _inject_wrapper(
         # necessary because `rapidy` uses `if TYPE_CHECKING:`
         globalns={
             'Request': param_annotation,
+            'Response': Response,
             'StreamResponse': StreamResponse,
         },
     )

@@ -767,3 +767,58 @@ rAPIdy is licensed under the MIT License. See LICENSE for details.
 ---
 
 Start building fast, reliable, and modern APIs with rAPIdy today! 🚀
+
+## OpenAPI Support
+
+rAPIdy now includes built-in support for OpenAPI (Swagger) documentation. The OpenAPI integration automatically generates API documentation from your route handlers and Pydantic models.
+
+### Features
+
+- Automatic OpenAPI schema generation from route handlers
+- Support for path, query, header, and cookie parameters
+- Request and response body schema generation from Pydantic models
+- Built-in Swagger UI and ReDoc interfaces
+- Support for operation metadata (summary, description, deprecated status)
+
+### Usage
+
+```python
+from rapidy import Application
+from rapidy.web import get, post
+from rapidy.parameters.http import PathParam, QueryParam, Body
+from pydantic import BaseModel
+
+class Item(BaseModel):
+    id: int
+    name: str
+    description: str | None = None
+
+app = Application(
+    title="My API",  # Used in OpenAPI docs
+    version="1.0.0",
+    description="My API description"
+)
+
+@get("/items/{item_id}")
+async def get_item(item_id: Annotated[int, PathParam()]) -> Item:
+    """Get an item by ID.
+
+    Returns a single item from the database.
+    """
+    # Your implementation here
+    ...
+
+@post("/items")
+async def create_item(item: Annotated[Item, Body()]) -> Item:
+    """Create a new item.
+
+    Creates a new item in the database.
+    """
+    # Your implementation here
+    ...
+
+# Access your API documentation at:
+# - /docs - Swagger UI
+# - /redoc - ReDoc
+# - /openapi.json - Raw OpenAPI schema
+```
