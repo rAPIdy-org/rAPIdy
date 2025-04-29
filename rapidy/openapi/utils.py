@@ -158,7 +158,7 @@ def setup_openapi_routes(
         from rapidy.openapi.route import get_openapi_spec
         
         spec = get_openapi_spec(request.app)
-        return Response(spec.model_dump(by_alias=True))
+        return Response(spec.model_dump(by_alias=True, exclude_none=True))
 
     @get(docs_url)
     async def get_swagger_ui(request: Request) -> Response:

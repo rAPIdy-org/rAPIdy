@@ -148,8 +148,8 @@ def get_openapi_operation(
         parameters=parameters or None,
         request_body=request_body,
         responses=responses,
-        deprecated=getattr(handler, "deprecated", None),
-        tags=getattr(handler, "tags", None),
+        deprecated=getattr(handler, "deprecated", None),  # TODO
+        tags=getattr(handler, "tags", None),  # TODO
     )
 
     return operation
