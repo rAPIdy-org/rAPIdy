@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class OpenAPIContact(BaseModel):
@@ -40,6 +40,8 @@ class OpenAPIExample(BaseModel):
 
 class OpenAPIReference(BaseModel):
     """Reference to another component in the specification."""
+    model_config = ConfigDict(populate_by_name=True)
+
     ref: str = Field(..., alias="$ref")
 
 

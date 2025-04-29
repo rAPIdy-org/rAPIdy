@@ -206,9 +206,9 @@ def get_openapi_spec(app: Any) -> OpenAPISpec:
     # Create OpenAPI spec
     return OpenAPISpec(
         info=OpenAPIInfo(
-            title=getattr(app, "title", "Rapidy API"),
-            version=getattr(app, "version", "0.1.0"),
-            description=getattr(app, "description", None),
+            title=getattr(app, "_title", "Rapidy API"),  # TODO
+            version=getattr(app, "_version", "0.1.0"),  # TODO
+            description=getattr(app, "_description", None),  # TODO
         ),
         paths=paths,
         components=components,

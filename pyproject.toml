@@ -79,7 +79,6 @@ mkdocs-redirects = "^1.2.2"
 
 [tool.poetry.group.openapi.dependencies]
 swagger-ui-bundle = "^1.1.0"
-redoc = "^2.1.0"
 
 [tool.ruff]
 src = ["rapidy", "tests"]
