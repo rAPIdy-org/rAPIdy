@@ -115,7 +115,12 @@ def get_openapi_operation(
     responses: Dict[str, OpenAPIResponse] = {}
 
     if return_type and return_type is not None:
-        if inspect.isclass(return_type) and issubclass(return_type, Response):
+        try:
+            is_response = inspect.isclass(return_type) and issubclass(return_type, Response)
+        except TypeError:
+            is_response = False
+
+        if is_response:
             # Use status code from handler kwargs or default to 200
             status_code = getattr(handler, "status_code", 200)
             responses[str(status_code)] = OpenAPIResponse(
