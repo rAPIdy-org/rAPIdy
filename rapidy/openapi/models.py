@@ -7,20 +7,24 @@ from typing import Any, Dict, List, Optional, Union
 from pydantic import BaseModel, Field, ConfigDict
 
 
-class OpenAPIContact(BaseModel):
+class _BaseOpenAPIModel(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class OpenAPIContact(_BaseOpenAPIModel):
     """Contact information for the exposed API."""
     name: Optional[str] = None
     url: Optional[str] = None
     email: Optional[str] = None
 
 
-class OpenAPILicense(BaseModel):
+class OpenAPILicense(_BaseOpenAPIModel):
     """License information for the exposed API."""
     name: str
     url: Optional[str] = None
 
 
-class OpenAPIInfo(BaseModel):
+class OpenAPIInfo(_BaseOpenAPIModel):
     """General information about the API."""
     title: str
     version: str
@@ -30,7 +34,7 @@ class OpenAPIInfo(BaseModel):
     license: Optional[OpenAPILicense] = None
 
 
-class OpenAPIExample(BaseModel):
+class OpenAPIExample(_BaseOpenAPIModel):
     """Example object for request/response."""
     summary: Optional[str] = None
     description: Optional[str] = None
@@ -38,14 +42,12 @@ class OpenAPIExample(BaseModel):
     external_value: Optional[str] = Field(None, alias="externalValue")
 
 
-class OpenAPIReference(BaseModel):
+class OpenAPIReference(_BaseOpenAPIModel):
     """Reference to another component in the specification."""
-    model_config = ConfigDict(populate_by_name=True)
-
     ref: str = Field(..., alias="$ref")
 
 
-class OpenAPISchema(BaseModel):
+class OpenAPISchema(_BaseOpenAPIModel):
     """Schema object for request/response bodies."""
     title: Optional[str] = None
     type: Optional[str] = None
@@ -64,7 +66,7 @@ class OpenAPISchema(BaseModel):
         extra = "allow"
 
 
-class OpenAPIParameter(BaseModel):
+class OpenAPIParameter(_BaseOpenAPIModel):
     """Parameter object for path, query, header and cookie parameters."""
     name: str
     in_: str = Field(..., alias="in")
@@ -79,14 +81,14 @@ class OpenAPIParameter(BaseModel):
     examples: Optional[Dict[str, Union[OpenAPIExample, OpenAPIReference]]] = None
 
 
-class OpenAPIRequestBody(BaseModel):
+class OpenAPIRequestBody(_BaseOpenAPIModel):
     """Request body object."""
     description: Optional[str] = None
     content: Dict[str, Dict[str, Any]]
     required: Optional[bool] = None
 
 
-class OpenAPIResponse(BaseModel):
+class OpenAPIResponse(_BaseOpenAPIModel):
     """Response object."""
     description: str
     headers: Optional[Dict[str, Union[OpenAPIParameter, OpenAPIReference]]] = None
@@ -94,7 +96,7 @@ class OpenAPIResponse(BaseModel):
     links: Optional[Dict[str, Any]] = None
 
 
-class OpenAPIOperation(BaseModel):
+class OpenAPIOperation(_BaseOpenAPIModel):
     """Operation object for path items."""
     tags: Optional[List[str]] = None
     summary: Optional[str] = None
@@ -111,7 +113,7 @@ class OpenAPIOperation(BaseModel):
     servers: Optional[List[Dict[str, Any]]] = None
 
 
-class OpenAPIComponents(BaseModel):
+class OpenAPIComponents(_BaseOpenAPIModel):
     """Components object for reusable objects."""
     schemas: Optional[Dict[str, Union[OpenAPISchema, OpenAPIReference]]] = None
     responses: Optional[Dict[str, Union[OpenAPIResponse, OpenAPIReference]]] = None
@@ -126,7 +128,7 @@ class OpenAPIComponents(BaseModel):
     callbacks: Optional[Dict[str, Dict[str, Any]]] = None
 
 
-class OpenAPISpec(BaseModel):
+class OpenAPISpec(_BaseOpenAPIModel):
     """Root document object for OpenAPI specification."""
     openapi: str = "3.0.3"
     info: OpenAPIInfo

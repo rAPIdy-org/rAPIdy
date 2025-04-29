@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, Dict, List, Optional, Type, Union, get_type_hints
+from typing import Any, Dict, List, Optional, Type, Union, get_type_hints, Annotated
 
 from pydantic import BaseModel
 
+from rapidy.annotation_checkers import is_optional
+from rapidy.endpoint_handlers.attr_extractor import get_handler_raw_info
+from rapidy.endpoint_handlers.http.attrs_extractor import get_http_handler_info
 from rapidy.openapi.models import (
     OpenAPIComponents,
     OpenAPIInfo,
@@ -29,6 +32,7 @@ from rapidy.parameters.http import (
     QueryParam,
     QueryBase,
 )
+from rapidy.typedefs import Required, Undefined
 from rapidy.web_request import Request
 from rapidy.web_response import Response
 
@@ -43,32 +47,21 @@ def get_openapi_operation(
     if components is None:
         components = OpenAPIComponents()
 
-    # Get handler signature
-    signature = inspect.signature(handler)
-    type_hints = get_type_hints(handler)
+    handler_raw_info = get_http_handler_info(
+        handler=handler,
+        request_attr_can_declare_fst=False,  # TODO: абсолютно похуй че там с реквестом, может на подфункцию вынести полукчение http_аттрибутов
+    )
 
-    # Get parameters
     parameters: List[OpenAPIParameter] = []
     request_body: Optional[OpenAPIRequestBody] = None
 
-    for param_name, param in signature.parameters.items():
-        if param_name == "self" or param_name == "request":
-            continue
+    for request_attr in handler_raw_info.request_params:
+        param_name = request_attr.attribute_name
+        field_info = request_attr.field_info
 
-        param_type = type_hints.get(param_name)
-        if param_type is None:
-            continue
-
-        # Get field info from param annotation
-        field_info = None
-        if hasattr(param_type, "__metadata__"):
-            for meta in param_type.__metadata__:
-                if isinstance(meta, (PathBase, QueryBase, HeaderBase, CookieBase, Body)):
-                    field_info = meta
-                    break
-
-        if field_info is None:
-            continue
+        # TODO: required потом на отдельную проверку херануть тк юзается в 2х местах
+        not_default = field_info.default in (Required, Undefined) and field_info.default_factory is None
+        required = not_default and not is_optional(field_info.annotation)
 
         # Handle different parameter types
         if isinstance(field_info, PathBase):
@@ -85,7 +78,7 @@ def get_openapi_operation(
                 OpenAPIParameter(
                     name=param_name,
                     in_="query",
-                    required=param.default is inspect.Parameter.empty,
+                    required=required,
                     schema_=get_field_schema(field_info, components),
                 )
             )
@@ -94,7 +87,7 @@ def get_openapi_operation(
                 OpenAPIParameter(
                     name=param_name,
                     in_="header",
-                    required=param.default is inspect.Parameter.empty,
+                    required=required,
                     schema_=get_field_schema(field_info, components),
                 )
             )
@@ -103,13 +96,13 @@ def get_openapi_operation(
                 OpenAPIParameter(
                     name=param_name,
                     in_="cookie",
-                    required=param.default is inspect.Parameter.empty,
+                    required=required,
                     schema_=get_field_schema(field_info, components),
                 )
             )
         elif isinstance(field_info, Body):
             request_body = OpenAPIRequestBody(
-                required=param.default is inspect.Parameter.empty,
+                required=required,
                 content={
                     "application/json": {
                         "schema": get_field_schema(field_info, components),
@@ -118,7 +111,7 @@ def get_openapi_operation(
             )
 
     # Get response schema
-    return_type = type_hints.get("return")
+    return_type = handler_raw_info.return_annotation
     responses: Dict[str, OpenAPIResponse] = {}
 
     if return_type and return_type is not None:
