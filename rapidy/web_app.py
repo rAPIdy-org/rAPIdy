@@ -33,7 +33,7 @@ from frozenlist import FrozenList
 
 from rapidy.constants import CLIENT_MAX_SIZE
 from rapidy.depends import CONTAINER_KEY, di_middleware, RapidyProvider
-from rapidy.endpoint_handlers.http.handlers import middleware_validation_wrapper
+from rapidy.endpoint_handlers.http.handlers import middleware_validation_wrapper, wrap_middleware
 from rapidy.enums import HeaderName
 from rapidy.lifespan import Lifespan, LifespanCTX, LifespanHook
 from rapidy.openapi.utils import setup_openapi_routes
@@ -333,26 +333,7 @@ class Application(AiohttpApplication):
         for middleware in reversed(self._middlewares):
             if is_aiohttp_new_style_middleware(middleware):
                 if is_rapidy_middleware(middleware):
-                    m_attr_data = get_middleware_attr_data(middleware)
-
-                    middleware = middleware_validation_wrapper(  # noqa: PLW2901
-                        middleware,
-                        status_code=m_attr_data.status_code,
-                        response_validate=m_attr_data.response_validate,
-                        response_type=m_attr_data.response_type,
-                        response_content_type=m_attr_data.response_content_type,
-                        response_charset=m_attr_data.response_charset,
-                        response_zlib_executor=m_attr_data.response_zlib_executor,
-                        response_zlib_executor_size=m_attr_data.response_zlib_executor_size,
-                        response_include_fields=m_attr_data.response_include_fields,
-                        response_exclude_fields=m_attr_data.response_exclude_fields,
-                        response_by_alias=m_attr_data.response_by_alias,
-                        response_exclude_unset=m_attr_data.response_exclude_unset,
-                        response_exclude_defaults=m_attr_data.response_exclude_defaults,
-                        response_exclude_none=m_attr_data.response_exclude_none,
-                        response_custom_encoder=m_attr_data.response_custom_encoder,
-                        response_json_encoder=m_attr_data.response_json_encoder,
-                    )
+                    middleware = wrap_middleware(middleware)
                 yield middleware, True
             else:
                 warnings.warn(

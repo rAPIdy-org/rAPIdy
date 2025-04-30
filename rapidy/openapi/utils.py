@@ -155,7 +155,7 @@ def setup_openapi_routes(
     """Setup OpenAPI documentation routes."""
     from rapidy.http import get, Response
 
-    @get(openapi_url)
+    @get(openapi_url, allow_head=False)
     async def get_openapi_json(request: Request) -> Response:
         """Generate OpenAPI JSON schema."""
         from rapidy.openapi.route import get_openapi_spec
@@ -163,7 +163,7 @@ def setup_openapi_routes(
         spec = get_openapi_spec(request.app, title=title, version=version, description=description)
         return Response(spec.model_dump(by_alias=True, exclude_none=True))
 
-    @get(docs_url)
+    @get(docs_url, allow_head=False)
     async def get_swagger_ui(request: Request) -> Response:
         """Serve Swagger UI."""
         html = f"""
@@ -195,7 +195,7 @@ def setup_openapi_routes(
         """
         return Response(text=html, content_type="text/html")
 
-    @get(redoc_url)
+    @get(redoc_url, allow_head=False)
     async def get_redoc(request: Request) -> Response:
         """Serve ReDoc."""
         html = f"""

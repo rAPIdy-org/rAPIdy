@@ -43,8 +43,8 @@ if TYPE_CHECKING:
 
 def get_openapi_operation(
     handler: Any,
-    path: str,
-    method: str,
+    path: str,  # TODO:
+    method: str,  # TODO:
     components: Optional[OpenAPIComponents] = None,
 ) -> OpenAPIOperation:
     """Extract OpenAPI Operation object from a route handler."""
@@ -186,10 +186,11 @@ def get_openapi_spec(app: Application, title: str, version: str, description: st
     """Generate OpenAPI specification from application routes."""
     components = OpenAPIComponents()
     paths: Dict[str, Dict[str, OpenAPIOperation]] = {}
+    # TODO: миддлвари - как с них извлекать
 
     # Group handlers by path
     for route in app.router.routes():
-        if not hasattr(route, "handler"):
+        if not hasattr(route, "handler"):  # TODO:
             continue
 
         path = route.resource.canonical
@@ -205,7 +206,6 @@ def get_openapi_spec(app: Application, title: str, version: str, description: st
             components,
         )
 
-    # Create OpenAPI spec
     return OpenAPISpec(
         info=OpenAPIInfo(title=title, version=version, description=description),
         paths=paths,

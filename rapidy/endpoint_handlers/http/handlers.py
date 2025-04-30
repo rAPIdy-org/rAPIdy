@@ -14,7 +14,7 @@ from rapidy.endpoint_handlers.http.controller import controller_factory
 from rapidy.enums import Charset, ContentType, MethodName
 from rapidy.routing.http.helper_types import HandlerPartial
 from rapidy.typedefs import CallNext, Handler, JSONEncoder, Middleware, UnsetType
-from rapidy.web_middlewares import middleware as middleware_deco
+from rapidy.web_middlewares import middleware as middleware_deco, get_middleware_attr_data
 from rapidy.web_response import Response, StreamResponse
 
 if TYPE_CHECKING:
@@ -440,3 +440,26 @@ def middleware_validation_wrapper(
         return await handler_controller.create_response(handler_result, pre_response)
 
     return inner
+
+
+def wrap_middleware(middleware: Middleware) -> Middleware:
+    m_attr_data = get_middleware_attr_data(middleware)
+
+    return middleware_validation_wrapper(  # noqa: PLW2901
+        middleware,
+        status_code=m_attr_data.status_code,
+        response_validate=m_attr_data.response_validate,
+        response_type=m_attr_data.response_type,
+        response_content_type=m_attr_data.response_content_type,
+        response_charset=m_attr_data.response_charset,
+        response_zlib_executor=m_attr_data.response_zlib_executor,
+        response_zlib_executor_size=m_attr_data.response_zlib_executor_size,
+        response_include_fields=m_attr_data.response_include_fields,
+        response_exclude_fields=m_attr_data.response_exclude_fields,
+        response_by_alias=m_attr_data.response_by_alias,
+        response_exclude_unset=m_attr_data.response_exclude_unset,
+        response_exclude_defaults=m_attr_data.response_exclude_defaults,
+        response_exclude_none=m_attr_data.response_exclude_none,
+        response_custom_encoder=m_attr_data.response_custom_encoder,
+        response_json_encoder=m_attr_data.response_json_encoder,
+    )
