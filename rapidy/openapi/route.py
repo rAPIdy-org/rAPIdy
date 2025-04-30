@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import inspect
-from typing import Any, Dict, List, Optional, Type, Union, get_type_hints, Annotated
+from typing import Any, Dict, List, Optional, Type, Union, get_type_hints, Annotated, TYPE_CHECKING
 
 from pydantic import BaseModel
 
@@ -33,8 +33,12 @@ from rapidy.parameters.http import (
     QueryBase,
 )
 from rapidy.typedefs import Required, Undefined
+
 from rapidy.web_request import Request
 from rapidy.web_response import Response
+
+if TYPE_CHECKING:
+    from rapidy.web_app import Application
 
 
 def get_openapi_operation(
@@ -178,7 +182,7 @@ def get_openapi_path(
     return operations
 
 
-def get_openapi_spec(app: Any) -> OpenAPISpec:
+def get_openapi_spec(app: Application, title: str, version: str, description: str) -> OpenAPISpec:
     """Generate OpenAPI specification from application routes."""
     components = OpenAPIComponents()
     paths: Dict[str, Dict[str, OpenAPIOperation]] = {}
@@ -203,11 +207,7 @@ def get_openapi_spec(app: Any) -> OpenAPISpec:
 
     # Create OpenAPI spec
     return OpenAPISpec(
-        info=OpenAPIInfo(
-            title=getattr(app, "_title", "Rapidy API"),  # TODO
-            version=getattr(app, "_version", "0.1.0"),  # TODO
-            description=getattr(app, "_description", None),  # TODO
-        ),
+        info=OpenAPIInfo(title=title, version=version, description=description),
         paths=paths,
         components=components,
-    ) 
+    )

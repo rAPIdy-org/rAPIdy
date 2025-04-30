@@ -23,9 +23,10 @@ from aiohttp.log import web_logger
 from aiohttp.web_app import (
     _Middlewares,
     Application as AiohttpApplication,
-    CleanupError,
+    CleanupError, _Resource,
 )
 from aiohttp.web_middlewares import _fix_request_current_app
+from aiohttp.web_urldispatcher import PrefixedSubAppResource
 from dishka import AsyncContainer, BaseScope, make_async_container, Scope, ValidationSettings
 from dishka.entities.validation_settigs import DEFAULT_VALIDATION
 from frozenlist import FrozenList
@@ -260,6 +261,47 @@ class Application(AiohttpApplication):
         """
         return self._router
 
+    @property
+    def di_container(self) -> AsyncContainer | None:
+        """Get the DI container instance.
+
+        Note:
+            None will be returned if you try to get the container using subapp.
+            >>> from rapidy import Rapidy
+            >>>
+            >>> root_app = Rapidy()
+            >>> v1_app = Rapidy()
+            >>> root_app.add_subapp('/v1', v1_app)
+            >>>
+            >>> root_app.di_container  # AsyncContainer
+            >>> v1_app.di_container  # None
+
+        Returns:
+            The configured AsyncContainer or None
+        """
+        return self.get(CONTAINER_KEY)
+
+    async def startup(self) -> None:
+        """Causes on_startup signal.
+
+        Should be called in the event loop along with the request handler.
+        """
+        # Note: Since the creation happens through startup, the container will be created only in the root application.
+        self._setup_di()
+
+        setup_openapi_routes(
+            self,
+            openapi_url=self._openapi_url,
+            redoc_url=self._redoc_url,
+            docs_url=self._docs_url,
+        )
+
+        await super().startup()
+
+    def add_subapp(self, prefix: str, subapp: "Application") -> PrefixedSubAppResource:
+        # TODO: логику извлечения - здесь же хранить сам объект
+        return super().add_subapp(prefix=prefix, subapp=subapp)
+
     def _create_lifespan_cleanup_ctx(self, lifespan: Lifespan) -> Callable[[Application], AsyncGenerator[None, None]]:
         """Creates a cleanup context manager for lifespan management.
 
@@ -360,43 +402,6 @@ class Application(AiohttpApplication):
 
         self[CONTAINER_KEY] = self._di_container
         self._middlewares: _Middlewares = FrozenList((di_middleware, *self.middlewares))
-
-    @property
-    def di_container(self) -> AsyncContainer | None:
-        """Get the DI container instance.
-
-        Note:
-            None will be returned if you try to get the container using subapp.
-            >>> from rapidy import Rapidy
-            >>>
-            >>> root_app = Rapidy()
-            >>> v1_app = Rapidy()
-            >>> root_app.add_subapp('/v1', v1_app)
-            >>>
-            >>> root_app.di_container  # AsyncContainer
-            >>> v1_app.di_container  # None
-
-        Returns:
-            The configured AsyncContainer or None
-        """
-        return self.get(CONTAINER_KEY)
-
-    async def startup(self) -> None:
-        """Causes on_startup signal.
-
-        Should be called in the event loop along with the request handler.
-        """
-        # Note: Since the creation happens through startup, the container will be created only in the root application.
-        self._setup_di()
-
-        setup_openapi_routes(
-            self,
-            openapi_url=self._openapi_url,
-            redoc_url=self._redoc_url,
-            docs_url=self._docs_url,
-        )
-
-        await super().startup()
 
     async def _handle(self, request: Request) -> StreamResponse:
         resp = await super()._handle(request)

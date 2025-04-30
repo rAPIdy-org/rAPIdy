@@ -145,6 +145,9 @@ def get_field_schema(
 
 def setup_openapi_routes(
         app: Application,
+        title: str,
+        version: str,
+        description: str,
         openapi_url: str | None,
         docs_url: str | None,
         redoc_url: str | None,
@@ -157,7 +160,7 @@ def setup_openapi_routes(
         """Generate OpenAPI JSON schema."""
         from rapidy.openapi.route import get_openapi_spec
         
-        spec = get_openapi_spec(request.app)
+        spec = get_openapi_spec(request.app, title=title, version=version, description=description)
         return Response(spec.model_dump(by_alias=True, exclude_none=True))
 
     @get(docs_url)
