@@ -294,13 +294,12 @@ class Application(AiohttpApplication):
             openapi_url=self._openapi_url,
             redoc_url=self._redoc_url,
             docs_url=self._docs_url,
+            title=self._title,
+            version=self._version,
+            description=self._description,
         )
 
         await super().startup()
-
-    def add_subapp(self, prefix: str, subapp: "Application") -> PrefixedSubAppResource:
-        # TODO: логику извлечения - здесь же хранить сам объект
-        return super().add_subapp(prefix=prefix, subapp=subapp)
 
     def _create_lifespan_cleanup_ctx(self, lifespan: Lifespan) -> Callable[[Application], AsyncGenerator[None, None]]:
         """Creates a cleanup context manager for lifespan management.
