@@ -1,6 +1,5 @@
 """Functions for extracting OpenAPI information from route handlers."""
 
-from __future__ import annotations
 
 import inspect
 from typing import Any, Dict, List, Optional, Type, Union, get_type_hints, Annotated, TYPE_CHECKING, TypeAlias

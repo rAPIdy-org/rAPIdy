@@ -15,6 +15,7 @@ from rapidy.endpoint_handlers.attr_containers import Attr, DataAttr
 from rapidy.fields.field_info import copy_field_info, RapidyFieldInfo
 from rapidy.routing.http.helper_types import HandlerPartial
 from rapidy.typedefs import Handler, Required, Undefined
+from rapidy.web_response import Response
 
 
 class DefaultError(RapidyHandlerException, ABC):
@@ -363,12 +364,12 @@ def get_handler_raw_info(handler: Handler) -> HandlerRawInfo:  # noqa: C901
         HandlerRawInfo: The raw information about the handler's attributes.
     """
     try:
-        hints = get_type_hints(handler, include_extras=True)
+        hints = get_type_hints(handler, include_extras=True, globalns={'Request': Request, 'Response': Response})
     except TypeError as get_hints_exc:
         if not isinstance(handler, HandlerPartial):  # FIXME: Remove after remove HandlerPartial
             raise get_hints_exc  # noqa: TRY201
 
-        hints = get_type_hints(handler.handler, include_extras=True)
+        hints = get_type_hints(handler.handler, include_extras=True, globalns={'Request': Request, 'Response': Response})
 
     sig = inspect.signature(handler)
 
