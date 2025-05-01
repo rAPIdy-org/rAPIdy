@@ -163,7 +163,6 @@ async def test_middleware(aiohttp_client: AiohttpClient) -> None:
         middlewares=[simple_middleware],
         http_route_handlers=[handler],
     )
-    app.middlewares.append(simple_middleware)
 
     client = await aiohttp_client(app)
     resp = await client.get('/')

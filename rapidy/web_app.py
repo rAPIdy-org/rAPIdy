@@ -286,18 +286,21 @@ class Application(AiohttpApplication):
 
         Should be called in the event loop along with the request handler.
         """
-        # Note: Since the creation happens through startup, the container will be created only in the root application.
-        self._setup_di()
 
-        setup_openapi_routes(
-            self,
-            openapi_url=self._openapi_url,
-            redoc_url=self._redoc_url,
-            docs_url=self._docs_url,
-            title=self._title,
-            version=self._version,
-            description=self._description,
-        )
+        if not self.frozen:
+            # Note: only for tests, if the application is run twice in one test
+
+            self._setup_di()
+
+            setup_openapi_routes(
+                self,
+                openapi_url=self._openapi_url,
+                redoc_url=self._redoc_url,
+                docs_url=self._docs_url,
+                title=self._title,
+                version=self._version,
+                description=self._description,
+            )
 
         await super().startup()
 
@@ -381,7 +384,7 @@ class Application(AiohttpApplication):
             self.lifespan.on_shutdown.append(_shutdown_di_container)
 
         self[CONTAINER_KEY] = self._di_container
-        self._middlewares: _Middlewares = FrozenList((di_middleware, *self.middlewares))
+        self._middlewares.insert(0, di_middleware)
 
     async def _handle(self, request: Request) -> StreamResponse:
         resp = await super()._handle(request)
