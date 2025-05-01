@@ -160,7 +160,7 @@ def setup_openapi_routes(
         """Generate OpenAPI JSON schema."""
         from rapidy.openapi.route import get_openapi_spec
         
-        spec = get_openapi_spec(request.app, title=title, version=version, description=description)
+        spec = await get_openapi_spec(request.app, title=title, version=version, description=description)
         return Response(spec.model_dump(by_alias=True, exclude_none=True))
 
     @get(docs_url, allow_head=False)

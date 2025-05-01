@@ -3,6 +3,8 @@ from __future__ import annotations
 import inspect
 from abc import ABC
 from typing import Any, get_type_hints, List
+
+from requests import Request
 from typing_extensions import get_args
 
 from attrs import define, Factory
