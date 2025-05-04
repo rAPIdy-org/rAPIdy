@@ -35,6 +35,10 @@
     </i>
 </p>
 
+<p align="center">
+    ⭐️ If you like rAPIdy, consider <a href="https://github.com/rAPIdy-org/rAPIdy/stargazers">starring the project</a> on GitHub — it helps a lot!
+</p>
+
 # 🚀 Why rAPIdy?
 
 rAPIdy is designed for developers who need a fast, async-first web framework that combines the performance of aiohttp
