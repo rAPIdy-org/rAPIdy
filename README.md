@@ -36,7 +36,7 @@
 </p>
 
 <p align="center">
-    ⭐️ If you like rAPIdy, consider <a href="https://github.com/rAPIdy-org/rAPIdy/stargazers">starring the project</a> on GitHub — it helps a lot!
+    ⭐️ If you like rAPIdy, consider starring the project on GitHub — it helps a lot!
 </p>
 
 # 🚀 Why rAPIdy?
