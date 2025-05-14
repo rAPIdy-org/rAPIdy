@@ -766,7 +766,7 @@ Want to improve rAPIdy? We welcome contributions! 🚀
 ---
 
 # 📜 License
-rAPIdy is licensed under the MIT License. See LICENSE for details.
+rAPIdy is licensed under the MIT License. See [LICENSE](./LICENSE) for details.
 
 ---
 
