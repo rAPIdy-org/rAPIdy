@@ -1,52 +1,53 @@
 from __future__ import annotations
 
-import inspect
-from typing import Any
+from abc import ABC, abstractmethod
+from typing import Any, TYPE_CHECKING
 
-from rapidy.request import Request
-from rapidy.typedefs import Handler
+from rapidy_core.exceptions import RapidyException
 
-__all__ = ('BaseHTTPRouter', 'HTTPRouteHandler')
+if TYPE_CHECKING:
+    from rapidy import Rapidy
+
+__all__ = ('BaseHTTPRouter', 'IncorrectPathError', 'RouterTypeError', 'raise_if_not_base_http_router')
 
 
-class BaseHTTPRouter:
-    """Minimal common route object retained for decorator compatibility."""
+class RouterTypeError(RapidyException):
+    """Raised when an application receives a non-router object."""
+
+    message = """
+    `route_handler` must be a subclass of `BaseHTTPRouter`
+
+    Examples:
+    >>> from rapidy.http import get
+    >>> @get('/users/{user_id}')
+    >>> async def some_get(user_id: str) -> None:
+    >>>     pass
+    """
+
+
+class IncorrectPathError(RapidyException):
+    """Raised when a route path does not begin with a slash."""
+
+    message = 'Attribute `path` must start with a slash `/`, not `{path}`.'
+
+
+class BaseHTTPRouter(ABC):
+    """Base contract for objects that register HTTP routes."""
 
     __slots__ = ('path',)
 
-    def __init__(self, path: str) -> None:
+    def __init__(self, path: str | None) -> None:
+        if path is not None and not path.startswith('/'):
+            raise IncorrectPathError(path=path)
         self.path = path
 
+    @abstractmethod
+    def route_register(self, application: Rapidy) -> None:
+        """Register this object in an application."""
+        raise NotImplementedError
 
-class HTTPRouteHandler(BaseHTTPRouter):
-    """Temporary exact-path HTTP handler used until milestone 03."""
 
-    __slots__ = ('_handler', 'method')
-
-    def __init__(self, path: str, method: str) -> None:
-        super().__init__(path)
-        self.method = method
-        self._handler: Handler | None = None
-
-    def __call__(self, handler: Handler) -> HTTPRouteHandler:
-        """Bind the decorated callable and return the route object."""
-        self._handler = handler
-        return self
-
-    @property
-    def handler(self) -> Handler:
-        """Return the bound terminal callable."""
-        if self._handler is None:
-            msg = f'No callable registered for {self.method} {self.path}'
-            raise RuntimeError(msg)
-        return self._handler
-
-    async def invoke(self, request: Request) -> Any:
-        """Invoke a zero-argument or single-Request terminal."""
-        parameters = inspect.signature(self.handler).parameters
-        if not parameters:
-            return await self.handler()
-        if len(parameters) == 1:
-            return await self.handler(request)
-        msg = 'Milestone 02 handlers accept zero arguments or one Request argument'
-        raise TypeError(msg)
+def raise_if_not_base_http_router(obj: Any) -> None:
+    """Validate one route-registration object."""
+    if not isinstance(obj, BaseHTTPRouter):
+        raise RouterTypeError

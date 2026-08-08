@@ -1,3 +1,3 @@
-from rapidy.routing.matcher import ExactPathMatcher
+from rapidy.routing.matcher import RouteRecord
 
-__all__ = ('ExactPathMatcher',)
+__all__ = ('RouteRecord',)

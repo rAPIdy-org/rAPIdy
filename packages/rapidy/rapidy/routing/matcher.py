@@ -1,27 +1,262 @@
 from __future__ import annotations
 
-from rapidy.exceptions import RouteConflictError
-from rapidy.routing.http.base import HTTPRouteHandler
+import re
+from dataclasses import dataclass
+from typing import Any, cast, NamedTuple
 
-__all__ = ('ExactPathMatcher',)
+from rapidy_core.exceptions import RapidyException
+
+from rapidy.exceptions import HTTPMethodNotAllowed, HTTPNotFound
+from rapidy.typedefs import Handler, TerminalHandler
+
+__all__ = ('RouteMatch', 'RouteRecord', 'UrlMatcher')
 
 
-class ExactPathMatcher:
-    """Temporary exact-path table replaced by UrlMatcher in milestone 03."""
+class RouteMatch(NamedTuple):
+    """Resolved terminal plus the request-specific route data."""
 
-    __slots__ = ('_routes',)
+    terminal: TerminalHandler
+    path_params: dict[str, str]
+    route_kwargs: dict[str, Any]
+
+
+class RouteRecord(NamedTuple):
+    """Public, deterministic route metadata for introspection."""
+
+    path: str
+    method: str
+    route_kwargs: dict[str, Any]
+    handler: Handler
+    allow_head: bool
+    is_auto_head: bool
+
+
+class DuplicateRouteError(RapidyException):
+    """Raised when the same method/template pair is registered twice."""
+
+    message = 'Route `{method} {path}` is already registered.'
+
+
+class PathTemplateError(RapidyException):
+    """Raised when a dynamic path template cannot be compiled safely."""
+
+    message = 'Invalid path template `{path}`: {reason}'
+
+
+@dataclass(slots=True)
+class _RouteEntry:
+    terminal: TerminalHandler
+    route_kwargs: dict[str, Any]
+    is_auto_head: bool
+
+
+@dataclass(slots=True)
+class _DynamicRoute:
+    path: str
+    pattern: re.Pattern[str]
+    methods: dict[str, _RouteEntry]
+
+
+def _find_parameter_end(path: str, start: int) -> int:
+    depth = 1
+    index = start + 1
+    while index < len(path):
+        character = path[index]
+        if character == '\\':
+            index += 2
+            continue
+        if character == '{':
+            depth += 1
+        elif character == '}':
+            depth -= 1
+            if depth == 0:
+                return index
+        index += 1
+    return -1
+
+
+def _compile_path(path: str) -> re.Pattern[str] | None:  # noqa: C901
+    if not path.startswith('/'):
+        raise PathTemplateError(path=path, reason='path must start with `/`')
+
+    chunks: list[str] = []
+    names: set[str] = set()
+    literal_start = 0
+    index = 0
+    dynamic = False
+
+    while index < len(path):
+        character = path[index]
+        if character == '}':
+            raise PathTemplateError(path=path, reason='unexpected closing brace')
+        if character != '{':
+            index += 1
+            continue
+
+        dynamic = True
+        chunks.append(re.escape(path[literal_start:index]))
+        end = _find_parameter_end(path, index)
+        if end < 0:
+            raise PathTemplateError(path=path, reason='unclosed path parameter')
+
+        definition = path[index + 1 : end]
+        name, separator, expression = definition.partition(':')
+        if not name.isidentifier():
+            raise PathTemplateError(path=path, reason=f'`{name}` is not a valid parameter name')
+        if name in names:
+            raise PathTemplateError(path=path, reason=f'parameter `{name}` is repeated')
+        if separator and not expression:
+            raise PathTemplateError(path=path, reason=f'parameter `{name}` has an empty regex')
+
+        names.add(name)
+        chunks.append(f'(?P<{name}>{expression if separator else "[^/]+"})')
+        index = end + 1
+        literal_start = index
+
+    if not dynamic:
+        return None
+
+    chunks.append(re.escape(path[literal_start:]))
+    try:
+        return re.compile(''.join(chunks))
+    except re.error as exc:
+        raise PathTemplateError(path=path, reason=str(exc)) from exc
+
+
+class UrlMatcher:
+    """Static-first matcher with ordered dynamic candidates."""
+
+    __slots__ = ('_dynamic', '_dynamic_by_path', '_prefixes', '_records', '_static')
 
     def __init__(self) -> None:
-        self._routes: dict[tuple[str, str], HTTPRouteHandler] = {}
+        self._static: dict[str, dict[str, _RouteEntry]] = {}
+        self._dynamic: list[_DynamicRoute] = []
+        self._dynamic_by_path: dict[str, _DynamicRoute] = {}
+        self._records: list[RouteRecord] = []
+        self._prefixes: list[tuple[str, Any]] = []
 
-    def add_route(self, route: HTTPRouteHandler) -> None:
-        """Register one method/path pair or fail on a duplicate."""
-        key = (route.method, route.path)
-        if key in self._routes:
-            msg = f'Handler already registered for {route.method} {route.path}'
-            raise RouteConflictError(msg)
-        self._routes[key] = route
+    @property
+    def routes(self) -> tuple[RouteRecord, ...]:
+        """Return a registration-order snapshot for public introspection."""
+        return tuple(self._records)
 
-    def resolve(self, method: str, path: str) -> HTTPRouteHandler | None:
-        """Resolve an exact method/path pair."""
-        return self._routes.get((method, path))
+    def add_prefix(self, prefix: str, subapp: Any) -> None:
+        """Store a future mount target in longest-prefix-first order."""
+        self._prefixes.append((prefix, subapp))
+        self._prefixes.sort(key=lambda item: len(item[0]), reverse=True)
+        # TODO(08-middleware-mounts): delegate with a stripped path.  # noqa: FIX002
+
+    def add_route(
+        self,
+        method: str,
+        path: str,
+        terminal: TerminalHandler,
+        route_kwargs: dict[str, Any],
+        *,
+        allow_head: bool = True,
+    ) -> None:
+        """Compile and register one method/template pair."""
+        method = method.upper()
+        pattern = _compile_path(path)
+        methods = self._get_or_create_methods(path, pattern)
+        existing = methods.get(method)
+
+        if existing is not None and not (method == 'HEAD' and existing.is_auto_head):
+            raise DuplicateRouteError(method=method, path=path)
+        if existing is not None:
+            self._remove_auto_head_record(path)
+
+        entry = _RouteEntry(terminal=terminal, route_kwargs=dict(route_kwargs), is_auto_head=False)
+        methods[method] = entry
+        self._records.append(
+            self._make_record(
+                path=path,
+                method=method,
+                route_kwargs=route_kwargs,
+                terminal=terminal,
+                allow_head=allow_head,
+                is_auto_head=False,
+            )
+        )
+
+        if method == 'GET' and allow_head and 'HEAD' not in methods:
+            methods['HEAD'] = _RouteEntry(
+                terminal=terminal,
+                route_kwargs=dict(route_kwargs),
+                is_auto_head=True,
+            )
+            self._records.append(
+                self._make_record(
+                    path=path,
+                    method='HEAD',
+                    route_kwargs=route_kwargs,
+                    terminal=terminal,
+                    allow_head=allow_head,
+                    is_auto_head=True,
+                )
+            )
+
+    def resolve(self, method: str, path: str) -> RouteMatch:
+        """Resolve a request or raise a deterministic 404/405 error."""
+        method = method.upper()
+        allowed_methods: set[str] = set()
+
+        static_methods = self._static.get(path)
+        if static_methods is not None:
+            entry = static_methods.get(method)
+            if entry is not None:
+                return self._to_match(entry, {})
+            allowed_methods.update(static_methods)
+
+        for candidate in self._dynamic:
+            match = candidate.pattern.fullmatch(path)
+            if match is None:
+                continue
+            entry = candidate.methods.get(method)
+            if entry is not None:
+                return self._to_match(entry, match.groupdict())
+            allowed_methods.update(candidate.methods)
+
+        if allowed_methods:
+            raise HTTPMethodNotAllowed(method, allowed_methods)
+        raise HTTPNotFound
+
+    def _get_or_create_methods(
+        self,
+        path: str,
+        pattern: re.Pattern[str] | None,
+    ) -> dict[str, _RouteEntry]:
+        if pattern is None:
+            return self._static.setdefault(path, {})
+
+        candidate = self._dynamic_by_path.get(path)
+        if candidate is None:
+            candidate = _DynamicRoute(path=path, pattern=pattern, methods={})
+            self._dynamic_by_path[path] = candidate
+            self._dynamic.append(candidate)
+        return candidate.methods
+
+    @staticmethod
+    def _make_record(
+        *,
+        path: str,
+        method: str,
+        route_kwargs: dict[str, Any],
+        terminal: TerminalHandler,
+        allow_head: bool,
+        is_auto_head: bool,
+    ) -> RouteRecord:
+        # functools.wraps on the terminal preserves the original handler without widening add_route's public API.
+        handler = cast('Handler', getattr(terminal, '__wrapped__', terminal))
+        return RouteRecord(path, method, dict(route_kwargs), handler, allow_head, is_auto_head)
+
+    def _remove_auto_head_record(self, path: str) -> None:
+        self._records = [
+            record
+            for record in self._records
+            if not (record.path == path and record.method == 'HEAD' and record.is_auto_head)
+        ]
+
+    @staticmethod
+    def _to_match(entry: _RouteEntry, path_params: dict[str, str]) -> RouteMatch:
+        return RouteMatch(entry.terminal, path_params, dict(entry.route_kwargs))
