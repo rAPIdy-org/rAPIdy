@@ -1,0 +1,55 @@
+from __future__ import annotations
+
+from dishka import (
+    DEFAULT_COMPONENT,
+    STRICT_VALIDATION,
+    AnyOf,
+    AsyncContainer,
+    BaseScope,
+    Component,
+    Container,
+    DependencyKey,
+    FromComponent,
+    Provider,
+    Scope,
+    ValidationSettings,
+    WithParents,
+    alias,
+    decorate,
+    from_context,
+    make_async_container,
+    make_container,
+    new_scope,
+    provide,
+    provide_all,
+)
+from dishka import (
+    FromDishka as FromDI,
+)
+from dishka.integrations.base import wrap_injection
+
+__all__ = (
+    "DEFAULT_COMPONENT",
+    "STRICT_VALIDATION",
+    "AnyOf",
+    "AsyncContainer",
+    "BaseScope",
+    "Component",
+    "Container",
+    "DependencyKey",
+    "FromComponent",
+    "FromDI",
+    "Provider",
+    "Scope",
+    "ValidationSettings",
+    "WithParents",
+    "alias",
+    "decorate",
+    "from_context",
+    "make_async_container",
+    "make_container",
+    "new_scope",
+    "provide",
+    "provide_all",
+    "wrap_injection",
+)
