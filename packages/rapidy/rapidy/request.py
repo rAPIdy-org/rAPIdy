@@ -197,9 +197,11 @@ class Request:
     """Request view over an HTTP ASGI scope with one-shot body caching."""
 
     _asgi_send: Send
+    _asgi_receive: Receive
 
     __slots__ = (
         '_asgi_send',
+        '_asgi_receive',
         '_cache',
         '_cookies',
         '_deadline_remaining_ms',

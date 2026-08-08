@@ -73,7 +73,8 @@ from rapidy.exceptions import (
 )
 from rapidy.middlewares import middleware, normalize_path_middleware
 from rapidy.request import BaseRequest, FileField, Request
-from rapidy.response import Response, StreamResponse
+from rapidy.response import Response
+from rapidy.responses.streaming import SSEResponse, StreamResponse
 from rapidy.routing.http.routers import controller, delete, get, head, HTTPRouter, options, patch, post, put, websocket
 from rapidy.websockets import WebSocket, WebSocketDisconnect
 
@@ -102,6 +103,7 @@ __all__ = (
     'Request',
     'Response',
     'StreamResponse',
+    'SSEResponse',
     'WebSocket',
     'WebSocketDisconnect',
     'middleware',

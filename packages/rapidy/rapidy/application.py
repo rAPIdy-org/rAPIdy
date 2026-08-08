@@ -21,6 +21,7 @@ from rapidy.lifespan import Lifespan
 from rapidy.middlewares.runner import build_onion, prepare_middlewares
 from rapidy.request import Request, State
 from rapidy.response import Response
+from rapidy.responses.streaming import StreamResponse
 from rapidy.routing.http.base import raise_if_not_base_http_router
 from rapidy.routing.matcher import RouteMatch, RouteRecord, UrlMatcher
 from rapidy.typedefs import ASGIScope, CallNext, Handler, LifespanCTX, LifespanHook, Middleware, Receive, Send
@@ -92,12 +93,13 @@ class Rapidy(MutableMapping[str, Any]):
         )
         self.server_info_in_response = server_info_in_response
         self.state = State()
+        self.state['_open_websockets'] = set()
         self._matcher = UrlMatcher()
         self.lifespan = Lifespan(
             self,
             lifespan_managers=[di_lifespan, _onion_lifespan, *lifespan],
             on_startup=list(on_startup),
-            on_shutdown=[*on_shutdown, close_owned_di],
+            on_shutdown=[self._close_open_websockets, *on_shutdown, close_owned_di],
             on_cleanup=list(on_cleanup),
         )
         self.add_http_routers(http_route_handlers)
@@ -196,6 +198,7 @@ class Rapidy(MutableMapping[str, Any]):
             await self._send_response(_internal_server_error_response(), tracking_send)
             return
         request._asgi_send = tracking_send  # noqa: SLF001
+        request._asgi_receive = receive  # noqa: SLF001
 
         if not self._onion_built:
             # Compatibility fallback for in-process transports that omit ASGI lifespan.
@@ -258,24 +261,41 @@ class Rapidy(MutableMapping[str, Any]):
             await ws.close(code=1011, reason='Application dependency container is not available')
             return
 
-        async with root_container(
-            context={WebSocket: ws, Request: request},
-            scope=Scope.SESSION,
-        ) as session_container:
-            request.state.di_container = session_container
+        open_websockets = cast('set[WebSocket]', self.state['_open_websockets'])
+        open_websockets.add(ws)
+        try:
+            async with root_container(
+                context={WebSocket: ws, Request: request},
+                scope=Scope.SESSION,
+            ) as session_container:
+                request.state.di_container = session_container
+                try:
+                    ws_terminal = cast('Handler', route_match.terminal)
+                    await ws_terminal(ws, request)
+                except WebSocketDisconnect:
+                    pass
+                except HTTPException:
+                    code = 1000 if ws.client_state is WebSocketState.CONNECTING else 1011
+                    await ws.close(code=code)
+                except Exception:
+                    logger.exception('Unhandled exception during WebSocket processing')
+                    await ws.close(code=1011)
+                else:
+                    await ws.close(code=1000)
+        finally:
+            open_websockets.discard(ws)
+
+    async def _close_open_websockets(self) -> None:
+        """Close accepted WebSockets before user shutdown and cleanup hooks."""
+        open_websockets = cast('set[WebSocket]', self.state['_open_websockets'])
+        for ws in tuple(open_websockets):
+            # Registration precedes the user-owned accept call, so only connected sockets close here.
+            if ws.application_state is not WebSocketState.CONNECTED:
+                continue
             try:
-                ws_terminal = cast('Handler', route_match.terminal)
-                await ws_terminal(ws, request)
-            except WebSocketDisconnect:
-                pass
-            except HTTPException:
-                code = 1000 if ws.client_state is WebSocketState.CONNECTING else 1011
-                await ws.close(code=code)
+                await ws.close(code=1001)
             except Exception:
-                logger.exception('Unhandled exception during WebSocket processing')
-                await ws.close(code=1011)
-            else:
-                await ws.close(code=1000)
+                logger.exception('Error while closing WebSocket connection on shutdown')
 
     def _resolve_ws_target(self, path: str) -> tuple[Rapidy, RouteMatch] | None:
         for prefix, subapp in self._subapps:
@@ -289,7 +309,7 @@ class Rapidy(MutableMapping[str, Any]):
     async def _handle_http(self, request: Request, tracking_send: _TrackingSend) -> None:
         try:
             response = await self._run_onion(request)
-            await self._send_response(response, tracking_send, app=request.app)
+            await self._send_response(response, tracking_send, app=request.app, request=request)
         except ConnectionResetError:
             logger.debug('Client disconnected while reading request body: %s %s', request.method, request.path)
         except HTTPException as exc:
@@ -305,13 +325,13 @@ class Rapidy(MutableMapping[str, Any]):
             else:
                 await self._send_response(_internal_server_error_response(), tracking_send, app=request.app)
 
-    async def _run_onion(self, request: Request) -> Response:
+    async def _run_onion(self, request: Request) -> Response | StreamResponse:
         if self._onion is None:
             msg = 'Application middleware onion has not been built'
             raise RuntimeError(msg)
-        return await self._onion(request)
+        return cast('Response | StreamResponse', await self._onion(request))
 
-    async def _dispatch_terminal(self, request: Request) -> Response:
+    async def _dispatch_terminal(self, request: Request) -> Response | StreamResponse:
         path = str(request.scope['_rapidy_mount_path'])
         for prefix, subapp in self._subapps:
             if path == prefix or path.startswith(f'{prefix}/'):
@@ -326,7 +346,7 @@ class Rapidy(MutableMapping[str, Any]):
         route_match = self._matcher.resolve(request.method, path)
         request.scope['path_params'] = route_match.path_params
         request.path_params = route_match.path_params
-        return await route_match.terminal(request)
+        return cast('Response | StreamResponse', await route_match.terminal(request))
 
     def _can_resolve(self, method: str, path: str) -> bool:
         for prefix, subapp in self._subapps:
@@ -346,7 +366,7 @@ class Rapidy(MutableMapping[str, Any]):
         if self._onion_built:
             return
         prepared_middlewares = prepare_middlewares(self._middlewares)
-        onion = build_onion(prepared_middlewares, self._dispatch_terminal)
+        onion = build_onion(prepared_middlewares, cast('CallNext', self._dispatch_terminal))
         for _prefix, subapp in self._subapps:
             subapp._build_onion()  # noqa: SLF001
         self._onion = onion
@@ -354,13 +374,25 @@ class Rapidy(MutableMapping[str, Any]):
 
     async def _send_response(
         self,
-        response: Response,
+        response: Response | StreamResponse,
         response_send: Send,
         *,
         app: Rapidy | None = None,
+        request: Request | None = None,
     ) -> None:
         response_app = app if app is not None else self
         server_info = SERVER_INFO if response_app.server_info_in_response else None
+        if isinstance(response, StreamResponse):
+            if request is None:
+                msg = 'Streaming responses require the active Request transport'
+                raise RuntimeError(msg)
+            await response.prepare(request)
+            await response._send_stream(  # noqa: SLF001
+                response_send,
+                request._asgi_receive,  # noqa: SLF001
+                server_info=server_info,
+            )
+            return
         await response._send(response_send, server_info=server_info)  # noqa: SLF001
 
     def __getitem__(self, key: str) -> Any:

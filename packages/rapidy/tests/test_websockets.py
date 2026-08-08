@@ -467,8 +467,8 @@ def test_public_ws_contract() -> None:
     from rapidy import http  # noqa: PLC0415
     from rapidy.depends import RapidyProvider  # noqa: PLC0415
 
-    assert {'websocket', 'WebSocket', 'WebSocketDisconnect'} <= set(http.__all__)
-    assert len(http.__all__) == 89
+    assert {'websocket', 'WebSocket', 'WebSocketDisconnect', 'StreamResponse', 'SSEResponse'} <= set(http.__all__)
+    assert len(http.__all__) == 90
     assert hasattr(RapidyProvider, 'web_socket')
     assert 'web_socket' not in __import__('rapidy.depends', fromlist=['__all__']).__all__
     assert list(inspect.signature(WebSocket.accept).parameters) == ['self', 'subprotocol', 'headers']

@@ -18,7 +18,8 @@ from rapidy.endpoint_handlers.http.request.data_validators import (
 )
 from rapidy.exceptions import HTTPValidationFailure
 from rapidy.request import Request
-from rapidy.response import Response, StreamResponse
+from rapidy.response import Response
+from rapidy.responses.streaming import StreamResponse
 from rapidy.typedefs import Handler, JSONEncoder, UnsetType, ValidationErrorList
 
 if TYPE_CHECKING:
@@ -105,7 +106,11 @@ class HandlerController:
             raise HTTPValidationFailure(errors=errors)
         return cast('dict[AttributeName, AttributeValue]', values)
 
-    async def create_response(self, handler_result: Any, current_response: Response | None) -> StreamResponse:
+    async def create_response(
+        self,
+        handler_result: Any,
+        current_response: Response | None,
+    ) -> Response | StreamResponse:
         """Validate a handler result and merge it into the active response."""
         if annotation_is_stream_response(type(handler_result)):
             return handler_result
