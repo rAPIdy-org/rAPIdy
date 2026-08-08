@@ -58,6 +58,13 @@ class _DynamicRoute:
     methods: dict[str, _RouteEntry]
 
 
+@dataclass(slots=True)
+class _WebSocketDynamicRoute:
+    path: str
+    pattern: re.Pattern[str]
+    terminal: Handler
+
+
 def _find_parameter_end(path: str, start: int) -> int:
     depth = 1
     index = start + 1
@@ -127,7 +134,16 @@ def _compile_path(path: str) -> re.Pattern[str] | None:  # noqa: C901
 class UrlMatcher:
     """Static-first matcher with ordered dynamic candidates."""
 
-    __slots__ = ('_dynamic', '_dynamic_by_path', '_prefixes', '_records', '_static')
+    __slots__ = (
+        '_dynamic',
+        '_dynamic_by_path',
+        '_prefixes',
+        '_records',
+        '_static',
+        '_ws_dynamic',
+        '_ws_dynamic_by_path',
+        '_ws_static',
+    )
 
     def __init__(self) -> None:
         self._static: dict[str, dict[str, _RouteEntry]] = {}
@@ -135,6 +151,9 @@ class UrlMatcher:
         self._dynamic_by_path: dict[str, _DynamicRoute] = {}
         self._records: list[RouteRecord] = []
         self._prefixes: list[tuple[str, Any]] = []
+        self._ws_static: dict[str, Handler] = {}
+        self._ws_dynamic: list[_WebSocketDynamicRoute] = []
+        self._ws_dynamic_by_path: dict[str, _WebSocketDynamicRoute] = {}
 
     @property
     def routes(self) -> tuple[RouteRecord, ...]:
@@ -226,6 +245,33 @@ class UrlMatcher:
 
         if allowed_methods:
             raise HTTPMethodNotAllowed(method, allowed_methods)
+        raise HTTPNotFound
+
+    def add_ws_route(self, path: str, terminal: Handler) -> None:
+        """Register a ``(WebSocket, Request) -> None`` terminal in the independent WS table."""
+        pattern = _compile_path(path)
+        if pattern is None:
+            if path in self._ws_static:
+                raise DuplicateRouteError(method='WS', path=path)
+            self._ws_static[path] = terminal
+            return
+
+        if path in self._ws_dynamic_by_path:
+            raise DuplicateRouteError(method='WS', path=path)
+        candidate = _WebSocketDynamicRoute(path=path, pattern=pattern, terminal=terminal)
+        self._ws_dynamic_by_path[path] = candidate
+        self._ws_dynamic.append(candidate)
+
+    def resolve_ws(self, path: str) -> RouteMatch:
+        """Resolve a WebSocket path without applying HTTP method semantics."""
+        static_terminal = self._ws_static.get(path)
+        if static_terminal is not None:
+            return RouteMatch(static_terminal, {}, {})
+
+        for candidate in self._ws_dynamic:
+            match = candidate.pattern.fullmatch(path)
+            if match is not None:
+                return RouteMatch(candidate.terminal, match.groupdict(), {})
         raise HTTPNotFound
 
     def _get_or_create_methods(

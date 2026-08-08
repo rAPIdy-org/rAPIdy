@@ -53,7 +53,7 @@ async def test_in_process_http_and_public_facade() -> None:
 
 
 @pytest.mark.asyncio
-async def test_websocket_is_temporarily_closed_with_1011() -> None:
+async def test_websocket_is_closed_with_1011_before_startup() -> None:
     messages: list[dict[str, Any]] = []
 
     async def receive() -> dict[str, Any]:
@@ -67,7 +67,7 @@ async def test_websocket_is_temporarily_closed_with_1011() -> None:
         {
             'type': 'websocket.close',
             'code': 1011,
-            'reason': 'WebSocket support is not available yet',
+            'reason': 'Application startup has not completed',
         }
     ]
 

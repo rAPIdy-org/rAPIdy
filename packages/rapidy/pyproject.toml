@@ -75,6 +75,7 @@ test = [
     "httpx>=0.28,<1",
     "granian>=2.7,<3",
     "uvicorn>=0.34,<1",
+    "websockets>=15.0,<16",
 ]
 docs = [
     "mkdocs>=1.6.1,<2.0.0",

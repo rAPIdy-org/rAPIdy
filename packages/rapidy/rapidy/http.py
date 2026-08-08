@@ -74,7 +74,8 @@ from rapidy.exceptions import (
 from rapidy.middlewares import middleware, normalize_path_middleware
 from rapidy.request import BaseRequest, FileField, Request
 from rapidy.response import Response, StreamResponse
-from rapidy.routing.http.routers import controller, delete, get, head, HTTPRouter, options, patch, post, put
+from rapidy.routing.http.routers import controller, delete, get, head, HTTPRouter, options, patch, post, put, websocket
+from rapidy.websockets import WebSocket, WebSocketDisconnect
 
 __all__ = (
     'HTTPRouter',
@@ -86,6 +87,7 @@ __all__ = (
     'controller',
     'head',
     'options',
+    'websocket',
     'Body',
     'Cookie',
     'Cookies',
@@ -100,6 +102,8 @@ __all__ = (
     'Request',
     'Response',
     'StreamResponse',
+    'WebSocket',
+    'WebSocketDisconnect',
     'middleware',
     'normalize_path_middleware',
     'HTTPAccepted',

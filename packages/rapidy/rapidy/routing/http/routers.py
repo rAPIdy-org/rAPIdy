@@ -16,6 +16,9 @@ from rapidy.constants import CLIENT_MAX_SIZE
 from rapidy.depends import inject_http
 from rapidy.endpoint_handlers.http.attrs_extractor import get_http_handler_info
 from rapidy.endpoint_handlers.http.handlers import handler_validation_wrapper, METH_ALL, view_validation_wrapper
+from rapidy.endpoint_handlers.http.request.data_validators import request_validator_factory
+from rapidy.exceptions import HTTPValidationFailure
+from rapidy.request import Request
 from rapidy.routing.http.base import BaseHTTPRouter
 from rapidy.routing.http.helper_types import HandlerPartial
 from rapidy.routing.matcher import RouteRecord
@@ -30,6 +33,7 @@ from rapidy.typedefs import (
     UnsetType,
     View,
 )
+from rapidy.websockets import WebSocket
 
 if TYPE_CHECKING:
     from rapidy_core.encoders import CustomEncoder, Exclude, Include
@@ -50,6 +54,7 @@ __all__ = (
     'head',
     'options',
     'controller',
+    'websocket',
 )
 
 MethodName = HTTPMethod
@@ -116,6 +121,18 @@ class HandlerIsNotAsyncFuncTypeError(RapidyException):
     message = 'Handler must be an async function. Current type: `{type_handler}`'
 
 
+class BodyNotAvailableInWebSocketHandlerError(RapidyHandlerException):
+    """Raised when a WebSocket handler declares request-body extraction."""
+
+    message = 'Body is not available in websocket handlers.'
+
+
+class WebSocketFieldAlreadyExistsError(RapidyHandlerException):
+    """Raised when a handler declares more than one WebSocket injection point."""
+
+    message = 'Error during attribute definition in the handler - websocket param defined twice.'
+
+
 def is_controller(handler: Any) -> bool:
     """Return whether a router object is a class controller decorator."""
     return isinstance(handler, controller)
@@ -123,6 +140,44 @@ def is_controller(handler: Any) -> bool:
 
 def _is_async_callable(handler: Handler) -> bool:
     return inspect.iscoroutinefunction(handler) or inspect.iscoroutinefunction(type(handler).__call__)
+
+
+def _create_ws_terminal(handler: Handler) -> Handler:
+    handler_with_di = inject_http(handler)
+    info = get_http_handler_info(handler_with_di, request_attr_can_declare_fst=False)
+
+    for http_attr in info.request_params:
+        if http_attr.http_param_type == HTTPRequestParamType.body:
+            raise BodyNotAvailableInWebSocketHandlerError.create(
+                handler=handler_with_di,
+                attr_name=http_attr.attribute_name,
+            )
+
+    ws_attribute_name: str | None = None
+    for attr in info.attrs:
+        if not lenient_issubclass(attr.attribute_annotation, WebSocket):
+            continue
+        if ws_attribute_name is not None:
+            raise WebSocketFieldAlreadyExistsError.create(handler=handler_with_di)
+        ws_attribute_name = attr.attribute_name
+
+    request_validator = request_validator_factory(
+        handler=handler_with_di,
+        request_params=info.request_params,
+    )
+
+    async def ws_terminal(ws: WebSocket, request: Request) -> None:
+        values, errors = await request_validator.validate(request)
+        if errors:
+            raise HTTPValidationFailure(errors=errors)
+        values = values or {}
+        if info.request_attribute is not None:
+            values[info.request_attribute.attribute_name] = request
+        if ws_attribute_name is not None:
+            values[ws_attribute_name] = ws
+        await handler_with_di(**values)
+
+    return ws_terminal
 
 
 class HTTPRouter(BaseHTTPRouter):
@@ -157,6 +212,29 @@ class HTTPRouter(BaseHTTPRouter):
 
     def route_register(self, application: Rapidy) -> None:
         application.add_subapp(prefix=cast('str', self.path), subapp=self.application)
+
+
+class websocket(BaseHTTPRouter):
+    """Register an asynchronous WebSocket route."""
+
+    __slots__ = ('_handler',)
+
+    def __init__(self, path: str | None = None) -> None:
+        super().__init__(path=path)
+
+    def __call__(self, handler: Handler) -> websocket:
+        if not _is_async_callable(handler):
+            raise HandlerIsNotAsyncFuncTypeError(type_handler=str(type(handler)))
+        self._handler = handler
+        return self
+
+    def route_register(self, application: Rapidy) -> None:
+        if self.path is None:
+            raise MissingPathError.create(handler=self._handler)
+        application._matcher.add_ws_route(  # noqa: SLF001
+            self.path,
+            _create_ws_terminal(self._handler),
+        )
 
 
 class HTTPRouteHandler(BaseHTTPRouter, ABC):

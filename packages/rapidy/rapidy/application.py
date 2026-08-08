@@ -16,16 +16,16 @@ from rapidy.di import (
     LockFactory,
     request_di_scope,
 )
-from rapidy.exceptions import HTTPException
+from rapidy.exceptions import HTTPException, HTTPNotFound
 from rapidy.lifespan import Lifespan
 from rapidy.middlewares.runner import build_onion, prepare_middlewares
 from rapidy.request import Request, State
 from rapidy.response import Response
 from rapidy.routing.http.base import raise_if_not_base_http_router
-from rapidy.routing.matcher import RouteRecord, UrlMatcher
-from rapidy.typedefs import ASGIScope, CallNext, LifespanCTX, LifespanHook, Middleware, Receive, Send
+from rapidy.routing.matcher import RouteMatch, RouteRecord, UrlMatcher
+from rapidy.typedefs import ASGIScope, CallNext, Handler, LifespanCTX, LifespanHook, Middleware, Receive, Send
 from rapidy.version import SERVER_INFO
-from rapidy.websockets import close_unsupported_websocket
+from rapidy.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
 if TYPE_CHECKING:
     from rapidy.routing.http.base import BaseHTTPRouter
@@ -176,7 +176,7 @@ class Rapidy(MutableMapping[str, Any]):
             await self.lifespan.handle_asgi(receive, send)
             return
         if scope_type == 'websocket':
-            await close_unsupported_websocket(send)
+            await self._handle_websocket(scope, receive, send)
             return
         if scope_type != 'http':
             msg = f'Unsupported ASGI scope: {scope_type!r}'
@@ -210,6 +210,81 @@ class Rapidy(MutableMapping[str, Any]):
 
         async with request_di_scope(container, request):
             await self._handle_http(request, tracking_send)
+
+    async def _handle_websocket(self, scope: ASGIScope, receive: Receive, send: Send) -> None:
+        if not self._onion_built:
+            await receive()
+            await send(
+                {
+                    'type': 'websocket.close',
+                    'code': 1011,
+                    'reason': 'Application startup has not completed',
+                }
+            )
+            return
+
+        path = _strip_root_path(str(scope.get('path', '')), str(scope.get('root_path', '')))
+        resolved = self._resolve_ws_target(path)
+        if resolved is None:
+            await receive()
+            await send({'type': 'websocket.close', 'code': 1000})
+            return
+
+        matched_app, route_match = resolved
+        request_scope = dict(scope)
+        request_scope.update(
+            {
+                'app': matched_app,
+                'method': 'GET',
+                'path_params': route_match.path_params,
+            }
+        )
+        ws = WebSocket(scope, receive, send)
+        ws.path_params = route_match.path_params
+
+        try:
+            request = Request(request_scope, receive)
+        except HTTPException:
+            await ws.close(code=1000)
+            return
+        except Exception:
+            logger.exception('Unhandled exception while initializing WebSocket request')
+            await ws.close(code=1011)
+            return
+        request.path_params = route_match.path_params
+
+        root_container = self._request_di_container()
+        if root_container is None:
+            await ws.close(code=1011, reason='Application dependency container is not available')
+            return
+
+        async with root_container(
+            context={WebSocket: ws, Request: request},
+            scope=Scope.SESSION,
+        ) as session_container:
+            request.state.di_container = session_container
+            try:
+                ws_terminal = cast('Handler', route_match.terminal)
+                await ws_terminal(ws, request)
+            except WebSocketDisconnect:
+                pass
+            except HTTPException:
+                code = 1000 if ws.client_state is WebSocketState.CONNECTING else 1011
+                await ws.close(code=code)
+            except Exception:
+                logger.exception('Unhandled exception during WebSocket processing')
+                await ws.close(code=1011)
+            else:
+                await ws.close(code=1000)
+
+    def _resolve_ws_target(self, path: str) -> tuple[Rapidy, RouteMatch] | None:
+        for prefix, subapp in self._subapps:
+            if path == prefix or path.startswith(f'{prefix}/'):
+                return subapp._resolve_ws_target(path[len(prefix) :] or '/')  # noqa: SLF001
+        try:
+            return self, self._matcher.resolve_ws(path)
+        except HTTPNotFound:
+            return None
 
     async def _handle_http(self, request: Request, tracking_send: _TrackingSend) -> None:
         try:

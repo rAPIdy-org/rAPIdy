@@ -34,6 +34,7 @@ from rapidy_core.di import (
 
 from rapidy.request import Request
 from rapidy.response import Response
+from rapidy.websockets import WebSocket
 
 __all__ = [
     'DEFAULT_COMPONENT',
@@ -126,3 +127,4 @@ class RapidyProvider(Provider):
     """Expose server context objects to user providers."""
 
     request = from_context(Request, scope=Scope.SESSION)
+    web_socket = from_context(WebSocket, scope=Scope.SESSION)
