@@ -1,0 +1,10 @@
+-e /Users/popkovdaniil/Documents/projects/opensource/rAPIdy/packages/rapidy_core
+multidict
+python-multipart
+granian
+uvicorn
+pytest
+pytest-asyncio
+httpx
+websockets
+aiohttp
