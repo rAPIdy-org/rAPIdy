@@ -13,11 +13,12 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, ParamSpec, Protocol, TypeVar, cast
 
 from rapidy_core import UNSET, HTTPRequestParamType, Unset
+from rapidy_core.constants import DEFAULT_JSON_ENCODER
 from rapidy_core.fields.field_info import RapidyFieldInfo
 from rapidy_core.signature import get_signature_raw_info
 from rapidy_core.typedefs import Required, Undefined
 
-from rapidy_client._models import Middleware, Response, Result, Timeout
+from rapidy_client._models import Middleware, QueryValue, Response, Result, Timeout
 from rapidy_client.errors import SchemaDefinitionError
 
 if TYPE_CHECKING:
@@ -25,12 +26,29 @@ if TYPE_CHECKING:
 
     from rapidy_client.config import RetryConfig
     from rapidy_client.schema import CallOptions, QuerySerialization
+    from rapidy_client.schema._serialize import ResponsePlan
 
 P = ParamSpec("P")
 R = TypeVar("R")
 C = TypeVar("C", bound=type[Any])
 
 _PATH_PARAM_RE = re.compile(r"\{([^{}/]+)\}")
+_SERIALIZATION_OPTIONS = frozenset(
+    {
+        "request_by_alias",
+        "request_charset",
+        "request_content_type",
+        "request_custom_encoder",
+        "request_exclude_defaults",
+        "request_exclude_fields",
+        "request_exclude_none",
+        "request_exclude_unset",
+        "request_include_fields",
+        "request_json_encoder",
+        "response_type",
+        "response_validate",
+    }
+)
 
 
 class Stream:
@@ -85,6 +103,7 @@ class _ControllerDeclaration:
     error_model: ErrorModel = UNSET
     query_serialization: QuerySerialization | Unset = UNSET
     middlewares: tuple[Middleware, ...] = ()
+    serialization_options: Mapping[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -113,6 +132,7 @@ class _ResolvedSignature:
     returns_stream: bool
     returns_response: bool
     returns_none: bool
+    response_plan: ResponsePlan
 
 
 class Endpoint:
@@ -275,19 +295,34 @@ def _check_marking_and_paths(
         if marker is None and pname not in deferred:
             raise _schema_error(qualname, f"parameter '{pname}' has no schema marker")
 
-    marked_paths = {
-        pname
-        for pname, marker in marker_by_param.items()
-        if marker is not None
-        and getattr(marker, "param_type", None) is HTTPRequestParamType.path
-    }
+    marked_paths: set[str] = set()
+    unresolved_aggregate = False
+    for pname, marker in marker_by_param.items():
+        if (
+            marker is None
+            or getattr(marker, "param_type", None) is not HTTPRequestParamType.path
+        ):
+            continue
+        if getattr(marker, "extract_single", False):
+            marked_paths.add(pname)
+            continue
+        model_fields = getattr(
+            getattr(marker, "annotation", None), "model_fields", None
+        )
+        if not isinstance(model_fields, Mapping):
+            unresolved_aggregate = True
+            continue
+        marked_paths.update(
+            field.alias if isinstance(field.alias, str) else name
+            for name, field in model_fields.items()
+        )
     extra = marked_paths - path_names
     if extra:
         raise _schema_error(
             qualname,
             f"PathParam argument(s) {sorted(extra)} are absent from the path template",
         )
-    if not deferred:
+    if not deferred and not unresolved_aggregate:
         missing = path_names - marked_paths
         if missing:
             raise _schema_error(
@@ -299,14 +334,19 @@ def _check_marking_and_paths(
 def _check_body_count(
     markers: Mapping[str, RapidyFieldInfo | None], qualname: str
 ) -> None:
-    bodies = [
-        name
+    bodies = {
+        name: marker
         for name, marker in markers.items()
         if marker is not None
         and getattr(marker, "param_type", None) is HTTPRequestParamType.body
+    }
+    regular_bodies = [
+        name
+        for name, marker in bodies.items()
+        if getattr(marker, "body_kind", None) not in {"form", "file"}
     ]
-    if len(bodies) > 1:
-        raise _schema_error(qualname, f"multiple body parameters: {bodies}")
+    if len(regular_bodies) > 1 or (regular_bodies and len(bodies) > 1):
+        raise _schema_error(qualname, f"multiple body parameters: {sorted(bodies)}")
 
 
 def _check_statuses_error_model_conflict(
@@ -419,12 +459,17 @@ def _effective_from_controller(
         ),
         name=method.name,
         middlewares=controller_declaration.middlewares + method.middlewares,
-        serialization_options=method.serialization_options,
+        serialization_options={
+            **controller_declaration.serialization_options,
+            **method.serialization_options,
+        },
         declaration=method,
     )
 
 
 def _resolve_signature(effective: _EffectiveDeclaration) -> _ResolvedSignature:
+    from rapidy_client.schema._serialize import build_response_plan
+
     declaration = effective.declaration
     try:
         raw = get_signature_raw_info(declaration.func)
@@ -449,6 +494,23 @@ def _resolve_signature(effective: _EffectiveDeclaration) -> _ResolvedSignature:
         effective.statuses, raw.return_annotation, declaration.qualname
     )
     return_annotation = raw.return_annotation
+    options = effective.serialization_options
+    try:
+        response_plan = build_response_plan(
+            return_annotation=return_annotation,
+            response_validate=cast(bool, options.get("response_validate", True)),
+            response_type=cast("type[BaseModel] | None", options.get("response_type")),
+            statuses=(
+                None
+                if effective.statuses is UNSET
+                else cast("Mapping[int, type[BaseModel] | None]", effective.statuses)
+            ),
+            error_model=(
+                None if effective.error_model is UNSET else effective.error_model
+            ),
+        )
+    except SchemaDefinitionError as exc:
+        raise _schema_error(declaration.qualname, str(exc)) from exc
     return _ResolvedSignature(
         data_attrs=tuple(raw.data_attrs),
         signature=inspect.signature(declaration.func),
@@ -456,6 +518,7 @@ def _resolve_signature(effective: _EffectiveDeclaration) -> _ResolvedSignature:
         returns_stream=return_annotation is Stream,
         returns_response=return_annotation is Response,
         returns_none=return_annotation is None or return_annotation is type(None),
+        response_plan=response_plan,
     )
 
 
@@ -482,23 +545,15 @@ def _call_values(
 
 
 def _wire_name(field_info: RapidyFieldInfo) -> str:
+    serialization_alias = field_info.serialization_alias
+    if isinstance(serialization_alias, str):
+        return serialization_alias
     alias = field_info.alias
     return alias if isinstance(alias, str) else field_info.name
 
 
 def _has_marker_default(field_info: RapidyFieldInfo) -> bool:
     return field_info.default is not Undefined and field_info.default is not Required
-
-
-def _is_json_content_type(content_type: object) -> bool:
-    normalized = str(content_type).split(";", 1)[0].strip().lower()
-    return normalized == "application/json" or normalized.endswith("+json")
-
-
-def _unsupported_aggregate(kind: str) -> typing.NoReturn:
-    raise SchemaDefinitionError(
-        f"aggregate {kind} serialization is implemented in milestone 16"
-    )
 
 
 def _pick_option(options: CallOptions | None, name: str, declared: Any) -> Any:
@@ -512,7 +567,18 @@ def _dispatch(
     resolved: _ResolvedSignature,
     call_values: Mapping[str, Any],
 ) -> Any:
+    from pydantic import BaseModel
+
     from rapidy_client.schema import CallOptions, File, Form
+    from rapidy_client.schema._serialize import (
+        expand_param_model,
+        parse_response,
+        resolve_content_type,
+        serialize_body,
+        serialize_cookies,
+        serialize_headers,
+        serialize_query,
+    )
 
     values = dict(call_values)
     options = values.pop("_options", None)
@@ -520,13 +586,14 @@ def _dispatch(
         raise TypeError("_options must be CallOptions or None")
 
     path_params: dict[str, Any] = {}
-    query: dict[str, Any] = {}
-    header_map: dict[str, str] = {}
-    cookie_map: dict[str, str] = {}
-    json_body: Any = None
-    content_body: Any = None
-    data_body: Any = None
-    files_body: Any = None
+    query_values: dict[str, QueryValue] = {}
+    header_values: dict[str, object] = {}
+    cookie_values: dict[str, object] = {}
+    body_value: object = inspect.Parameter.empty
+    body_marker: RapidyFieldInfo | None = None
+    deferred_body_kinds: list[str] = []
+    serialization_options = effective.serialization_options
+    aggregate_by_alias = cast(bool, serialization_options.get("request_by_alias", True))
     for data_attr in resolved.data_attrs:
         field_info = data_attr.field_info
         parameter_name = field_info.name
@@ -540,46 +607,143 @@ def _dispatch(
         wire_name = _wire_name(field_info)
         param_type = field_info.param_type
         if param_type is HTTPRequestParamType.path:
-            path_params[parameter_name] = value
+            if field_info.extract_single:
+                path_params[parameter_name] = value
+            elif isinstance(value, BaseModel):
+                path_params.update(
+                    expand_param_model(
+                        value, by_alias=aggregate_by_alias, exclude_none=True
+                    )
+                )
+            else:
+                raise SchemaDefinitionError(
+                    f"PathParams argument '{parameter_name}' must be a pydantic model"
+                )
         elif param_type is HTTPRequestParamType.query:
-            if not field_info.extract_single:
-                _unsupported_aggregate("QueryParams")
-            query[wire_name] = value
+            if field_info.extract_single:
+                query_values[wire_name] = cast(QueryValue, value)
+            elif isinstance(value, BaseModel):
+                query_values.update(
+                    cast(
+                        "dict[str, QueryValue]",
+                        expand_param_model(
+                            value, by_alias=aggregate_by_alias, exclude_none=True
+                        ),
+                    )
+                )
+            else:
+                raise SchemaDefinitionError(
+                    f"QueryParams argument '{parameter_name}' must be a pydantic model"
+                )
         elif param_type is HTTPRequestParamType.header:
-            if not field_info.extract_single:
-                _unsupported_aggregate("Headers")
-            header_map[wire_name] = str(value)
+            if field_info.extract_single:
+                header_values[wire_name] = value
+            elif isinstance(value, BaseModel):
+                header_values.update(
+                    expand_param_model(
+                        value, by_alias=aggregate_by_alias, exclude_none=True
+                    )
+                )
+            else:
+                raise SchemaDefinitionError(
+                    f"Headers argument '{parameter_name}' must be a pydantic model"
+                )
         elif param_type is HTTPRequestParamType.cookie:
-            if not field_info.extract_single:
-                _unsupported_aggregate("Cookies")
-            cookie_map[wire_name] = str(value)
+            if field_info.extract_single:
+                cookie_values[wire_name] = value
+            elif isinstance(value, BaseModel):
+                cookie_values.update(
+                    expand_param_model(
+                        value, by_alias=aggregate_by_alias, exclude_none=True
+                    )
+                )
+            else:
+                raise SchemaDefinitionError(
+                    f"Cookies argument '{parameter_name}' must be a pydantic model"
+                )
         elif param_type is HTTPRequestParamType.body:
             if isinstance(field_info, Form):
-                data_body = value
+                deferred_body_kinds.append("Form")
             elif isinstance(field_info, File):
-                files_body = value
-            elif _is_json_content_type(getattr(field_info, "content_type", None)):
-                json_body = value
+                deferred_body_kinds.append("File")
             else:
-                content_body = value
+                body_value = value
+                body_marker = field_info
 
-    if cookie_map:
-        header_map.setdefault(
-            "Cookie", "; ".join(f"{key}={value}" for key, value in cookie_map.items())
+    if deferred_body_kinds:
+        raise NotImplementedError(
+            f"{'+'.join(deferred_body_kinds)} request execution is implemented in "
+            "milestone 18"
         )
+
+    list_style = (
+        None
+        if effective.query_serialization is UNSET
+        else effective.query_serialization.list_style
+    )
+    query_pairs = serialize_query(query_values, list_style=list_style)
+    query: dict[str, QueryValue] = {}
+    for name, value in query_pairs:
+        previous = query.get(name)
+        if previous is None:
+            query[name] = value
+        elif isinstance(previous, list):
+            previous.append(value)
+        else:
+            query[name] = [cast(str, previous), value]
+
+    header_map = dict(serialize_headers(header_values))
+    cookie_header = serialize_cookies(cookie_values)
+    if cookie_header:
+        header_map.setdefault("Cookie", cookie_header)
     if options is not None and options.headers:
         header_map.update(
             (str(key), str(value)) for key, value in options.headers.items()
         )
 
+    content_body: bytes | None = None
+    if body_value is not inspect.Parameter.empty:
+        marker_content_type = getattr(body_marker, "content_type", None)
+        content_type = resolve_content_type(
+            body_marker_content_type=(
+                None if marker_content_type is None else str(marker_content_type)
+            ),
+            request_content_type=cast(
+                "str | None", serialization_options.get("request_content_type")
+            ),
+        )
+        content_body = serialize_body(
+            body_value,
+            content_type=content_type,
+            request_include_fields=serialization_options.get("request_include_fields"),
+            request_exclude_fields=serialization_options.get("request_exclude_fields"),
+            request_by_alias=cast(
+                bool, serialization_options.get("request_by_alias", True)
+            ),
+            request_exclude_unset=cast(
+                bool, serialization_options.get("request_exclude_unset", False)
+            ),
+            request_exclude_defaults=cast(
+                bool, serialization_options.get("request_exclude_defaults", False)
+            ),
+            request_exclude_none=cast(
+                bool, serialization_options.get("request_exclude_none", False)
+            ),
+            request_custom_encoder=serialization_options.get("request_custom_encoder"),
+            request_json_encoder=serialization_options.get(
+                "request_json_encoder", DEFAULT_JSON_ENCODER
+            ),
+            request_charset=cast(
+                str, serialization_options.get("request_charset", "utf-8")
+            ),
+        )
+        header_map.setdefault("Content-Type", content_type)
+
     request_kwargs = {
         "path_params": path_params or None,
         "query": query or None,
         "headers": header_map or None,
-        "json": json_body,
         "content": content_body,
-        "data": data_body,
-        "files": files_body,
         "timeout": _pick_option(options, "timeout", effective.timeout),
         "retry": _pick_option(options, "retry", effective.retry),
         "auth": _pick_option(options, "auth", UNSET),
@@ -599,11 +763,18 @@ def _dispatch(
         )
 
     async def invoke() -> Any:
-        return await client.request(
+        response = await client.request(
             effective.http_method,
             effective.full_path,
             raise_for_status=False,
             **request_kwargs,
+        )
+        config = getattr(client, "_config", None)
+        error_body_limit = getattr(config, "error_body_limit", 65536)
+        return await parse_response(
+            response,
+            resolved.response_plan,
+            error_body_limit=error_body_limit,
         )
 
     return invoke()
@@ -676,8 +847,11 @@ def _method(
     name: str | Unset = UNSET,
     **serialization_options: Any,
 ) -> Callable[[Callable[P, Awaitable[R]]], Callable[P, Awaitable[R]]]:
-    if "upstream" in serialization_options:
-        raise TypeError("schema decorators do not accept client routing arguments")
+    unknown_options = set(serialization_options) - _SERIALIZATION_OPTIONS
+    if unknown_options:
+        raise TypeError(
+            f"unsupported schema decorator option(s): {sorted(unknown_options)}"
+        )
     return _build_decorator(
         http_method,
         path,
@@ -931,7 +1105,14 @@ def controller(
     error_model: ErrorModel = UNSET,
     query_serialization: QuerySerialization | Unset = UNSET,
     middlewares: Sequence[Middleware] | Unset = UNSET,
+    **serialization_options: Any,
 ) -> Callable[[C], C]:
+    unknown_options = set(serialization_options) - _SERIALIZATION_OPTIONS
+    if unknown_options:
+        raise TypeError(
+            f"unsupported schema decorator option(s): {sorted(unknown_options)}"
+        )
+
     def decorate(cls: C) -> C:
         declaration = _ControllerDeclaration(
             prefix=prefix,
@@ -945,6 +1126,7 @@ def controller(
             error_model=error_model,
             query_serialization=query_serialization,
             middlewares=() if middlewares is UNSET else tuple(middlewares),
+            serialization_options=dict(serialization_options),
         )
         _check_statuses_error_model_conflict(statuses, error_model, cls.__qualname__)
         endpoints: dict[str, _EffectiveDeclaration] = {}
