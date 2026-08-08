@@ -362,10 +362,17 @@ async def test_multiple_bodies_raises() -> None:
 
 
 @pytest.mark.asyncio
-async def test_files_not_implemented_yet() -> None:
-    client, _ = _client()
-    with pytest.raises(NotImplementedError, match="18"):
-        await client.post("/x", files=[FilePart(name="f", content=b"x")])
+async def test_files_build_multipart_request() -> None:
+    client, transport = _client()
+    await client.post(
+        "/x",
+        files=[FilePart(name="f", content=b"x")],
+        data={"title": "report"},
+    )
+
+    request = transport.last
+    assert request.headers["content-type"].startswith("multipart/form-data; boundary=")
+    assert request.is_replayable is True
 
 
 @pytest.mark.asyncio

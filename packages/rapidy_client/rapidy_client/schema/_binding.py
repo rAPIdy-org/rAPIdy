@@ -7,9 +7,9 @@ import re
 import textwrap
 import types
 import typing
-from collections.abc import Awaitable, Callable, Mapping, Sequence
+from collections.abc import AsyncIterable, Awaitable, Callable, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING, Any, ParamSpec, Protocol, TypeVar, cast
 
 from rapidy_core import UNSET, HTTPRequestParamType, Unset
@@ -18,6 +18,7 @@ from rapidy_core.fields.field_info import RapidyFieldInfo
 from rapidy_core.signature import get_signature_raw_info
 from rapidy_core.typedefs import Required, Undefined
 
+from rapidy_client._content import ContentFactory, FilePart
 from rapidy_client._models import Middleware, QueryValue, Response, Result, Timeout
 from rapidy_client.errors import SchemaDefinitionError
 
@@ -571,6 +572,7 @@ def _dispatch(
 
     from rapidy_client.schema import CallOptions, File, Form
     from rapidy_client.schema._serialize import (
+        _scalar_to_str,
         expand_param_model,
         parse_response,
         resolve_content_type,
@@ -591,7 +593,8 @@ def _dispatch(
     cookie_values: dict[str, object] = {}
     body_value: object = inspect.Parameter.empty
     body_marker: RapidyFieldInfo | None = None
-    deferred_body_kinds: list[str] = []
+    form_values: dict[str, str] = {}
+    file_parts: list[FilePart] = []
     serialization_options = effective.serialization_options
     aggregate_by_alias = cast(bool, serialization_options.get("request_by_alias", True))
     for data_attr in resolved.data_attrs:
@@ -663,18 +666,17 @@ def _dispatch(
                 )
         elif param_type is HTTPRequestParamType.body:
             if isinstance(field_info, Form):
-                deferred_body_kinds.append("Form")
+                if value is not None:
+                    form_values[wire_name] = _scalar_to_str(value)
             elif isinstance(field_info, File):
-                deferred_body_kinds.append("File")
+                if not isinstance(value, FilePart):
+                    raise SchemaDefinitionError(
+                        f"File argument '{parameter_name}' must be a FilePart"
+                    )
+                file_parts.append(replace(value, name=wire_name))
             else:
                 body_value = value
                 body_marker = field_info
-
-    if deferred_body_kinds:
-        raise NotImplementedError(
-            f"{'+'.join(deferred_body_kinds)} request execution is implemented in "
-            "milestone 18"
-        )
 
     list_style = (
         None
@@ -701,7 +703,7 @@ def _dispatch(
             (str(key), str(value)) for key, value in options.headers.items()
         )
 
-    content_body: bytes | None = None
+    content_body: bytes | AsyncIterable[bytes] | ContentFactory | None = None
     if body_value is not inspect.Parameter.empty:
         marker_content_type = getattr(body_marker, "content_type", None)
         content_type = resolve_content_type(
@@ -744,6 +746,8 @@ def _dispatch(
         "query": query or None,
         "headers": header_map or None,
         "content": content_body,
+        "data": form_values or None,
+        "files": file_parts or None,
         "timeout": _pick_option(options, "timeout", effective.timeout),
         "retry": _pick_option(options, "retry", effective.retry),
         "auth": _pick_option(options, "auth", UNSET),

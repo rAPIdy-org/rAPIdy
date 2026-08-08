@@ -4,6 +4,7 @@ import asyncio
 import dataclasses
 import logging
 import warnings
+import weakref
 from collections.abc import AsyncIterable, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager
 from datetime import date, datetime, timezone
@@ -17,7 +18,7 @@ from rapidy_core import UNSET, Unset
 from rapidy_core.encoders import jsonify
 
 from rapidy_client._clock import Clock, SystemClock
-from rapidy_client._content import ContentFactory, FilePart
+from rapidy_client._content import ContentFactory, FilePart, encode_multipart
 from rapidy_client._models import (
     URL,
     AuthPolicy,
@@ -216,7 +217,7 @@ class HttpClient:
         self._closing = False
         self._closed = False
         self._inflight: set[asyncio.Task[Response]] = set()
-        self._finite: set[_FiniteDrainable] = set()
+        self._finite: weakref.WeakSet[_FiniteDrainable] = weakref.WeakSet()
         self._infinite: set[_Drainable] = set()
 
     @classmethod
@@ -287,7 +288,14 @@ class HttpClient:
         bytes | AsyncIterable[bytes] | ContentFactory | None,
         Headers,
     ]:
-        sources = sum(value is not None for value in (json, content, data, files))
+        sources = sum(
+            (
+                json is not None,
+                content is not None,
+                files is not None,
+                data is not None and files is None,
+            )
+        )
         if sources > 1:
             raise ValueError("multiple request body sources were provided")
         if json is not None:
@@ -295,11 +303,12 @@ class HttpClient:
             return encoded, _with_content_type(headers, _JSON_CONTENT_TYPE)
         if content is not None:
             return content, headers
+        if files is not None:
+            content_type, multipart_body = encode_multipart(files, data)
+            return multipart_body, _with_content_type(headers, content_type)
         if data is not None:
             encoded = urlencode(sorted(data.items())).encode("utf-8")
             return encoded, _with_content_type(headers, _FORM_CONTENT_TYPE)
-        if files is not None:
-            raise NotImplementedError("multipart/files are implemented in milestone 18")
         return None, headers
 
     def _build_request(
@@ -363,6 +372,8 @@ class HttpClient:
                 declared_middlewares=tuple(_declared_middlewares),
             ),
         )
+        if not request.is_replayable:
+            request.extensions.retry = None
         if client_debug_enabled():
             _LOGGER.debug(
                 "%s",
@@ -370,7 +381,7 @@ class HttpClient:
                     upstream_name=self._name,
                     endpoint=path,
                     timeout=effective_timeout,
-                    retry=effective_retry,
+                    retry=request.extensions.retry,
                     redirects=effective_redirects,
                     deadline=effective_deadline,
                 ),
@@ -689,7 +700,13 @@ class _StreamCM(AbstractAsyncContextManager[Response]):
             await self._closed_event.wait()
 
     def __del__(self) -> None:
-        if self._entered and not self._exited and client_debug_enabled():
+        if not self._entered or self._exited:
+            return
+        try:
+            asyncio.get_running_loop().create_task(self.aclose())
+        except RuntimeError:
+            pass
+        if client_debug_enabled():
             warnings.warn("unclosed HttpClient stream", ResourceWarning, stacklevel=2)
 
 

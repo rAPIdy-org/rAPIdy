@@ -308,11 +308,13 @@ def test_invalid_status_collision_and_unsupported_return_are_rejected() -> None:
 
 
 @pytest.mark.asyncio
-async def test_stream_plan_is_classified_but_not_buffered() -> None:
+async def test_stream_plan_is_classified_and_kept_lazy() -> None:
     plan = build_response_plan(return_annotation=Stream)
+    response = _response(status=200, body=b"stream")
     assert plan.kind is ResponseKind.STREAM
-    with pytest.raises(NotImplementedError, match="milestone 18"):
-        await parse_response(_response(status=200, body=b"stream"), plan)
+    assert await parse_response(response, plan) is response
+    assert response._consumed is False
+    await response.aclose()
 
 
 @pytest.mark.asyncio

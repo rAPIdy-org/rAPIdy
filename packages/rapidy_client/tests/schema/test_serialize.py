@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import AsyncIterator
 from datetime import date, datetime, timezone
 from enum import Enum
 from typing import Annotated, Any
@@ -10,6 +11,8 @@ from uuid import UUID
 import pytest
 from pydantic import BaseModel, Field
 from rapidy_client import (
+    ContentFactory,
+    FilePart,
     HttpClient,
     Response,
     SchemaDefinitionError,
@@ -178,7 +181,7 @@ def test_content_type_priority_and_raw_body() -> None:
     )
     assert serialize_body(b"a,b\n", content_type="text/csv") == b"a,b\n"
     assert serialize_body("привет", content_type="text/plain").decode() == "привет"
-    with pytest.raises(SchemaDefinitionError, match="must be bytes or str"):
+    with pytest.raises(SchemaDefinitionError, match="must be bytes"):
         serialize_body({"x": 1}, content_type="text/csv")
 
 
@@ -294,14 +297,69 @@ async def test_body_content_type_wins_in_bound_request() -> None:
     assert request.headers["content-type"] == "text/csv"
 
 
-def test_form_and_file_metadata_are_recognized_but_execution_is_deferred() -> None:
+@pytest.mark.asyncio
+async def test_form_and_file_execute_as_multipart() -> None:
     @post("/upload")
     async def upload(
         title: Annotated[str, Form()],
-        content: Annotated[bytes, File()],
+        content: Annotated[FilePart, File()],
     ) -> Response:
         raise NotImplementedError
 
-    bound = bind(upload, _client(MockTransport()))
-    with pytest.raises(NotImplementedError, match="milestone 18"):
-        bound("title", b"content")
+    mock = MockTransport()
+    mock.route("POST", "/upload").respond()
+    await bind(upload, _client(mock))(
+        "title",
+        FilePart(name="ignored", content=b"content"),
+    )
+
+    request = mock.calls[0].request
+    assert request.headers["content-type"].startswith("multipart/form-data")
+    assert isinstance(request.content, ContentFactory)
+    body = b"".join([chunk async for chunk in request.content.open()])
+    assert b'name="title"' in body
+    assert b'name="content"' in body
+
+
+@pytest.mark.asyncio
+async def test_form_fields_execute_as_urlencoded() -> None:
+    @post("/form")
+    async def submit(
+        title: Annotated[str, Form()],
+        active: Annotated[bool, Form()],
+    ) -> Response:
+        raise NotImplementedError
+
+    mock = MockTransport()
+    mock.route("POST", "/form").respond()
+
+    await bind(submit, _client(mock))("report", True)
+
+    request = mock.calls[0].request
+    assert request.content == b"active=true&title=report"
+    assert request.headers["content-type"] == "application/x-www-form-urlencoded"
+
+
+@pytest.mark.asyncio
+async def test_raw_stream_body_executes_declaratively() -> None:
+    @post("/raw")
+    async def upload(
+        payload: Annotated[
+            AsyncIterator[bytes], Body(content_type="application/octet-stream")
+        ],
+    ) -> Response:
+        raise NotImplementedError
+
+    async def chunks() -> AsyncIterator[bytes]:
+        yield b"payload"
+
+    mock = MockTransport()
+    mock.route("POST", "/raw").respond()
+    source = chunks()
+
+    await bind(upload, _client(mock))(source)
+
+    request = mock.calls[0].request
+    assert request.content is source
+    assert request.extensions.retry is None
+    await source.aclose()

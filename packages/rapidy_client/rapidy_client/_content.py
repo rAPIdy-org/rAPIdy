@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import gzip
-import mimetypes
+import secrets
 import zlib
-from collections.abc import AsyncIterable, AsyncIterator, Callable, Mapping
+from collections.abc import AsyncIterable, AsyncIterator, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from importlib import import_module
 from pathlib import Path
@@ -11,6 +11,10 @@ from types import ModuleType
 from typing import Any, Protocol, cast
 
 from rapidy_client.errors import DecodeError
+from rapidy_client.files import DEFAULT_CONTENT_TYPE, guess_content_type
+
+_MULTIPART_CHUNK_SIZE = 65536
+_CRLF = b"\r\n"
 
 
 class ContentFactory:
@@ -38,7 +42,92 @@ class FilePart:
         if self.filename is None and self.path is not None:
             self.filename = self.path.name
         if self.content_type is None and self.filename is not None:
-            self.content_type = mimetypes.guess_type(self.filename)[0]
+            self.content_type = guess_content_type(self.filename)
+
+
+def _escape_multipart_value(value: str) -> bytes:
+    return (
+        value.replace("\r", "%0D")
+        .replace("\n", "%0A")
+        .replace('"', "%22")
+        .encode("utf-8")
+    )
+
+
+def _part_type(part: FilePart) -> str:
+    source_name = part.filename or (str(part.path) if part.path is not None else "")
+    return part.content_type or guess_content_type(source_name) or DEFAULT_CONTENT_TYPE
+
+
+async def _multipart_stream(
+    boundary: bytes,
+    fields: Sequence[tuple[str, str]],
+    parts: Sequence[FilePart],
+    chunk_size: int,
+) -> AsyncIterator[bytes]:
+    for name, value in fields:
+        yield b"--" + boundary + _CRLF
+        yield (
+            b'Content-Disposition: form-data; name="'
+            + _escape_multipart_value(name)
+            + b'"'
+            + _CRLF
+        )
+        yield _CRLF
+        yield value.encode("utf-8")
+        yield _CRLF
+
+    for part in parts:
+        yield b"--" + boundary + _CRLF
+        disposition = (
+            b'Content-Disposition: form-data; name="'
+            + _escape_multipart_value(part.name)
+            + b'"'
+        )
+        if part.filename is not None:
+            disposition += (
+                b'; filename="' + _escape_multipart_value(part.filename) + b'"'
+            )
+        yield disposition + _CRLF
+        yield b"Content-Type: " + _part_type(part).encode("ascii") + _CRLF
+        for name, value in part.headers.items():
+            yield name.encode("ascii") + b": " + value.encode("utf-8") + _CRLF
+        yield _CRLF
+        if part.path is not None:
+            with part.path.open("rb") as file:
+                while block := file.read(chunk_size):
+                    yield block
+        else:
+            assert part.content is not None
+            yield part.content
+        yield _CRLF
+
+    yield b"--" + boundary + b"--" + _CRLF
+
+
+def encode_multipart(
+    files: Sequence[FilePart],
+    data: Mapping[str, str] | None = None,
+    *,
+    boundary: str | None = None,
+    chunk_size: int = _MULTIPART_CHUNK_SIZE,
+) -> tuple[str, ContentFactory]:
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be greater than zero")
+    resolved_boundary = (
+        boundary if boundary is not None else "rapidyclient" + secrets.token_hex(16)
+    )
+    boundary_bytes = resolved_boundary.encode("ascii")
+    fields = tuple((data or {}).items())
+    parts = tuple(files)
+
+    def factory() -> AsyncIterator[bytes]:
+        return _multipart_stream(boundary_bytes, fields, parts, chunk_size)
+
+    return (
+        f"multipart/form-data; boundary={resolved_boundary}",
+        ContentFactory(factory),
+    )
 
 
 def gzip_encode(data: bytes) -> bytes:
@@ -290,6 +379,7 @@ __all__ = (
     "decode_stream",
     "deflate_decode",
     "deflate_encode",
+    "encode_multipart",
     "gzip_decode",
     "gzip_encode",
     "zstd_decode",

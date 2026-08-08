@@ -3,7 +3,7 @@ from __future__ import annotations
 import json as _json
 import types
 import typing
-from collections.abc import Mapping, Sequence
+from collections.abc import AsyncIterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from enum import Enum
@@ -15,6 +15,7 @@ from rapidy_core.constants import DEFAULT_JSON_ENCODER
 from rapidy_core.encoders import CustomEncoder, Exclude, Include, jsonify
 from rapidy_core.typedefs import JSONEncoder
 
+from rapidy_client._content import ContentFactory
 from rapidy_client._models import QueryValue, Response, Result
 from rapidy_client.errors import (
     DecodeError,
@@ -135,7 +136,7 @@ def serialize_body(
     request_custom_encoder: CustomEncoder | None = None,
     request_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
     request_charset: str = "utf-8",
-) -> bytes:
+) -> bytes | AsyncIterable[bytes] | ContentFactory:
     if _is_json_content_type(content_type):
         text = jsonify(
             obj,
@@ -155,8 +156,11 @@ def serialize_body(
         return bytes(obj)
     if isinstance(obj, str):
         return obj.encode(request_charset)
+    if isinstance(obj, (AsyncIterable, ContentFactory)):
+        return obj
     raise SchemaDefinitionError(
-        f"body with Content-Type={content_type!r} must be bytes or str, "
+        f"body with Content-Type={content_type!r} must be bytes, str, "
+        "AsyncIterable, or ContentFactory, "
         f"got {type(obj).__name__}"
     )
 
@@ -349,7 +353,7 @@ async def parse_response(
         await _read_and_close(response)
         return response
     if plan.kind is ResponseKind.STREAM:
-        raise NotImplementedError("lazy Stream parsing is implemented in milestone 18")
+        return response
 
     status = response.status
     if status in plan.statuses:
