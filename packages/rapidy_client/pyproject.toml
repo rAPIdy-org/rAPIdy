@@ -18,6 +18,8 @@ classifiers = [
 ]
 dependencies = [
     "httpx2>=2.5",
+    "pydantic>=2.9",
+    "pydantic-settings>=2.6",
     "rapidy-core",
     "yarl>=1.18",
 ]

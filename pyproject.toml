@@ -53,3 +53,9 @@ source_modules = [
     "rapidy_client.testing.chaos",
 ]
 forbidden_modules = ["httpx2", "httpcore2"]
+
+[[tool.importlinter.contracts]]
+name = "rapidy_client: _models does not runtime-import config (rule 5, one-way)"
+type = "forbidden"
+source_modules = ["rapidy_client._models"]
+forbidden_modules = ["rapidy_client.config"]
