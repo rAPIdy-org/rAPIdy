@@ -4,5 +4,7 @@ import sys
 from pathlib import Path
 
 _PACKAGE_ROOT = Path(__file__).parents[2]
-if str(_PACKAGE_ROOT) not in sys.path:
-    sys.path.insert(0, str(_PACKAGE_ROOT))
+_PACKAGE_ROOT_STR = str(_PACKAGE_ROOT)
+if _PACKAGE_ROOT_STR in sys.path:
+    sys.path.remove(_PACKAGE_ROOT_STR)
+sys.path.insert(0, _PACKAGE_ROOT_STR)

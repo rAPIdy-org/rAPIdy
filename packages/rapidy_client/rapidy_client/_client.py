@@ -149,6 +149,12 @@ def _with_content_type(headers: Headers, content_type: str) -> Headers:
     return Headers((*headers.multi_items(), ("Content-Type", content_type)))
 
 
+def _quote_path_value(value: object) -> str:
+    # Dots are RFC-unreserved and urllib therefore leaves them untouched. Encoding
+    # them explicitly keeps traversal-shaped values out of the rendered raw path.
+    return quote(str(value), safe="").replace(".", "%2E")
+
+
 class HttpClient:
     def __init__(
         self,
@@ -260,7 +266,7 @@ class HttpClient:
         for name, value in (path_params or {}).items():
             rendered_path = rendered_path.replace(
                 "{" + name + "}",
-                quote(str(value), safe=""),
+                _quote_path_value(value),
             )
         url = URL(str(self._config.base_url)).join(rendered_path)
         pairs = _serialize_query(query)
@@ -314,6 +320,9 @@ class HttpClient:
         follow_redirects: bool | Unset = UNSET,
         deadline: float | Unset = UNSET,
         stream: bool = False,
+        _declared_middlewares: Sequence[Middleware] = (),
+        _endpoint: str | None = None,
+        _idempotent: bool | None = None,
     ) -> Request:
         effective_timeout = self._effective_timeout(timeout, stream=stream)
         effective_retry = self._config.retry if retry is UNSET else retry
@@ -339,14 +348,19 @@ class HttpClient:
             content=body,
             extensions=RequestExtensions(
                 upstream=self._name,
-                endpoint=path,
+                endpoint=path if _endpoint is None else _endpoint,
                 request_id=rapidy_client_request_id.get(),
                 timeout=effective_timeout,
                 retry=effective_retry,
-                idempotent=upper_method in _IDEMPOTENT_METHODS,
+                idempotent=(
+                    upper_method in _IDEMPOTENT_METHODS
+                    if _idempotent is None
+                    else _idempotent
+                ),
                 auth_override=auth,
                 deadline=effective_deadline,
                 redirects=effective_redirects,
+                declared_middlewares=tuple(_declared_middlewares),
             ),
         )
         if client_debug_enabled():
@@ -461,6 +475,9 @@ class HttpClient:
         follow_redirects: bool | Unset = UNSET,
         deadline: float | Unset = UNSET,
         raise_for_status: bool = True,
+        _declared_middlewares: Sequence[Middleware] = (),
+        _endpoint: str | None = None,
+        _idempotent: bool | None = None,
     ) -> Response:
         if self._closing:
             raise ClientClosedError("HttpClient is closed")
@@ -480,6 +497,9 @@ class HttpClient:
             auth=auth,
             follow_redirects=follow_redirects,
             deadline=deadline,
+            _declared_middlewares=_declared_middlewares,
+            _endpoint=_endpoint,
+            _idempotent=_idempotent,
         )
         task = asyncio.ensure_future(
             self._execute_buffered(built, raise_for_status=raise_for_status)

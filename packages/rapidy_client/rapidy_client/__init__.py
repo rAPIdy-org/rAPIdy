@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+from typing import TYPE_CHECKING
 
 from rapidy_core import UNSET, Unset
 
@@ -49,6 +50,34 @@ from rapidy_client.errors import (
     WSHandshakeError,
     WSQueueFullError,
 )
+
+if TYPE_CHECKING:
+    from rapidy_client._client import HttpClient
+    from rapidy_client._typed import bind, operation
+    from rapidy_client.config import (
+        BackoffConfig,
+        BreakerConfig,
+        DeadlineConfig,
+        HttpSettings,
+        LogConfig,
+        PoolLimits,
+        ProxyConfig,
+        RateLimitConfig,
+        RedirectConfig,
+        RetryConfig,
+        TLSConfig,
+        UpstreamConfig,
+    )
+    from rapidy_client.schema import (
+        controller,
+        delete,
+        get,
+        head,
+        options,
+        patch,
+        post,
+        put,
+    )
 
 __all__ = (
     "UNSET",
@@ -108,6 +137,16 @@ __all__ = (
     "WSError",
     "WSHandshakeError",
     "WSQueueFullError",
+    "bind",
+    "controller",
+    "delete",
+    "get",
+    "head",
+    "operation",
+    "options",
+    "patch",
+    "post",
+    "put",
 )
 
 _LAZY: dict[str, str] = {
@@ -124,6 +163,16 @@ _LAZY: dict[str, str] = {
     "RetryConfig": "rapidy_client.config",
     "TLSConfig": "rapidy_client.config",
     "UpstreamConfig": "rapidy_client.config",
+    "bind": "rapidy_client._typed",
+    "controller": "rapidy_client.schema",
+    "delete": "rapidy_client.schema",
+    "get": "rapidy_client.schema",
+    "head": "rapidy_client.schema",
+    "operation": "rapidy_client._typed",
+    "options": "rapidy_client.schema",
+    "patch": "rapidy_client.schema",
+    "post": "rapidy_client.schema",
+    "put": "rapidy_client.schema",
 }
 
 

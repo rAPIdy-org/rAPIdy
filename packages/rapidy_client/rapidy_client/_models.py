@@ -69,7 +69,9 @@ class URL:
         return str(self._url.origin())
 
     def join(self, path: str) -> URL:
-        return URL(self._url.join(yarl.URL(path)))
+        # Path parameters are escaped by the request builder. Preserve that raw
+        # representation instead of letting yarl normalize escaped dot segments.
+        return URL(self._url.join(yarl.URL(path, encoded=True)))
 
     def with_query(self, query: Mapping[str, str]) -> URL:
         return URL(self._url.with_query(query))

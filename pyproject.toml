@@ -61,3 +61,15 @@ type = "forbidden"
 source_modules = ["rapidy_client._models"]
 forbidden_modules = ["rapidy_client.config"]
 ignore_imports = ["rapidy_client._models -> rapidy_client.config"]
+
+[[tool.importlinter.contracts]]
+name = "schema layer stays transport-free (rule 3, section 5.1)"
+type = "forbidden"
+source_modules = ["rapidy_client.schema"]
+forbidden_modules = [
+    "rapidy_client._client",
+    "rapidy_client._pipeline",
+    "rapidy_client.transports",
+    "httpx2",
+    "httpcore2",
+]
