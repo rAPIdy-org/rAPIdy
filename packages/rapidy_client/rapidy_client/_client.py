@@ -41,7 +41,14 @@ from rapidy_client.config import (
     render_effective_config,
 )
 from rapidy_client.errors import ClientClosedError, StatusError
+from rapidy_client.middleware.correlation import CorrelationMiddleware
 from rapidy_client.middleware.redirect import RedirectMiddleware
+from rapidy_client.observability import (
+    LoggingObserver,
+    Observer,
+    RequestContext,
+    notify_observers,
+)
 from rapidy_client.transports.httpx import HttpxTransport
 
 _IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "PUT", "DELETE", "OPTIONS", "TRACE"})
@@ -149,12 +156,16 @@ class HttpClient:
         middlewares: Sequence[Middleware] = (),
         per_attempt_middlewares: Sequence[Middleware] = (),
         auth: AuthPolicy | None = None,
-        observers: Sequence[object] = (),
+        observers: Sequence[Observer] = (),
         _clock: Clock | None = None,
     ) -> None:
         self._config = config
         self._name = name
         self._owns_transport = transport is None
+        built_in: tuple[Observer, ...] = ()
+        if config.log.level != "off":
+            built_in = (LoggingObserver(config.log),)
+        self._observers = built_in + tuple(observers)
         self._transport: BaseTransport = (
             transport
             if transport is not None
@@ -165,15 +176,15 @@ class HttpClient:
                 proxy=config.proxy,
                 cookies=config.cookies,
                 default_headers=config.default_headers,
-                observers=observers,
+                observers=self._observers,
             )
         )
         self._auth = auth
         self._middlewares = tuple(middlewares)
-        self._observers = tuple(observers)
         self._clock = _clock if _clock is not None else SystemClock()
         self._entry: CallNext = build_pipeline(
             self._transport,
+            correlation=CorrelationMiddleware(),
             middlewares=self._middlewares,
             per_attempt_middlewares=per_attempt_middlewares,
             redirect=RedirectMiddleware(
@@ -345,13 +356,71 @@ class HttpClient:
         *,
         raise_for_status: bool,
     ) -> Response:
-        response = await self._entry(request)
-        is_error = response.is_client_error or response.is_server_error
-        if raise_for_status:
-            if is_error:
-                await response._aread_capped(self._config.error_body_limit)
-            else:
-                await response.aread()
+        started = self._clock.monotonic()
+        extensions = request.extensions
+
+        def context(*, attempt: int, elapsed: float | None) -> RequestContext:
+            return RequestContext(
+                upstream=extensions.upstream,
+                method=request.method,
+                endpoint=extensions.endpoint,
+                url=request.url,
+                attempt=attempt,
+                request_id=extensions.request_id,
+                started_at=started,
+                elapsed=elapsed,
+            )
+
+        try:
+            await notify_observers(
+                self._observers,
+                "on_request_start",
+                context(attempt=extensions.attempt, elapsed=None),
+            )
+            response = await self._entry(request)
+            is_error = response.is_client_error or response.is_server_error
+            if raise_for_status:
+                if is_error:
+                    await response._aread_capped(self._config.error_body_limit)
+                else:
+                    await response.aread()
+        except asyncio.CancelledError:
+            if not self._closing:
+                raise
+            error = ClientClosedError(
+                "HttpClient closed while the request was in flight"
+            )
+            await notify_observers(
+                self._observers,
+                "on_request_error",
+                context(
+                    attempt=extensions.attempt,
+                    elapsed=self._clock.monotonic() - started,
+                ),
+                error,
+            )
+            raise error from None
+        except Exception as exc:
+            await notify_observers(
+                self._observers,
+                "on_request_error",
+                context(
+                    attempt=extensions.attempt,
+                    elapsed=self._clock.monotonic() - started,
+                ),
+                exc,
+            )
+            raise
+
+        await notify_observers(
+            self._observers,
+            "on_request_end",
+            context(
+                attempt=response.extensions.attempt,
+                elapsed=self._clock.monotonic() - started,
+            ),
+            response,
+        )
         if raise_for_status and is_error:
             raise StatusError(
                 f"HTTP response status {response.status}",

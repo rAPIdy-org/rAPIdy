@@ -127,9 +127,7 @@ def zstd_decode(data: bytes) -> bytes:
             return cast("bytes", decompressor.decompress(data))
     except Exception as exc:
         raise DecodeError("zstd content decode failed") from exc
-    raise DecodeError(
-        "cannot decode Content-Encoding 'zstd'; install extra '[zstd]'"
-    )
+    raise DecodeError("cannot decode Content-Encoding 'zstd'; install extra '[zstd]'")
 
 
 if HAS_BROTLI:
@@ -257,8 +255,7 @@ async def decode_stream(
         return
     if len(encodings) > 1:
         raise DecodeError(
-            f"chained Content-Encoding {encodings!r} unsupported "
-            "(v1: single codec)"
+            f"chained Content-Encoding {encodings!r} unsupported (v1: single codec)"
         )
 
     encoding = encodings[0].strip().casefold()
@@ -277,6 +274,7 @@ async def decode_stream(
         raise
     except Exception as exc:
         raise DecodeError(f"{encoding} content decode failed") from exc
+
 
 __all__ = (
     "CONTENT_DECODERS",

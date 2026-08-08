@@ -7,9 +7,7 @@ from rapidy_client.config import RedirectConfig
 from rapidy_client.errors import RedirectNotAllowedError, TooManyRedirectsError
 
 _REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
-_SECRET_HEADERS = frozenset(
-    {"authorization", "cookie", "proxy-authorization"}
-)
+_SECRET_HEADERS = frozenset({"authorization", "cookie", "proxy-authorization"})
 _BODY_HEADERS = frozenset(
     {"content-length", "content-type", "content-encoding", "transfer-encoding"}
 )

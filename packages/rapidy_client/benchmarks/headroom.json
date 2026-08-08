@@ -1,0 +1,41 @@
+{
+  "schema": "rapidy-client/headroom@1",
+  "kind": "bring-up-headroom",
+  "gate": false,
+  "phase": "F1",
+  "stack": "pipeline+logging+correlation+redirect",
+  "reference": "bare_httpx2",
+  "metric": "relative_overhead_pct",
+  "iterations": 2000,
+  "warmup": 200,
+  "advisory_p99_us": 300.0,
+  "threshold_pct": 10.0,
+  "variants": {
+    "bare_httpx2": {
+      "p50_us": 478.917,
+      "p99_us": 630.833,
+      "overhead_pct": null
+    },
+    "+logging": {
+      "p50_us": 547.75,
+      "p99_us": 763.334,
+      "overhead_pct": 14.373
+    },
+    "+correlation": {
+      "p50_us": 557.083,
+      "p99_us": 800.292,
+      "overhead_pct": 16.321
+    },
+    "+redirect": {
+      "p50_us": 557.166,
+      "p99_us": 781.042,
+      "overhead_pct": 16.339
+    }
+  },
+  "headroom": {
+    "overhead_pct": 16.339,
+    "p99_us": 781.042,
+    "within_threshold": false,
+    "within_advisory_p99": false
+  }
+}

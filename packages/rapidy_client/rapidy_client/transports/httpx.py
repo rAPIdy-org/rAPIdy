@@ -44,6 +44,7 @@ from rapidy_client.errors import (
     TLSError,
     TransportError,
 )
+from rapidy_client.observability import Observer, notify_observers
 
 if TYPE_CHECKING:
     from rapidy_client.config import PoolLimits, ProxyConfig, TLSConfig
@@ -219,7 +220,7 @@ class HttpxTransport(BaseTransport):
         proxy: ProxyConfig | None = None,
         cookies: Literal["disabled", "shared"] = "disabled",
         default_headers: Mapping[str, str] = cast("Mapping[str, str]", ()),
-        observers: Sequence[object] = (),
+        observers: Sequence[Observer] = (),
     ) -> None:
         if cookies not in {"disabled", "shared"}:
             raise ValueError("cookies must be 'disabled' or 'shared'")
@@ -228,7 +229,7 @@ class HttpxTransport(BaseTransport):
         self._tls = tls
         self._proxy = proxy
         self._cookies = cookies
-        self._observers = tuple(observers)
+        self._observers: tuple[Observer, ...] = tuple(observers)
         self._default_headers = dict(default_headers)
         if not any(name.casefold() == "user-agent" for name in self._default_headers):
             self._default_headers["User-Agent"] = _default_user_agent()
@@ -435,6 +436,13 @@ class HttpxTransport(BaseTransport):
         native_response: httpx2.Response | None = None
         trace_state: _TraceState | None = None
         try:
+            if semaphore_wait > 0.0 and self._observers:
+                await notify_observers(
+                    self._observers,
+                    "on_pool_wait",
+                    request.extensions.upstream,
+                    semaphore_wait,
+                )
             try:
                 native_request, trace_state = self._build_request(
                     client, request, timeout
@@ -471,6 +479,20 @@ class HttpxTransport(BaseTransport):
                 response_extensions,
                 semaphore,
             )
+            if self._observers:
+                reused = (
+                    response.extensions.connection_reused
+                    if response.extensions.connection_reused is not None
+                    else False
+                )
+                await notify_observers(
+                    self._observers,
+                    "on_connection_open",
+                    request.extensions.upstream,
+                    reused,
+                    0.0,
+                    0.0,
+                )
             acquired = False
             return response
         finally:

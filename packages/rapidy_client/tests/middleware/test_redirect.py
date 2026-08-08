@@ -80,9 +80,7 @@ async def test_no_follow_default_returns_3xx() -> None:
         calls.append(request)
         return _response(request, 302, location="/b")
 
-    result = await RedirectMiddleware(allow_absolute_urls=False)(
-        _request(), call_next
-    )
+    result = await RedirectMiddleware(allow_absolute_urls=False)(_request(), call_next)
     assert result.status == 302
     assert len(calls) == 1
 
@@ -135,9 +133,7 @@ async def test_cross_origin_allowed_strips_secrets_and_host() -> None:
     async def call_next(request: Request) -> Response:
         calls.append(request)
         if len(calls) == 1:
-            return _response(
-                request, 302, location="https://other.example.test/x"
-            )
+            return _response(request, 302, location="https://other.example.test/x")
         return _response(request, 200)
 
     request = _request(
@@ -213,7 +209,9 @@ async def test_max_redirects_exceeded_raises_and_closes_last_response() -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(("status", "expected"), [(301, "GET"), (302, "GET"), (303, "GET")])
+@pytest.mark.parametrize(
+    ("status", "expected"), [(301, "GET"), (302, "GET"), (303, "GET")]
+)
 async def test_post_redirect_to_get_drops_body_headers(
     status: int,
     expected: str,
@@ -245,9 +243,15 @@ async def test_post_redirect_to_get_drops_body_headers(
     redirected = calls[1]
     assert redirected.method == expected
     assert redirected.content is None
-    assert not any(name.casefold() in redirected.headers for name in (
-        "content-length", "content-type", "content-encoding", "transfer-encoding"
-    ))
+    assert not any(
+        name.casefold() in redirected.headers
+        for name in (
+            "content-length",
+            "content-type",
+            "content-encoding",
+            "transfer-encoding",
+        )
+    )
 
 
 @pytest.mark.asyncio

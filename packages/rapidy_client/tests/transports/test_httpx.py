@@ -23,6 +23,7 @@ from rapidy_client import (
     ServerDisconnectedError,
     Timeout,
 )
+from rapidy_client.observability import BaseObserver
 from rapidy_client.transports import BaseTransport, HttpxTransport
 
 
@@ -55,6 +56,7 @@ def _transport(
     tls: TLSConfig | None = None,
     cookies: str = "disabled",
     default_headers: dict[str, str] | None = None,
+    observers: tuple[BaseObserver, ...] = (),
 ) -> HttpxTransport:
     return HttpxTransport(
         base_url="https://example.test",
@@ -62,6 +64,7 @@ def _transport(
         tls=tls or TLSConfig(),  # type: ignore[arg-type]
         cookies=cast(Any, cookies),
         default_headers=default_headers or {},
+        observers=observers,
     )
 
 
@@ -339,6 +342,41 @@ async def test_response_extensions_populated(
     assert response.extensions.connection_reused is None
     assert response.extensions.pool_wait is not None
     await response.aread()
+    await transport.aclose()
+
+
+@pytest.mark.asyncio
+async def test_connection_observer_receives_pool_and_open_events(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class ConnectionObserver(BaseObserver):
+        def __init__(self) -> None:
+            self.pool: list[tuple[str, float]] = []
+            self.opened: list[tuple[str, bool, float, float]] = []
+
+        async def on_pool_wait(self, upstream: str, waited: float) -> None:
+            self.pool.append((upstream, waited))
+
+        async def on_connection_open(
+            self,
+            upstream: str,
+            reused: bool,
+            dns: float,
+            connect: float,
+        ) -> None:
+            self.opened.append((upstream, reused, dns, connect))
+
+    async def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(200, content=b"ok")
+
+    _install_mock_client(monkeypatch, handler)
+    observer = ConnectionObserver()
+    transport = _transport(observers=(observer,))
+    await _perform(transport, _request())
+    assert len(observer.pool) == 1
+    assert observer.pool[0][0] == "test"
+    assert observer.pool[0][1] >= 0.0
+    assert observer.opened == [("test", False, 0.0, 0.0)]
     await transport.aclose()
 
 

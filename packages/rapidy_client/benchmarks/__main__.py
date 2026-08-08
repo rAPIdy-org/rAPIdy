@@ -1,0 +1,85 @@
+from __future__ import annotations
+
+import argparse
+import asyncio
+import json
+
+from ._harness import (
+    DEFAULT_ITERATIONS,
+    DEFAULT_WARMUP,
+    HEADROOM_PATH,
+    VARIANTS,
+    VariantResult,
+    build_headroom,
+    format_breakdown,
+    run_breakdown,
+)
+
+
+def _stored_results(data: dict[str, object]) -> list[VariantResult]:
+    variants = data.get("variants")
+    if not isinstance(variants, dict) or tuple(variants) != VARIANTS:
+        raise ValueError("headroom variants are missing or out of order")
+    results: list[VariantResult] = []
+    for name in VARIANTS:
+        values = variants[name]
+        if not isinstance(values, dict):
+            raise TypeError(f"invalid headroom variant {name!r}")
+        overhead = values.get("overhead_pct")
+        results.append(
+            VariantResult(
+                name=name,
+                p50_us=float(values["p50_us"]),
+                p99_us=float(values["p99_us"]),
+                overhead_pct=None if overhead is None else float(overhead),
+            )
+        )
+    return results
+
+
+def _check_headroom() -> int:
+    try:
+        data = json.loads(HEADROOM_PATH.read_text(encoding="utf-8"))
+        if data.get("schema") != "rapidy-client/headroom@1":
+            raise ValueError("unsupported headroom schema")
+        if data.get("kind") != "bring-up-headroom" or data.get("gate") is not False:
+            raise ValueError("headroom metadata is invalid")
+        results = _stored_results(data)
+        headroom = data["headroom"]
+        if not isinstance(headroom, dict):
+            raise TypeError("headroom verdict is missing")
+    except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
+        print(f"invalid headroom snapshot: {exc}")
+        return 1
+
+    print(format_breakdown(results))
+    verdict = "OK" if headroom.get("within_threshold") else "WARN"
+    print(
+        f"{verdict}: advisory headroom overhead={headroom.get('overhead_pct')}% "
+        f"p99={headroom.get('p99_us')}us (gate=false)"
+    )
+    return 0
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="rapidy-client headroom harness")
+    parser.add_argument("--check-headroom", action="store_true")
+    parser.add_argument("--freeze", action="store_true")
+    parser.add_argument("--iterations", type=int, default=DEFAULT_ITERATIONS)
+    parser.add_argument("--warmup", type=int, default=DEFAULT_WARMUP)
+    args = parser.parse_args(argv)
+    if args.check_headroom:
+        return _check_headroom()
+
+    results = asyncio.run(run_breakdown(iterations=args.iterations, warmup=args.warmup))
+    print(format_breakdown(results))
+    if args.freeze:
+        HEADROOM_PATH.write_text(
+            json.dumps(build_headroom(results), indent=2) + "\n",
+            encoding="utf-8",
+        )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

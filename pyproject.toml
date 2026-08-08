@@ -7,6 +7,7 @@ rapidy-core = { workspace = true }
 
 [dependency-groups]
 dev = [
+    "hypothesis>=6,<7",
     "ruff>=0.8,<1.0",
     "mypy>=1.14,<2.0",
     "pytest>=8.0,<9.0",

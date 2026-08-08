@@ -64,10 +64,19 @@ class Redactor:
 
     def redact_text(self, text: str) -> str:
         result = text
-        for name in self._deny_headers:
+        for name in self._deny_headers | self._deny_query:
             escaped = re.escape(name)
+            result = re.sub(
+                rf"(?i)([\"']{escaped}[\"']\s*:\s*)([\"'])(.*?)(\2)",
+                lambda match: (
+                    f"{match.group(1)}{match.group(2)}{REDACTED}{match.group(4)}"
+                ),
+                result,
+            )
             if name in {"authorization", "proxy-authorization"}:
                 value = r"[^\s,;]+(?:\s+[^\s,;]+)?"
+            elif name in {"cookie", "set-cookie"}:
+                value = r"[^\r\n,]+"
             else:
                 value = r"[^\s,;]+"
             result = re.sub(
