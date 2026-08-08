@@ -5,7 +5,7 @@ import datetime
 import re
 import types
 from collections import defaultdict, deque
-from collections.abc import Callable
+from collections.abc import Callable, Generator
 from decimal import Decimal
 from enum import Enum
 from ipaddress import (
@@ -55,7 +55,7 @@ MainSequence: TypeAlias = (
     | tuple[Any]
     | set[Any]
     | frozenset[Any]
-    | types.GeneratorType[Any, Any, Any]
+    | Generator[Any, Any, Any]
     | deque[Any]
 )
 
