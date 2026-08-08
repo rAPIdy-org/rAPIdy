@@ -16,7 +16,7 @@ from rapidy_core.enums import HeaderName, HTTPRequestParamType
 from rapidy.constants import DEFAULT_JSON_DECODER
 from rapidy.exceptions import HTTPBadRequest, HTTPRequestEntityTooLarge
 from rapidy.helpers import parse_mimetype
-from rapidy.typedefs import ASGIScope, JSONDecoder, Receive
+from rapidy.typedefs import ASGIScope, JSONDecoder, Receive, Send
 
 if TYPE_CHECKING:
     from python_multipart.multipart import MultipartCallbacks
@@ -196,7 +196,10 @@ class _MultipartCollector:
 class Request:
     """Request view over an HTTP ASGI scope with one-shot body caching."""
 
+    _asgi_send: Send
+
     __slots__ = (
+        '_asgi_send',
         '_cache',
         '_cookies',
         '_deadline_remaining_ms',

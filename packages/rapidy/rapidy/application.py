@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import logging
 from collections.abc import AsyncIterator, Iterable, Iterator, MutableMapping, Sequence
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from typing import Any, cast, TYPE_CHECKING
 
 from rapidy.constants import CLIENT_MAX_SIZE
@@ -30,6 +31,8 @@ if TYPE_CHECKING:
     from rapidy.routing.http.base import BaseHTTPRouter
 
 __all__ = ('Rapidy',)
+
+logger = logging.getLogger('rapidy.application')
 
 
 class Rapidy(MutableMapping[str, Any]):
@@ -181,16 +184,18 @@ class Rapidy(MutableMapping[str, Any]):
 
         scope['app'] = self
         response_send = _without_head_body(send) if str(scope.get('method', '')).upper() == 'HEAD' else send
+        tracking_send = _TrackingSend(response_send)
 
         try:
             request = Request(scope, receive)
         except HTTPException as exc:
-            response = _response_from_http_exception(exc)
-            await self._send_response(response, response_send)
+            await self._send_response(_exception_response(exc), tracking_send)
             return
-        except Exception:  # noqa: BLE001
-            await self._send_response(Response('500: Internal Server Error', status=500), response_send)
+        except Exception:
+            logger.exception('Unhandled exception while initializing request')
+            await self._send_response(_internal_server_error_response(), tracking_send)
             return
+        request._asgi_send = tracking_send  # noqa: SLF001
 
         if not self._onion_built:
             # Compatibility fallback for in-process transports that omit ASGI lifespan.
@@ -200,22 +205,30 @@ class Rapidy(MutableMapping[str, Any]):
 
         container = self._request_di_container()
         if container is None:
-            await self._handle_http(request, response_send)
+            await self._handle_http(request, tracking_send)
             return
 
         async with request_di_scope(container, request):
-            await self._handle_http(request, response_send)
+            await self._handle_http(request, tracking_send)
 
-    async def _handle_http(self, request: Request, response_send: Send) -> None:
+    async def _handle_http(self, request: Request, tracking_send: _TrackingSend) -> None:
         try:
             response = await self._run_onion(request)
+            await self._send_response(response, tracking_send)
+        except ConnectionResetError:
+            logger.debug('Client disconnected while reading request body: %s %s', request.method, request.path)
         except HTTPException as exc:
-            # TODO(09-exceptions-full): replace with the complete HTTPException response handler.  # noqa: FIX002
-            response = _response_from_http_exception(exc)
-        except Exception:  # noqa: BLE001
-            response = Response('500: Internal Server Error', status=500)
-
-        await self._send_response(response, response_send)
+            if tracking_send.started:
+                logger.exception('HTTP exception raised after response was started')
+                await _finalize_started_response(tracking_send)
+            else:
+                await self._send_response(_exception_response(exc), tracking_send)
+        except Exception:
+            logger.exception('Unhandled exception during request processing')
+            if tracking_send.started:
+                await _finalize_started_response(tracking_send)
+            else:
+                await self._send_response(_internal_server_error_response(), tracking_send)
 
     async def _run_onion(self, request: Request) -> Response:
         if self._onion is None:
@@ -291,13 +304,57 @@ def _strip_root_path(path: str, root_path: str) -> str:
     return path
 
 
-def _response_from_http_exception(exc: HTTPException) -> Response:
+class _TrackingSend:
+    __slots__ = ('_send', 'completed', 'started')
+
+    def __init__(self, send: Send) -> None:
+        self._send = send
+        self.started = False
+        self.completed = False
+
+    async def __call__(self, message: dict[str, Any]) -> None:
+        message_type = message.get('type')
+        if message_type == 'http.response.start':
+            self.started = True
+        elif message_type == 'http.response.body' and not message.get('more_body', False):
+            self.completed = True
+        await self._send(message)
+
+
+def _exception_response(exc: HTTPException) -> Response:
+    content_type = exc.content_type
+    if content_type is None and exc.text is not None:
+        content_type = 'text/plain'
+    if exc.body is not None:
+        return Response(
+            body=exc.body,
+            status=exc.status_code,
+            headers=exc.headers,
+            content_type=content_type,
+            reason=exc.reason,
+        )
     return Response(
-        body=exc.body,
         status=exc.status_code,
         headers=exc.headers,
-        content_type=exc.content_type,
+        text=exc.text,
+        content_type=content_type,
+        reason=exc.reason,
     )
+
+
+def _internal_server_error_response() -> Response:
+    return Response(
+        status=500,
+        text='500: Internal Server Error',
+        content_type='text/plain',
+    )
+
+
+async def _finalize_started_response(tracking_send: _TrackingSend) -> None:
+    if tracking_send.completed:
+        return
+    with suppress(Exception):
+        await tracking_send({'type': 'http.response.body', 'body': b'', 'more_body': False})
 
 
 def _without_head_body(send: Send) -> Send:
