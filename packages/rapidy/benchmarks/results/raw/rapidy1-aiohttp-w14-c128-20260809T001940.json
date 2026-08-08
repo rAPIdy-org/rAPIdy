@@ -1,0 +1,59 @@
+{
+  "concurrency": 128,
+  "cv_rps": 0.007683207781469816,
+  "duration_s": 30,
+  "env": {
+    "cpu": "Apple M4 Pro",
+    "cpu_count": 14,
+    "os": "macOS-26.6-arm64-arm-64bit-Mach-O",
+    "packages": {
+      "aiohttp": "3.14.2",
+      "gunicorn": "26.0.0",
+      "pydantic": "2.13.4",
+      "rapidy": "1.1.2"
+    },
+    "python": "Python 3.13.3",
+    "ram_gb": 24.0
+  },
+  "git": "40c36e5-dirty",
+  "median": {
+    "p50_ms": 2.568,
+    "p95_ms": 3.853,
+    "p99_ms": 6.019,
+    "rps": 46783.994521231565
+  },
+  "repeats": 3,
+  "runs": [
+    {
+      "non2xx": 0,
+      "p50_ms": 2.568,
+      "p95_ms": 3.877,
+      "p99_ms": 9.018,
+      "req2xx": 1403638,
+      "rps": 46783.994521231565
+    },
+    {
+      "non2xx": 0,
+      "p50_ms": 2.561,
+      "p95_ms": 3.83,
+      "p99_ms": 5.959,
+      "req2xx": 1422543,
+      "rps": 47419.86905010714
+    },
+    {
+      "non2xx": 0,
+      "p50_ms": 2.591,
+      "p95_ms": 3.853,
+      "p99_ms": 6.019,
+      "req2xx": 1397198,
+      "rps": 46571.19520011525
+    }
+  ],
+  "stand": "rapidy1-aiohttp",
+  "timestamp": "2026-08-09T00:19:40",
+  "tool": "bombardier",
+  "tool_version": "bombardier version 2.0.2 darwin/arm64",
+  "unstable": false,
+  "warmup_s": 5,
+  "workers": 14
+}

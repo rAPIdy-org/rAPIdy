@@ -1,0 +1,4 @@
+rapidy==1.1.2
+aiohttp==3.14.2
+gunicorn==26.0.0
+pydantic==2.13.4

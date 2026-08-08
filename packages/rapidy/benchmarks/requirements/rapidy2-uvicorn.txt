@@ -1,0 +1,3 @@
+# rapidy-core and rAPIdy 2.0 are installed separately from sibling repository packages.
+uvicorn[standard]==0.52.1
+pydantic==2.13.4

@@ -1,0 +1,12 @@
+{
+  "id": "not-a-number",
+  "name": "Benchmark User With A Reasonably Long Name",
+  "email": "benchmark.user.with.long.address@example-benchmark-domain.com",
+  "tags": [
+    "performance-testing-tag-alpha",
+    "performance-testing-tag-beta",
+    "performance-testing-tag-gamma",
+    "performance-testing-tag-delta",
+    "performance-testing-tag-epsilon"
+  ]
+}

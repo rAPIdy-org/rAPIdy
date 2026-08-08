@@ -1,0 +1,58 @@
+{
+  "concurrency": 128,
+  "cv_rps": 0.016780391626315658,
+  "duration_s": 30,
+  "env": {
+    "cpu": "Apple M4 Pro",
+    "cpu_count": 14,
+    "os": "macOS-26.6-arm64-arm-64bit-Mach-O",
+    "packages": {
+      "granian": "2.8.1",
+      "pydantic": "2.13.4",
+      "rapidy": "2.0.0"
+    },
+    "python": "Python 3.13.3",
+    "ram_gb": 24.0
+  },
+  "git": "40c36e5-dirty",
+  "median": {
+    "p50_ms": 2.87,
+    "p95_ms": 8.354,
+    "p99_ms": 17.727,
+    "rps": 36146.28318588508
+  },
+  "repeats": 3,
+  "runs": [
+    {
+      "non2xx": 0,
+      "p50_ms": 2.652,
+      "p95_ms": 9.301,
+      "p99_ms": 21.264,
+      "req2xx": 1082029,
+      "rps": 36146.28318588508
+    },
+    {
+      "non2xx": 0,
+      "p50_ms": 2.87,
+      "p95_ms": 7.677,
+      "p99_ms": 16.13,
+      "req2xx": 1108444,
+      "rps": 36949.68239899175
+    },
+    {
+      "non2xx": 0,
+      "p50_ms": 2.904,
+      "p95_ms": 8.354,
+      "p99_ms": 17.727,
+      "req2xx": 1063930,
+      "rps": 35463.93164056122
+    }
+  ],
+  "stand": "rapidy2-granian",
+  "timestamp": "2026-08-09T00:09:52",
+  "tool": "bombardier",
+  "tool_version": "bombardier version 2.0.2 darwin/arm64",
+  "unstable": false,
+  "warmup_s": 5,
+  "workers": 14
+}
