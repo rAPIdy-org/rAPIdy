@@ -80,6 +80,8 @@ pip install rapidy
 # 📄 Documentation
 Documentation: https://rapidy.dev
 
+Migration from rAPIdy 1.x: [MIGRATION.md](../../MIGRATION.md)
+
 ---
 
 # 📢 Updates Channel

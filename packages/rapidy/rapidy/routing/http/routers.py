@@ -82,8 +82,15 @@ class HandlerParameterRecord(NamedTuple):
 RouteParameter = HandlerParameterRecord
 
 
-def _get_handler_parameters(handler: Handler) -> tuple[HandlerParameterRecord, ...]:
-    handler_info = get_http_handler_info(handler, request_attr_can_declare_fst=True)
+def _get_handler_parameters(
+    handler: Handler,
+    *,
+    request_attr_can_declare_fst: bool = True,
+) -> tuple[HandlerParameterRecord, ...]:
+    handler_info = get_http_handler_info(
+        handler,
+        request_attr_can_declare_fst=request_attr_can_declare_fst,
+    )
     return tuple(
         HandlerParameterRecord(
             name=attr.attribute_name,
@@ -169,7 +176,7 @@ def _create_ws_terminal(handler: Handler) -> Handler:
     async def ws_terminal(ws: WebSocket, request: Request) -> None:
         values, errors = await request_validator.validate(request)
         if errors:
-            raise HTTPValidationFailure(errors=errors)
+            raise HTTPValidationFailure(errors=errors, include_pydantic_details=False)
         values = values or {}
         if info.request_attribute is not None:
             values[info.request_attribute.attribute_name] = request
@@ -384,6 +391,11 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
             view = cast('type[View]', self._handler)
             route_kwargs = dict(self._route_kwargs)
             route_kwargs.pop('allow_head', None)
+            original_handlers = {
+                name.upper(): cast('Handler', getattr(view, name))
+                for name in ('get', 'post', 'put', 'patch', 'delete', 'head', 'options')
+                if hasattr(view, name)
+            }
             view_terminal = view_validation_wrapper(view, method=MethodName.any, **route_kwargs)
             methods = {name.upper() for name in dir(view) if name.upper() in METH_ALL}
             if 'GET' in methods:
@@ -391,7 +403,11 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
             for method_name in ('GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'):
                 if method_name not in methods:
                     continue
-                method_handler = cast('Handler', getattr(view, method_name.lower()))
+                method_handler = (
+                    original_handlers[method_name]
+                    if method_name in original_handlers
+                    else original_handlers['GET']
+                )
                 application._matcher.add_route(  # noqa: SLF001
                     method_name,
                     self.path,
@@ -399,7 +415,10 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
                     route_kwargs,
                     allow_head=False,
                     handler=method_handler,
-                    parameters=_get_handler_parameters(method_handler),
+                    parameters=_get_handler_parameters(
+                        method_handler,
+                        request_attr_can_declare_fst=False,
+                    ),
                 )
             return
 

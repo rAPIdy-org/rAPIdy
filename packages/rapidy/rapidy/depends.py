@@ -72,9 +72,10 @@ def _inject_wrapper[**P, T](
     param_name: str,
     param_annotation: type[Request],
 ) -> Callable[P, T]:
-    global_namespace = dict(getattr(func, '__globals__', {}))
+    annotation_source = inspect.unwrap(func)
+    global_namespace = dict(getattr(annotation_source, '__globals__', {}))
     global_namespace.update({'Request': Request, 'Response': Response})
-    hints = get_type_hints(func, globalns=global_namespace, include_extras=True)
+    hints = get_type_hints(annotation_source, globalns=global_namespace, include_extras=True)
 
     additional_params: list[Parameter] = []
     actual_param_name = param_name

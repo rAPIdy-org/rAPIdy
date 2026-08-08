@@ -1,5 +1,0 @@
-[tool.mypy]
-plugins = [
-    "pydantic.mypy",
-    "rapidy.mypy"
-]

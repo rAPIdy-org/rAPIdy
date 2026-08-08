@@ -46,15 +46,22 @@ class Lifespan:
             await result
 
     async def _call_hooks(self, hooks: list[LifespanHook]) -> None:
+        first_error: BaseException | None = None
         for hook in hooks:
-            await self._call_lifespan_hook(hook)
+            try:
+                await self._call_lifespan_hook(hook)
+            except BaseException as exc:  # noqa: BLE001 - all lifecycle hooks must get a cleanup attempt.
+                if first_error is None:
+                    first_error = exc
+        if first_error is not None:
+            raise first_error
 
     @asynccontextmanager
     async def ctx_manager(self) -> AsyncIterator[None]:
         """Enter managers and run hooks in the frozen lifecycle order."""
         async with AsyncExitStack() as stack:
             for source in self.lifespan_managers:
-                manager = source(self._app) if callable(source) else source
+                manager = source(self._app) if callable(source) and not hasattr(source, '__aenter__') else source
                 await stack.enter_async_context(cast('AbstractAsyncContextManager[Any]', manager))
 
             stack.push_async_callback(self._call_hooks, self.on_cleanup)

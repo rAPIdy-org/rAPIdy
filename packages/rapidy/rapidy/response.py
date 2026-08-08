@@ -156,6 +156,10 @@ class Response(StreamResponse):
     def status(self, value: int) -> None:
         self._status = int(value)
 
+    def set_status(self, status: int) -> None:
+        """Set the HTTP status code using the rAPIdy 1.x compatibility API."""
+        self.status = status
+
     @property
     def reason(self) -> str | None:
         """Return the optional HTTP reason phrase."""

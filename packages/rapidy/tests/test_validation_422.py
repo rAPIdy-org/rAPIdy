@@ -17,7 +17,7 @@ class Item(BaseModel):
 
 
 @pytest.mark.asyncio
-async def test_validation_failure_body_schema_and_pydantic_details() -> None:
+async def test_validation_failure_body_schema_is_transport_stable() -> None:
     @post('/items')
     async def create(item: Item = Body()) -> str:
         return item.name
@@ -30,7 +30,7 @@ async def test_validation_failure_body_schema_and_pydantic_details() -> None:
     assert response.headers['content-type'].startswith('application/json')
     errors = response.json()['errors']
     assert errors[0]['loc'] == ['body', 'name']
-    assert {'loc', 'msg', 'type', 'input', 'url'} <= errors[0].keys()
+    assert errors[0].keys() == {'loc', 'msg', 'type'}
 
 
 @pytest.mark.asyncio

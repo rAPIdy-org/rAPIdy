@@ -444,11 +444,15 @@ class HTTPValidationFailure(HTTPUnprocessableEntity):
         body: Any = None,
         text: str | None = None,
         content_type: str | None = None,
+        include_pydantic_details: bool = True,
     ) -> None:
         self._errors = normalize_errors(errors, pop_useless_keys=False)
         if text is None:
+            rendered_errors = [dict(error) for error in self._errors]
+            if not include_pydantic_details:
+                normalize_errors(rendered_errors)
             text = cast('Callable[..., str]', DEFAULT_JSON_ENCODER)(
-                {self.validation_failure_field_name: self._errors},
+                {self.validation_failure_field_name: rendered_errors},
                 default=str,
             )
         super().__init__(

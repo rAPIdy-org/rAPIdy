@@ -103,7 +103,7 @@ class HandlerController:
         """Extract and validate all declared request-source parameters."""
         values, errors = await self._request_validator.validate(request)
         if errors:
-            raise HTTPValidationFailure(errors=errors)
+            raise HTTPValidationFailure(errors=errors, include_pydantic_details=False)
         return cast('dict[AttributeName, AttributeValue]', values)
 
     async def create_response(
