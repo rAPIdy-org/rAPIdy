@@ -25,7 +25,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+brotli = ["brotli>=1.1"]
 http2 = ["h2>=4.1"]
+zstd = ["zstandard>=0.23; python_version < '3.14'"]
 
 [build-system]
 requires = ["uv_build>=0.9,<1.0"]

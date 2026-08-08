@@ -1,4 +1,5 @@
 import asyncio
+import gzip
 import ssl
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
@@ -12,6 +13,7 @@ from rapidy_client import (
     UNSET,
     URL,
     ContentFactory,
+    DecodeError,
     Headers,
     HttpTimeoutError,
     ProtocolError,
@@ -171,7 +173,19 @@ def test_default_user_agent_set() -> None:
 
 def test_default_user_agent_not_overridden() -> None:
     transport = _transport(default_headers={"user-agent": "svc/1.2"})
-    assert transport._default_headers == {"user-agent": "svc/1.2"}
+    assert transport._default_headers["user-agent"] == "svc/1.2"
+
+
+def test_default_accept_encoding_set() -> None:
+    transport = _transport()
+    assert transport._default_headers["Accept-Encoding"].startswith("gzip")
+    assert "deflate" not in transport._default_headers["Accept-Encoding"]
+
+
+def test_default_accept_encoding_not_overridden_case_insensitively() -> None:
+    transport = _transport(default_headers={"accept-encoding": "identity"})
+    assert transport._default_headers["accept-encoding"] == "identity"
+    assert "Accept-Encoding" not in transport._default_headers
 
 
 def test_default_headers_applied() -> None:
@@ -370,6 +384,71 @@ async def test_content_passed(
     transport = _transport()
     await _perform(transport, _request(content=content))
     assert received == [content or b""]
+    await transport.aclose()
+
+
+@pytest.mark.asyncio
+async def test_default_accept_encoding_applied_to_request(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen: list[str] = []
+
+    async def handler(request: httpx2.Request) -> httpx2.Response:
+        seen.append(request.headers["accept-encoding"])
+        return httpx2.Response(200, content=b"ok")
+
+    _install_mock_client(monkeypatch, handler)
+    transport = _transport()
+    await _perform(transport, _request())
+    assert seen == [transport._default_headers["Accept-Encoding"]]
+    await transport.aclose()
+
+
+@pytest.mark.asyncio
+async def test_transport_decodes_content_encoding_incrementally(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    encoded = gzip.compress(b"decoded body" * 20)
+
+    class RawStream(httpx2.AsyncByteStream):
+        async def __aiter__(self) -> AsyncIterator[bytes]:
+            for index in range(0, len(encoded), 3):
+                yield encoded[index : index + 3]
+
+    async def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(
+            200,
+            headers={"Content-Encoding": "gzip"},
+            stream=RawStream(),
+        )
+
+    _install_mock_client(monkeypatch, handler)
+    transport = _transport()
+    assert await _perform(transport, _request()) == b"decoded body" * 20
+    await transport.aclose()
+
+
+@pytest.mark.asyncio
+async def test_transport_unknown_content_encoding_raises_decode_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class RawStream(httpx2.AsyncByteStream):
+        async def __aiter__(self) -> AsyncIterator[bytes]:
+            yield b"encoded"
+
+    async def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(
+            200,
+            headers={"Content-Encoding": "made-up"},
+            stream=RawStream(),
+        )
+
+    _install_mock_client(monkeypatch, handler)
+    transport = _transport()
+    response = await transport.handle(_request())
+    with pytest.raises(DecodeError, match="made-up"):
+        await response.aread()
+    assert transport._sem_for("example.test").locked() is False
     await transport.aclose()
 
 

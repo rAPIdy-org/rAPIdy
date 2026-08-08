@@ -8,6 +8,7 @@ import pytest
 import rapidy_client._client as client_module
 from rapidy_client import (
     UNSET,
+    BodyTooLargeError,
     ClientClosedError,
     FilePart,
     Headers,
@@ -80,6 +81,19 @@ class _BlockingTransport(_RecordingTransport):
     async def aclose(self) -> None:
         self.log.append("close")
         await super().aclose()
+
+
+class _RedirectTransport(_RecordingTransport):
+    async def handle(self, request: Request) -> Response:
+        self.requests.append(request)
+        first_hop = len(self.requests) == 1
+        return Response(
+            status=302 if first_hop else 200,
+            headers=Headers({"Location": "/redirected"}) if first_hop else Headers(),
+            request=request,
+            extensions=ResponseExtensions(elapsed=0.0, attempt=1),
+            stream=_body_stream(b"" if first_hop else b"done"),
+        )
 
 
 class _FakeInfinite:
@@ -385,10 +399,47 @@ async def test_raise_for_status_raises_status_error() -> None:
 
 
 @pytest.mark.asyncio
+async def test_status_error_body_is_capped() -> None:
+    transport = _RecordingTransport(status=500, body=b"0123456789")
+    client, _ = _client(
+        config=_config(error_body_limit=4),
+        transport=transport,
+    )
+    with pytest.raises(StatusError) as error:
+        await client.get("/x")
+    assert await error.value.response.aread() == b"0123"
+
+
+@pytest.mark.asyncio
+async def test_success_body_enforces_max_response_size() -> None:
+    transport = _RecordingTransport(status=200, body=b"0123456789")
+    client, _ = _client(
+        config=_config(max_response_size=4),
+        transport=transport,
+    )
+    with pytest.raises(BodyTooLargeError):
+        await client.get("/x")
+
+
+@pytest.mark.asyncio
 async def test_raise_for_status_false_returns_response() -> None:
-    client, _ = _client(transport=_RecordingTransport(status=500))
+    client, _ = _client(transport=_RecordingTransport(status=500, body=b"later"))
     response = await client.get("/x", raise_for_status=False)
     assert response.status == 500
+    assert response._buffered is None
+    assert await response.aread() == b"later"
+
+
+@pytest.mark.asyncio
+async def test_client_pipeline_follows_redirect_override() -> None:
+    transport = _RedirectTransport()
+    client, _ = _client(transport=transport)
+    response = await client.get("/x", follow_redirects=True)
+    assert await response.aread() == b"done"
+    assert [request.url.path for request in transport.requests] == [
+        "/x",
+        "/redirected",
+    ]
 
 
 @pytest.mark.asyncio

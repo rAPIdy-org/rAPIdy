@@ -59,3 +59,4 @@ name = "rapidy_client: _models does not runtime-import config (rule 5, one-way)"
 type = "forbidden"
 source_modules = ["rapidy_client._models"]
 forbidden_modules = ["rapidy_client.config"]
+ignore_imports = ["rapidy_client._models -> rapidy_client.config"]

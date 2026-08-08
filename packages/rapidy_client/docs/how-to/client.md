@@ -66,10 +66,11 @@ values are stored in each request's `RequestExtensions`.
 
 ## Status and streaming
 
-Buffered requests read the body before returning. By default, 4xx and 5xx
-responses raise `StatusError` after the middleware pipeline has completed;
-middleware can always inspect the original response. Pass
-`raise_for_status=False` to return error responses unchanged.
+By default, requests buffer successful bodies and raise `StatusError` for 4xx
+and 5xx after the middleware pipeline has completed; middleware can always
+inspect the original response. Error bodies are retained up to
+`error_body_limit`. Pass `raise_for_status=False` to return the response without
+eagerly reading its body.
 
 Use the streaming context to keep body consumption lazy and guarantee cleanup:
 

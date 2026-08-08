@@ -41,6 +41,7 @@ from rapidy_client.config import (
     render_effective_config,
 )
 from rapidy_client.errors import ClientClosedError, StatusError
+from rapidy_client.middleware.redirect import RedirectMiddleware
 from rapidy_client.transports.httpx import HttpxTransport
 
 _IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "PUT", "DELETE", "OPTIONS", "TRACE"})
@@ -175,6 +176,10 @@ class HttpClient:
             self._transport,
             middlewares=self._middlewares,
             per_attempt_middlewares=per_attempt_middlewares,
+            redirect=RedirectMiddleware(
+                allow_absolute_urls=self._config.allow_absolute_urls,
+                max_response_size=self._config.max_response_size,
+            ),
             debug=client_debug_enabled(),
         )
         self._loop: asyncio.AbstractEventLoop | None = None
@@ -341,8 +346,13 @@ class HttpClient:
         raise_for_status: bool,
     ) -> Response:
         response = await self._entry(request)
-        await response.aread()
-        if raise_for_status and (response.is_client_error or response.is_server_error):
+        is_error = response.is_client_error or response.is_server_error
+        if raise_for_status:
+            if is_error:
+                await response._aread_capped(self._config.error_body_limit)
+            else:
+                await response.aread()
+        if raise_for_status and is_error:
             raise StatusError(
                 f"HTTP response status {response.status}",
                 status=response.status,

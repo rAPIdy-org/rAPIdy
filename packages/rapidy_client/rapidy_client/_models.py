@@ -323,6 +323,29 @@ class Response:
         self._consumed = True
         return self._buffered
 
+    async def _aread_capped(self, limit: int) -> bytes:
+        """Buffer at most ``limit`` bytes for a status-error response."""
+        if self._buffered is not None:
+            return self._buffered
+        if self._consumed:
+            raise RuntimeError("response stream already consumed")
+        if limit < 0:
+            raise ValueError("body limit must be non-negative")
+
+        chunks: list[bytes] = []
+        total = 0
+        if limit:
+            async for chunk in self._iter_source():
+                take = chunk[: limit - total]
+                chunks.append(take)
+                total += len(take)
+                if total >= limit:
+                    break
+        self._buffered = b"".join(chunks)
+        self._consumed = True
+        await self.aclose()
+        return self._buffered
+
     async def text(self) -> str:
         try:
             return (await self.aread()).decode(self._charset())

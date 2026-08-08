@@ -19,7 +19,11 @@ from typing import TYPE_CHECKING, Final, Literal, TypedDict, cast
 import httpcore2
 import httpx2
 
-from rapidy_client._content import ContentFactory
+from rapidy_client._content import (
+    ContentFactory,
+    build_accept_encoding,
+    decode_stream,
+)
 from rapidy_client._models import (
     BaseTransport,
     Headers,
@@ -46,6 +50,9 @@ if TYPE_CHECKING:
 
 _DEFAULT_SERVICE: Final = "rapidy-client"
 _SERVER_DISCONNECTED = "server disconnected without"
+
+# httpcore2 trace coverage and the semaphore-timing fallback are documented in
+# docs/adr/0002-httpcore2-trace-spike.md.
 
 
 class _ErrorContext(TypedDict):
@@ -225,6 +232,10 @@ class HttpxTransport(BaseTransport):
         self._default_headers = dict(default_headers)
         if not any(name.casefold() == "user-agent" for name in self._default_headers):
             self._default_headers["User-Agent"] = _default_user_agent()
+        if not any(
+            name.casefold() == "accept-encoding" for name in self._default_headers
+        ):
+            self._default_headers["Accept-Encoding"] = build_accept_encoding()
         self._client: httpx2.AsyncClient | None = None
         self._semaphores: dict[str, asyncio.Semaphore] = {}
         self._closed = False
@@ -361,6 +372,20 @@ class HttpxTransport(BaseTransport):
         finally:
             await close()
 
+    async def _decode_response_stream(
+        self,
+        encodings: list[str],
+        source: AsyncIterable[bytes],
+        close: Callable[[], Awaitable[None]],
+    ) -> AsyncIterator[bytes]:
+        try:
+            async for chunk in decode_stream(encodings, source):
+                yield chunk
+        finally:
+            # decode_stream may reject an encoding before it starts consuming
+            # source, so its inner transport stream cannot release the slot.
+            await close()
+
     def _build_response(
         self,
         request: Request,
@@ -369,12 +394,26 @@ class HttpxTransport(BaseTransport):
         semaphore: asyncio.Semaphore,
     ) -> Response:
         close = self._wrap_close(native_response, semaphore, request)
+        content_encoding = native_response.headers.get("content-encoding", "")
+        encodings = [
+            token
+            for value in content_encoding.split(",")
+            if (token := value.strip().casefold()) and token != "identity"
+        ]
+        raw_stream = self._wrap_stream(native_response, request, close)
+        # A pre-buffered native response has already passed through httpx2's
+        # decoder. Real stream=True responses remain raw and are decoded here.
+        stream = (
+            raw_stream
+            if hasattr(native_response, "_content") or not encodings
+            else self._decode_response_stream(encodings, raw_stream, close)
+        )
         return Response(
             status=native_response.status_code,
             headers=Headers(native_response.headers.multi_items()),
             request=request,
             extensions=extensions,
-            stream=self._wrap_stream(native_response, request, close),
+            stream=stream,
             on_close=close,
         )
 
