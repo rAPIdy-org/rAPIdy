@@ -112,6 +112,7 @@ def _inject_wrapper(
 ) -> Callable[P, T]:
     hints = get_type_hints(
         func,
+        include_extras=True,
         # necessary because `rapidy` uses `if TYPE_CHECKING:`
         globalns={
             'Request': param_annotation,
@@ -151,6 +152,10 @@ def _inject_wrapper(
             raise
         return current_request[CONTAINER_KEY]
 
+    # Python 3.14 preserves ForwardRef module ownership when evaluating nested
+    # type aliases. Normalize once with the namespace above so Dishka and the
+    # downstream handler introspector can safely resolve the same callable.
+    func.__annotations__ = hints
     return wrap_injection(
         func=func,
         is_async=True,
