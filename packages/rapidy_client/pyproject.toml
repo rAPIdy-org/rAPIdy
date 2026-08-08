@@ -4,10 +4,10 @@ version = "0.1.0"
 description = "Declarative async HTTP client for the rAPIdy family."
 readme = "README.md"
 requires-python = ">=3.13"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Daniil Grois", email = "daniil.grois@gmail.com" }]
 classifiers = [
-    "License :: OSI Approved :: MIT License",
     "Intended Audience :: Developers",
     "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3 :: Only",
@@ -18,7 +18,7 @@ classifiers = [
 ]
 dependencies = [
     "httpx2>=2.5",
-    "pydantic>=2.9",
+    "pydantic>=2.9,<3",
     "pydantic-settings>=2.6",
     "rapidy-core>=0.1,<0.2",
     "wsproto>=1.3",

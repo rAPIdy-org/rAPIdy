@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import importlib.util
 import socket
 import ssl
 import time
@@ -156,11 +157,7 @@ def _default_user_agent() -> str:
 
 
 def _h2_available() -> bool:
-    try:
-        import h2  # noqa: F401
-    except ImportError:
-        return False
-    return True
+    return importlib.util.find_spec("h2") is not None
 
 
 def _ctx(request: Request) -> _ErrorContext:

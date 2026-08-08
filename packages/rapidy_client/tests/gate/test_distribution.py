@@ -110,7 +110,8 @@ def test_sdist_contains_sources_and_docs(distributions: tuple[Path, Path]) -> No
 
     assert any(name.endswith("/pyproject.toml") for name in names)
     assert any(name.endswith("/README.md") for name in names)
-    assert metadata["License"] == "MIT"
+    assert any(name.endswith("/LICENSE") for name in names)
+    assert metadata["License-Expression"] == "MIT"
     assert any(name.endswith("/rapidy_client/__init__.py") for name in names)
     assert not any(
         "roadmap" in name.casefold() or "prototype" in name.casefold() for name in names
@@ -128,7 +129,7 @@ def test_distribution_metadata_dependencies(distributions: tuple[Path, Path]) ->
     dependencies = metadata.get_all("Requires-Dist", [])
     assert metadata["Requires-Python"] == ">=3.13"
     assert any(value.startswith("rapidy-core>=0.1,<0.2") for value in dependencies)
-    assert any(value.startswith("pydantic>=2.9") for value in dependencies)
+    assert any(value.startswith("pydantic>=2.9,<3") for value in dependencies)
     assert any(value.startswith("httpx2>=2.5") for value in dependencies)
     assert any(value.startswith("wsproto>=1.3") for value in dependencies)
     assert not any("dishka" in value.casefold() for value in dependencies)
