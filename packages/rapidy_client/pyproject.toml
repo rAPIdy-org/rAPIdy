@@ -16,7 +16,10 @@ classifiers = [
     "Typing :: Typed",
     "Framework :: AsyncIO",
 ]
-dependencies = ["rapidy-core"]
+dependencies = [
+    "rapidy-core",
+    "yarl>=1.18",
+]
 
 [build-system]
 requires = ["uv_build>=0.9,<1.0"]
@@ -28,4 +31,5 @@ module-name = "rapidy_client"
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"
+asyncio_mode = "strict"
 filterwarnings = ["error"]

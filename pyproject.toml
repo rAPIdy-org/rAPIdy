@@ -19,3 +19,24 @@ dev = [
 
 [tool.uv]
 default-groups = ["dev"]
+
+[tool.importlinter]
+root_packages = ["rapidy_client"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "rapidy_client: yarl only in _models"
+type = "forbidden"
+source_modules = ["rapidy_client"]
+forbidden_modules = ["yarl"]
+ignore_imports = ["rapidy_client._models -> yarl"]
+
+[[tool.importlinter.contracts]]
+name = "rapidy_client: foundation layering (_models > errors > _redaction)"
+type = "layers"
+layers = [
+    "rapidy_client._models",
+    "rapidy_client.errors",
+    "rapidy_client._redaction",
+]
+ignore_imports = ["rapidy_client.errors -> rapidy_client._models"]

@@ -1462,10 +1462,14 @@ version = "0.1.0"
 source = { editable = "packages/rapidy_client" }
 dependencies = [
     { name = "rapidy-core" },
+    { name = "yarl" },
 ]
 
 [package.metadata]
-requires-dist = [{ name = "rapidy-core", editable = "packages/rapidy_core" }]
+requires-dist = [
+    { name = "rapidy-core", editable = "packages/rapidy_core" },
+    { name = "yarl", specifier = ">=1.18" },
+]
 
 [[package]]
 name = "rapidy-core"
