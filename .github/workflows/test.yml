@@ -34,8 +34,8 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - run: uv sync --python ${{ matrix.python-version }}
       - run: uv run mypy --strict packages/rapidy_core/rapidy_core
-      - name: Run core tests (exit 5 is allowed for the milestone-01 scaffold)
-        run: uv run --python ${{ matrix.python-version }} pytest packages/rapidy_core || test $? -eq 5
+      - name: Run core tests
+        run: uv run --python ${{ matrix.python-version }} pytest packages/rapidy_core/tests
 
   core-py312-wheel:
     runs-on: ubuntu-latest
