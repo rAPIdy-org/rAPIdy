@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Iterator, MutableMapping
 from typing import Any, TYPE_CHECKING
 
+from rapidy.constants import CLIENT_MAX_SIZE
 from rapidy.exceptions import HTTPException
 from rapidy.lifespan import Lifespan
 from rapidy.request import Request, State
@@ -33,7 +34,7 @@ class Rapidy(MutableMapping[str, Any]):
     def __init__(
         self,
         *,
-        client_max_size: int = 1024**2,
+        client_max_size: int = CLIENT_MAX_SIZE,
         server_info_in_response: bool = False,
         lifespan: Iterable[LifespanCTX] = (),
         on_startup: Iterable[LifespanHook] = (),

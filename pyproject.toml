@@ -22,8 +22,43 @@ dev = [
 default-groups = ["dev"]
 
 [tool.importlinter]
-root_packages = ["rapidy_client"]
+root_packages = ["rapidy", "rapidy_client", "rapidy_core"]
 include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "rapidy_core stays independent from consumers"
+type = "forbidden"
+source_modules = ["rapidy_core"]
+forbidden_modules = ["rapidy", "rapidy_client"]
+
+[[tool.importlinter.contracts]]
+name = "rapidy server does not import rapidy_client"
+type = "forbidden"
+source_modules = ["rapidy"]
+forbidden_modules = ["rapidy_client"]
+
+[[tool.importlinter.contracts]]
+name = "rapidy server consumes Dishka through rapidy_core"
+type = "forbidden"
+source_modules = ["rapidy"]
+forbidden_modules = ["dishka"]
+
+[[tool.importlinter.contracts]]
+name = "rapidy generic validation stays ASGI-runtime free"
+type = "forbidden"
+source_modules = [
+    "rapidy.endpoint_handlers.attr_containers",
+    "rapidy.endpoint_handlers.validation",
+]
+forbidden_modules = [
+    "rapidy.application",
+    "rapidy.middlewares",
+    "rapidy.request",
+    "rapidy.response",
+    "rapidy.routing",
+    "rapidy.serve",
+    "rapidy.websockets",
+]
 
 [[tool.importlinter.contracts]]
 name = "rapidy_client: yarl only in _models"
@@ -79,6 +114,7 @@ name = "client DI uses only rapidy_core DI facade"
 type = "forbidden"
 source_modules = ["rapidy_client.di"]
 forbidden_modules = ["dishka"]
+ignore_imports = ["rapidy_client.di -> rapidy_core.di"]
 
 [[tool.importlinter.contracts]]
 name = "wsproto localized to ws.py (rule 5.1.1)"
