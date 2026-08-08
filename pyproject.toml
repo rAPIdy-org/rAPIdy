@@ -40,3 +40,16 @@ layers = [
     "rapidy_client._redaction",
 ]
 ignore_imports = ["rapidy_client.errors -> rapidy_client._models"]
+
+[[tool.importlinter.contracts]]
+name = "httpx2/httpcore2 localized to transports.httpx (rule 5.1.1)"
+type = "forbidden"
+source_modules = [
+    "rapidy_client._models",
+    "rapidy_client._content",
+    "rapidy_client._redaction",
+    "rapidy_client._clock",
+    "rapidy_client.errors",
+    "rapidy_client.testing.chaos",
+]
+forbidden_modules = ["httpx2", "httpcore2"]

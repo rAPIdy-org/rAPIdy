@@ -17,9 +17,13 @@ classifiers = [
     "Framework :: AsyncIO",
 ]
 dependencies = [
+    "httpx2>=2.5",
     "rapidy-core",
     "yarl>=1.18",
 ]
+
+[project.optional-dependencies]
+http2 = ["h2>=4.1"]
 
 [build-system]
 requires = ["uv_build>=0.9,<1.0"]
