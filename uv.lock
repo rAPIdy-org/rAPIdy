@@ -1653,6 +1653,10 @@ brotli = [
 http2 = [
     { name = "h2" },
 ]
+testing = [
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+]
 zstd = [
     { name = "zstandard", marker = "python_full_version < '3.14'" },
 ]
@@ -1664,11 +1668,13 @@ requires-dist = [
     { name = "httpx2", specifier = ">=2.5" },
     { name = "pydantic", specifier = ">=2.9" },
     { name = "pydantic-settings", specifier = ">=2.6" },
+    { name = "pytest", marker = "extra == 'testing'", specifier = ">=8.0,<9.0" },
+    { name = "pytest-asyncio", marker = "extra == 'testing'", specifier = ">=1.0,<2.0" },
     { name = "rapidy-core", editable = "packages/rapidy_core" },
     { name = "yarl", specifier = ">=1.18" },
     { name = "zstandard", marker = "python_full_version < '3.14' and extra == 'zstd'", specifier = ">=0.23" },
 ]
-provides-extras = ["brotli", "http2", "zstd"]
+provides-extras = ["brotli", "http2", "testing", "zstd"]
 
 [[package]]
 name = "rapidy-core"

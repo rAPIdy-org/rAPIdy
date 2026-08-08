@@ -27,7 +27,14 @@ dependencies = [
 [project.optional-dependencies]
 brotli = ["brotli>=1.1"]
 http2 = ["h2>=4.1"]
+testing = [
+    "pytest>=8.0,<9.0",
+    "pytest-asyncio>=1.0,<2.0",
+]
 zstd = ["zstandard>=0.23; python_version < '3.14'"]
+
+[project.entry-points.pytest11]
+rapidy_client = "rapidy_client.testing.plugin"
 
 [build-system]
 requires = ["uv_build>=0.9,<1.0"]
