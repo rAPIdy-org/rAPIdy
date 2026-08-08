@@ -12,7 +12,7 @@ from rapidy.depends import inject_http
 from rapidy.endpoint_handlers.http.controller import controller_factory
 from rapidy.exceptions import HTTPMethodNotAllowed
 from rapidy.request import Request
-from rapidy.response import Response
+from rapidy.response import Response, StreamResponse
 from rapidy.routing.http.helper_types import HandlerPartial
 from rapidy.typedefs import Handler, JSONEncoder, View
 
@@ -134,7 +134,7 @@ def handler_validation_wrapper(
     )
 
     @wraps(handler)
-    async def inner(request: Request) -> Response:
+    async def inner(request: Request) -> StreamResponse:
         pre_response: Response | None = None
         validated_data = await handler_controller.validate_request(request)
         if handler_controller.request_attribute_name:
@@ -187,6 +187,10 @@ def view_validation_wrapper(
     handler_controllers = {}
     view_http_methods = {name.lower() for name in dir(view) if name.upper() in METH_ALL}
 
+    if method == HTTPMethod.any and 'get' in view_http_methods and 'head' not in view_http_methods:
+        setattr(view, HTTPMethod.head.value.lower(), getattr(view, HTTPMethod.get.value.lower()))
+        view_http_methods.add('head')
+
     method_names = view_http_methods if method == HTTPMethod.any else {method.value.lower()}
     if method == HTTPMethod.head and 'head' not in view_http_methods:
         get_handler = getattr(view, HTTPMethod.get.value.lower(), None)
@@ -221,7 +225,7 @@ def view_validation_wrapper(
         )
 
     @wraps(view)
-    async def inner(request: Request) -> Response:
+    async def inner(request: Request) -> StreamResponse:
         method_name = request.method.lower()
         controller = handler_controllers.get(method_name)
         method_handler = getattr(view, method_name, None)

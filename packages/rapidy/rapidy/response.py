@@ -1,47 +1,100 @@
 from __future__ import annotations
 
+import dataclasses
 from collections.abc import Mapping
 from concurrent.futures import Executor
-from typing import Any, TYPE_CHECKING
+from decimal import Decimal
+from enum import Enum
+from http.cookies import SimpleCookie
+from typing import Any, Counter, DefaultDict, TYPE_CHECKING
 
 from multidict import CIMultiDict
+from pydantic import BaseModel
 from rapidy_core.constants import DEFAULT_JSON_ENCODER
+from rapidy_core.encoders import jsonify
 from rapidy_core.enums import Charset, ContentType
 
-from rapidy.exceptions import ResponseDuplicateBodyError
+from rapidy._base_exceptions import RapidyException
+from rapidy.helpers import parse_mimetype
 from rapidy.typedefs import LooseHeaders, Send
 
 if TYPE_CHECKING:
     from rapidy_core.encoders import CustomEncoder, Exclude, Include
     from rapidy_core.typedefs import JSONEncoder
 
-__all__ = ('Response',)
+__all__ = ('StreamResponse', 'Response')
+
+DEFAULT_JSON_TYPES: tuple[type[Any], ...] = (
+    BaseModel,
+    dict,
+    list,
+    tuple,
+    set,
+    frozenset,
+    DefaultDict,
+    Counter,
+)
+DEFAULT_TEXT_PLAIN_TYPES: tuple[type[Any], ...] = (str, Enum, int, float, Decimal, bool)
+MIN_INFORMATIONAL_STATUS = 100
+MIN_SUCCESS_STATUS = 200
+NO_BODY_STATUSES = {204, 304}
+
+
+class ResponseDuplicateBodyError(RapidyException):
+    """Raised when both compatibility body inputs are provided."""
+
+    message = '`body` and `text` are not allowed together'
+
+
+class ResponseEncodeError(RapidyException):
+    """Raised when a response value cannot be serialized."""
+
+    message = 'Encoding errors: \n {errors}'
+
+
+class StreamResponse:
+    """Placeholder for the streaming implementation introduced in milestone 12."""
+
+    __slots__ = ()
 
 
 def _as_header_text(value: str | bytes) -> str:
     return value.decode('latin-1') if isinstance(value, bytes) else value
 
 
-class Response:
-    """Minimal ASGI response; full serialization is completed in milestone 10."""
+def _make_headers(headers: LooseHeaders | None) -> CIMultiDict[str]:
+    if headers is None:
+        return CIMultiDict()
+    if isinstance(headers, Mapping):
+        return CIMultiDict(headers)
+    return CIMultiDict((_as_header_text(key), _as_header_text(value)) for key, value in headers)
+
+
+def _enum_value(value: str | Enum | None) -> str | None:
+    return str(value.value) if isinstance(value, Enum) else value
+
+
+class Response(StreamResponse):
+    """Mutable response value object with rAPIdy-compatible serialization."""
 
     __slots__ = (
         '_body',
         '_by_alias',
+        '_charset',
+        '_content_type',
+        '_cookies',
         '_custom_encoder',
-        '_exclude',
         '_exclude_defaults',
+        '_exclude_fields',
         '_exclude_none',
         '_exclude_unset',
-        '_include',
+        '_headers',
+        '_include_fields',
         '_json_encoder',
+        '_reason',
+        '_status',
         '_zlib_executor',
         '_zlib_executor_size',
-        'charset',
-        'content_type',
-        'headers',
-        'reason',
-        'status',
     )
 
     def __init__(
@@ -65,81 +118,244 @@ class Response:
         text: Any | None = None,
         reason: str | None = None,
     ) -> None:
-        if body is not None and text is not None:
-            raise ResponseDuplicateBodyError
-
-        self.status = status
-        if headers is None:
-            self.headers: CIMultiDict[str] = CIMultiDict()
-        elif isinstance(headers, Mapping):
-            self.headers = CIMultiDict(headers)
-        else:
-            self.headers = CIMultiDict((_as_header_text(k), _as_header_text(v)) for k, v in headers)
-
-        self.content_type = str(content_type) if content_type is not None else None
-        self.charset = str(charset) if charset is not None else None
-        self.reason = reason
-        self._zlib_executor = zlib_executor
-        self._zlib_executor_size = zlib_executor_size
-        self._include = include
-        self._exclude = exclude
+        """Create a response; zlib options are accepted but compression is not performed."""
+        self._json_encoder = json_encoder
+        self._include_fields = include
+        self._exclude_fields = exclude
         self._by_alias = by_alias
         self._exclude_unset = exclude_unset
         self._exclude_defaults = exclude_defaults
         self._exclude_none = exclude_none
         self._custom_encoder = custom_encoder
-        self._json_encoder = json_encoder
-        self._body = b''
-        self.body = text if text is not None else body
+
+        self._status = int(status)
+        self._reason = reason
+        self._headers = _make_headers(headers)
+        self._cookies = SimpleCookie()
+        self._body: bytes | None = None
+        self._content_type = _enum_value(content_type)
+        self._charset = _enum_value(charset)
+        self._zlib_executor = zlib_executor
+        self._zlib_executor_size = zlib_executor_size
+
+        body_exists = body is not None
+        text_exists = text is not None
+        if body_exists and text_exists:
+            raise ResponseDuplicateBodyError
+        if body_exists:
+            self.body = body
+        if text_exists:
+            self.text = text
 
     @property
-    def body(self) -> bytes:
+    def status(self) -> int:
+        """Return the HTTP status code."""
+        return self._status
+
+    @status.setter
+    def status(self, value: int) -> None:
+        self._status = int(value)
+
+    @property
+    def reason(self) -> str | None:
+        """Return the optional HTTP reason phrase."""
+        return self._reason
+
+    @reason.setter
+    def reason(self, value: str | None) -> None:
+        self._reason = value
+
+    @property
+    def headers(self) -> CIMultiDict[str]:
+        """Return the live case-insensitive response headers."""
+        return self._headers
+
+    @headers.setter
+    def headers(self, value: LooseHeaders) -> None:
+        self._headers = _make_headers(value)
+
+    @property
+    def content_type(self) -> str:
+        """Return the configured media type or the binary default."""
+        return self._content_type if self._content_type is not None else ContentType.stream.value
+
+    @content_type.setter
+    def content_type(self, value: str | ContentType | None) -> None:
+        self._content_type = _enum_value(value)
+
+    @property
+    def charset(self) -> str:
+        """Return the configured charset or UTF-8."""
+        return self._charset if self._charset is not None else Charset.utf8.value
+
+    @charset.setter
+    def charset(self, value: str | Charset | None) -> None:
+        self._charset = _enum_value(value)
+
+    @property
+    def body(self) -> bytes | None:
         """Return the encoded body bytes."""
         return self._body
 
     @body.setter
-    def body(self, value: Any | None) -> None:
-        if value is None:
-            self._body = b''
+    def body(self, body: Any | None) -> None:
+        if body is None or isinstance(body, bytes):
+            self._body = body
             return
-        if isinstance(value, bytes):
-            self._body = value
-            if self.content_type is None:
-                self.content_type = ContentType.stream.value
-            return
-        if isinstance(value, str):
-            encoding = self.charset or Charset.utf8.value
-            self.charset = encoding
-            self._body = value.encode(encoding)
-            if self.content_type is None:
-                self.content_type = ContentType.text_plain.value
-            return
-        msg = 'Milestone 02 responses accept only None, bytes, or str bodies'
-        raise NotImplementedError(msg)
+        self._set_body(body)
 
     @property
     def text(self) -> str | None:
-        """Decode the body with the configured charset."""
-        if not self._body:
+        """Decode the body with the effective charset."""
+        if self._body is None:
             return None
-        return self._body.decode(self.charset or Charset.utf8.value)
+        return self._body.decode(self.charset)
 
     @text.setter
-    def text(self, value: Any | None) -> None:
-        self.body = value
+    def text(self, text: Any | None) -> None:
+        if text is None or isinstance(text, str):
+            self._set_text(text)
+            return
+        self._set_body(text)
+
+    def _set_body(self, body: Any | None) -> None:
+        current_ctype = self.content_type if self.content_type != ContentType.stream.value else None
+        if current_ctype is None:
+            current_ctype = self._get_and_set_ctype_by_data(body).value
+
+        ctype_obj = parse_mimetype(current_ctype)
+        if ctype_obj.type == 'application' and ctype_obj.subtype == 'json':
+            self._process_json_body(body)
+        elif ctype_obj.type == 'text':
+            self._process_text_body(body)
+        else:
+            self._process_bytes_body(body)
+
+    def _set_text(self, text: str | None) -> None:
+        if text is None:
+            self._body = None
+            return
+        if self._content_type is None:
+            self._content_type = ContentType.text_plain.value
+        self._body = text.encode(self.charset)
+
+    def _process_json_body(self, body: Any) -> None:
+        self._set_text(self._simplify_body(body, charset=self.charset))
+
+    def _process_text_body(self, body: Any) -> None:
+        if not isinstance(body, str):
+            body = self._simplify_body(body, charset=self.charset, dumps=False)
+            if not isinstance(body, str):
+                body = self._json_encoder(body)
+        self._set_text(body)
+
+    def _process_bytes_body(self, body: Any) -> None:
+        if not isinstance(body, str):
+            body = self._simplify_body(body, charset=self.charset)
+        self.body = body.encode(self.charset)
+
+    def _simplify_body(self, obj: Any, *, charset: str, dumps: bool = True) -> str:
+        try:
+            return jsonify(
+                obj,
+                include=self._include_fields,
+                exclude=self._exclude_fields,
+                by_alias=self._by_alias,
+                exclude_unset=self._exclude_unset,
+                exclude_defaults=self._exclude_defaults,
+                exclude_none=self._exclude_none,
+                custom_encoder=self._custom_encoder,
+                charset=charset,
+                dumps_encoder=self._json_encoder,
+                dumps=dumps,
+            )
+        except Exception as encode_exc:
+            raise ResponseEncodeError(errors=str(encode_exc)) from encode_exc
+
+    def _get_and_set_ctype_by_data(self, data: Any) -> ContentType:
+        if isinstance(data, DEFAULT_JSON_TYPES) or dataclasses.is_dataclass(data):
+            self.content_type = ContentType.json.value
+            return ContentType.json
+        if isinstance(data, DEFAULT_TEXT_PLAIN_TYPES):
+            return ContentType.text_plain
+        return ContentType.stream
+
+    def set_cookie(
+        self,
+        name: str,
+        value: str,
+        *,
+        expires: str | None = None,
+        domain: str | None = None,
+        max_age: int | None = None,
+        path: str = '/',
+        secure: bool | None = None,
+        httponly: bool | None = None,
+        samesite: str | None = None,
+    ) -> None:
+        """Set one response cookie."""
+        self._cookies[name] = value
+        morsel = self._cookies[name]
+        if expires is not None:
+            morsel['expires'] = expires
+        if domain is not None:
+            morsel['domain'] = domain
+        if max_age is not None:
+            morsel['max-age'] = str(max_age)
+        if path is not None:
+            morsel['path'] = path
+        if secure is not None:
+            morsel['secure'] = secure
+        if httponly is not None:
+            morsel['httponly'] = httponly
+        if samesite is not None:
+            morsel['samesite'] = samesite
+
+    def del_cookie(self, name: str, *, domain: str | None = None, path: str = '/') -> None:
+        """Expire one response cookie immediately."""
+        self.set_cookie(
+            name,
+            '',
+            expires='Thu, 01 Jan 1970 00:00:00 GMT',
+            domain=domain,
+            max_age=0,
+            path=path,
+        )
 
     async def _send(self, send: Send, *, server_info: str | None = None) -> None:
-        headers = CIMultiDict(self.headers)
-        if self.content_type is not None and 'content-type' not in headers:
+        headers = CIMultiDict(self._headers)
+        body_forbidden = (
+            MIN_INFORMATIONAL_STATUS <= self._status < MIN_SUCCESS_STATUS or self._status in NO_BODY_STATUSES
+        )
+
+        if 'content-type' not in headers and (self._content_type is not None or self._body is not None):
             content_type = self.content_type
-            if self.charset is not None:
+            parsed_content_type = parse_mimetype(content_type)
+            needs_charset = (
+                parsed_content_type.type == 'text'
+                or (parsed_content_type.type == 'application' and parsed_content_type.subtype == 'json')
+                or self._charset is not None
+            )
+            if needs_charset and 'charset' not in parsed_content_type.parameters:
                 content_type = f'{content_type}; charset={self.charset}'
             headers['content-type'] = content_type
-        if 'content-length' not in headers:
-            headers['content-length'] = str(len(self._body))
+
+        if body_forbidden:
+            headers.popall('content-length', None)
+        elif 'content-length' not in headers:
+            headers['content-length'] = str(len(self._body or b''))
+
+        for morsel in self._cookies.values():
+            headers.add('set-cookie', morsel.OutputString())
         if server_info is not None and 'server' not in headers:
             headers['server'] = server_info
 
         encoded_headers = [(key.encode('latin-1'), value.encode('latin-1')) for key, value in headers.items()]
-        await send({'type': 'http.response.start', 'status': self.status, 'headers': encoded_headers})
-        await send({'type': 'http.response.body', 'body': self._body, 'more_body': False})
+        await send({'type': 'http.response.start', 'status': self._status, 'headers': encoded_headers})
+        await send(
+            {
+                'type': 'http.response.body',
+                'body': b'' if body_forbidden else self._body or b'',
+                'more_body': False,
+            }
+        )

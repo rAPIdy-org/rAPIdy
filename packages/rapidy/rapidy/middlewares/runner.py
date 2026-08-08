@@ -142,6 +142,6 @@ def middleware_validation_wrapper(
             validated_data[handler_controller.response_attribute_name] = pre_response
 
         handler_result = await injected_middleware(request, call_next, **validated_data)
-        return await handler_controller.create_response(handler_result, pre_response)
+        return cast('Response', await handler_controller.create_response(handler_result, pre_response))
 
     return inner

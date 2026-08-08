@@ -6,10 +6,9 @@ from pprint import pformat
 from typing import Any, cast, TYPE_CHECKING
 
 from rapidy_core.client_errors import normalize_errors
-from rapidy_core.encoders import jsonify
-from rapidy_core.enums import ContentType
 
 from rapidy._base_exceptions import RapidyHandlerException
+from rapidy.endpoint_handlers.http.annotation_checkers import annotation_is_stream_response
 from rapidy.endpoint_handlers.http.attrs_extractor import get_http_handler_info
 from rapidy.endpoint_handlers.http.request.data_validators import (
     request_validator_factory,
@@ -19,11 +18,12 @@ from rapidy.endpoint_handlers.http.request.data_validators import (
 )
 from rapidy.exceptions import HTTPValidationFailure
 from rapidy.request import Request
-from rapidy.response import Response
+from rapidy.response import Response, StreamResponse
 from rapidy.typedefs import Handler, JSONEncoder, UnsetType, ValidationErrorList
 
 if TYPE_CHECKING:
     from rapidy_core.encoders import CustomEncoder, Exclude, Include
+    from rapidy_core.enums import ContentType
 
 __all__ = ('HandlerController', 'ResponseValidationError', 'controller_factory')
 
@@ -105,11 +105,19 @@ class HandlerController:
             raise HTTPValidationFailure(errors=errors)
         return cast('dict[AttributeName, AttributeValue]', values)
 
-    async def create_response(self, handler_result: Any, current_response: Response | None) -> Response:
-        """Apply the deliberately minimal response branch owned by milestone 06."""
-        # TODO(10-response-contract): enable result validation and the complete response serializer.  # noqa: FIX002
-        if isinstance(handler_result, Response):
+    async def create_response(self, handler_result: Any, current_response: Response | None) -> StreamResponse:
+        """Validate a handler result and merge it into the active response."""
+        if annotation_is_stream_response(type(handler_result)):
             return handler_result
+
+        if self._response_validate:
+            handler_result, validated_errors = await self._result_validator.validate(handler_result)
+            if validated_errors:
+                raise ResponseValidationError.create_with_handler_validation_errors(
+                    handler=self._handler,
+                    errors=validated_errors,
+                )
+
         if current_response is None:
             current_response = Response(
                 status=self._status_code,
@@ -128,24 +136,8 @@ class HandlerController:
             )
         if handler_result is None:
             return current_response
-        if isinstance(handler_result, (str, bytes)):
-            current_response.body = handler_result
-            return current_response
-        # TODO(10-response-contract): replace with the complete §5.4 body dispatcher.  # noqa: FIX002
-        current_response.content_type = current_response.content_type or ContentType.json.value
-        current_response.body = jsonify(
-            handler_result,
-            include=self._response_include_fields,
-            exclude=self._response_exclude_fields,
-            by_alias=self._response_by_alias,
-            exclude_unset=self._response_exclude_unset,
-            exclude_defaults=self._response_exclude_defaults,
-            exclude_none=self._response_exclude_none,
-            custom_encoder=self._response_custom_encoder,
-            charset=self._response_charset,
-            dumps=True,
-            dumps_encoder=self._response_json_encoder,
-        )
+
+        current_response.body = handler_result
         return current_response
 
 

@@ -214,7 +214,7 @@ class Rapidy(MutableMapping[str, Any]):
     async def _handle_http(self, request: Request, tracking_send: _TrackingSend) -> None:
         try:
             response = await self._run_onion(request)
-            await self._send_response(response, tracking_send)
+            await self._send_response(response, tracking_send, app=request.app)
         except ConnectionResetError:
             logger.debug('Client disconnected while reading request body: %s %s', request.method, request.path)
         except HTTPException as exc:
@@ -222,13 +222,13 @@ class Rapidy(MutableMapping[str, Any]):
                 logger.exception('HTTP exception raised after response was started')
                 await _finalize_started_response(tracking_send)
             else:
-                await self._send_response(_exception_response(exc), tracking_send)
+                await self._send_response(_exception_response(exc), tracking_send, app=request.app)
         except Exception:
             logger.exception('Unhandled exception during request processing')
             if tracking_send.started:
                 await _finalize_started_response(tracking_send)
             else:
-                await self._send_response(_internal_server_error_response(), tracking_send)
+                await self._send_response(_internal_server_error_response(), tracking_send, app=request.app)
 
     async def _run_onion(self, request: Request) -> Response:
         if self._onion is None:
@@ -277,8 +277,15 @@ class Rapidy(MutableMapping[str, Any]):
         self._onion = onion
         self._onion_built = True
 
-    async def _send_response(self, response: Response, response_send: Send) -> None:
-        server_info = SERVER_INFO if self.server_info_in_response else None
+    async def _send_response(
+        self,
+        response: Response,
+        response_send: Send,
+        *,
+        app: Rapidy | None = None,
+    ) -> None:
+        response_app = app if app is not None else self
+        server_info = SERVER_INFO if response_app.server_info_in_response else None
         await response._send(response_send, server_info=server_info)  # noqa: SLF001
 
     def __getitem__(self, key: str) -> Any:

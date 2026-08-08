@@ -82,9 +82,9 @@ def test_live_ping(runtime: str) -> None:
         assert response.read() == b'pong'
 
 
-def test_response_rejects_unimplemented_body_types() -> None:
-    with pytest.raises(NotImplementedError, match='accept only None, bytes, or str'):
-        Response({'not': 'implemented-yet'})
+def test_response_serializes_structured_body_types() -> None:
+    response = Response({'implemented': True})
+    assert response.text == '{"implemented": true}'
 
 
 def test_run_app_uses_programmatic_granian(monkeypatch: pytest.MonkeyPatch) -> None:

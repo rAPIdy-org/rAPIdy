@@ -10,6 +10,10 @@ from rapidy_core.client_errors import normalize_errors
 from rapidy_core.constants import DEFAULT_JSON_ENCODER
 from rapidy_core.exceptions import RapidyException
 
+from rapidy.response import (
+    ResponseDuplicateBodyError as _ResponseDuplicateBodyError,
+    ResponseEncodeError as _ResponseEncodeError,
+)
 from rapidy.typedefs import LooseHeaders, ValidationErrorList
 
 __all__ = [
@@ -74,6 +78,9 @@ __all__ = [
     'HTTPMove',
 ]
 
+ResponseDuplicateBodyError = _ResponseDuplicateBodyError
+ResponseEncodeError = _ResponseEncodeError
+
 
 class ASGIProtocolError(RapidyException):
     """Raised when an ASGI peer sends an unexpected event."""
@@ -81,14 +88,6 @@ class ASGIProtocolError(RapidyException):
 
 class RouteConflictError(RapidyException):
     """Raised when a method/path pair is registered twice."""
-
-
-class ResponseDuplicateBodyError(RapidyException):
-    """Raised when both compatibility body inputs are provided."""
-
-
-class ResponseEncodeError(RapidyException):
-    """Reserved for full response serialization in milestone 10."""
 
 
 def _as_header_text(value: str | bytes) -> str:

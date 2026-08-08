@@ -5,7 +5,7 @@ from typing import Any
 from rapidy_core.annotation_checkers import lenient_issubclass
 
 from rapidy.request import Request
-from rapidy.response import Response
+from rapidy.response import StreamResponse
 
 __all__ = ('annotation_is_request', 'annotation_is_stream_response')
 
@@ -16,5 +16,6 @@ def annotation_is_request(annotation: Any) -> bool:
 
 
 def annotation_is_stream_response(annotation: Any) -> bool:
-    """Match ready-made responses until streaming types arrive in milestone 12."""
-    return lenient_issubclass(annotation, Response)
+    """Return whether an annotation is a ready-made response type."""
+    # TODO(12-streaming-shutdown): retain Response matching when the placeholder is replaced.  # noqa: FIX002
+    return lenient_issubclass(annotation, StreamResponse)
