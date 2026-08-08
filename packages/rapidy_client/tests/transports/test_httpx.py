@@ -205,10 +205,17 @@ async def test_http2_follows_h2_availability(
     available: bool,
     expected: bool,
 ) -> None:
-    async def handler(request: httpx2.Request) -> httpx2.Response:
-        return httpx2.Response(200)
+    captured: dict[str, Any] = {}
 
-    captured = _install_mock_client(monkeypatch, handler)
+    class ClientSpy:
+        async def aclose(self) -> None:
+            return None
+
+    def factory(**kwargs: Any) -> Any:
+        captured.update(kwargs)
+        return ClientSpy()
+
+    monkeypatch.setattr(transport_module.httpx2, "AsyncClient", factory)
     monkeypatch.setattr(transport_module, "_h2_available", lambda: available)
     transport = _transport()
     await transport._get_client()

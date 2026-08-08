@@ -1,20 +1,32 @@
 from __future__ import annotations
 
+import json
 import logging
 import math
 import platform
 import time
-from collections.abc import Awaitable, Callable
+import tracemalloc
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import cast
+from typing import Literal, cast
 
 import httpx2
-from rapidy_client import HttpClient, RedirectConfig, Response, UpstreamConfig, bind
+from rapidy_client import (
+    Headers,
+    HttpClient,
+    RedirectConfig,
+    Request,
+    Response,
+    ResponseExtensions,
+    UpstreamConfig,
+    bind,
+)
 from rapidy_client.config import LogConfig, rapidy_client_request_id
 from rapidy_client.di import HttpApp, provide_endpoint
 from rapidy_client.schema import get
+from rapidy_client.testing import MockTransport
 from rapidy_client.testing.chaos import ChaosServer
 from rapidy_core.di import Component
 
@@ -30,6 +42,10 @@ ADVISORY_P99_US = 300.0
 HEADROOM_THRESHOLD_PCT = 10.0
 DEFAULT_ITERATIONS = 2000
 DEFAULT_WARMUP = 200
+REGRESSION_THRESHOLD_RATIO = 0.15
+MEMORY_PEAK_LIMIT_BYTES = 32 * 1024 * 1024
+STREAM_TOTAL_BYTES = 2 * 1024 * 1024 * 1024
+STREAM_CHUNK_BYTES = 65536
 
 
 @dataclass(slots=True, kw_only=True)
@@ -105,10 +121,12 @@ async def _measure_client(
     iterations: int,
     warmup: int,
 ) -> tuple[float, float]:
-    config = UpstreamConfig(
-        base_url=base_url,
-        log=LogConfig(level="meta"),
-        redirects=RedirectConfig(follow=follow_redirects),
+    config = UpstreamConfig.model_validate(
+        {
+            "base_url": base_url,
+            "log": LogConfig(level="meta"),
+            "redirects": RedirectConfig(follow=follow_redirects),
+        }
     )
     client = HttpClient(config)
     token = rapidy_client_request_id.set(request_id)
@@ -133,10 +151,12 @@ async def _measure_client(
 
 
 def _full_stack_config(base_url: str) -> UpstreamConfig:
-    return UpstreamConfig(
-        base_url=base_url,
-        log=LogConfig(level="meta"),
-        redirects=RedirectConfig(follow=True),
+    return UpstreamConfig.model_validate(
+        {
+            "base_url": base_url,
+            "log": LogConfig(level="meta"),
+            "redirects": RedirectConfig(follow=True),
+        }
     )
 
 
@@ -339,7 +359,7 @@ def build_baseline(
         },
         "variants": variants,
         "samples": samples,
-        "frozen_at": datetime.now(timezone.utc).isoformat(),
+        "frozen_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -354,6 +374,104 @@ def format_breakdown(results: list[VariantResult]) -> str:
     return "\n".join(lines)
 
 
+async def measure_full_stack_ratio(
+    *,
+    variant: Literal["no-di", "+di"],
+    iterations: int = DEFAULT_ITERATIONS,
+    warmup: int = DEFAULT_WARMUP,
+) -> float:
+    results = await run_breakdown(
+        iterations=iterations,
+        warmup=warmup,
+        variants=("bare_httpx2", variant),
+    )
+    overhead = results[-1].overhead_pct
+    if overhead is None:
+        raise RuntimeError(f"benchmark variant {variant!r} has no overhead")
+    return overhead / 100.0
+
+
+def check_baseline(
+    current: Mapping[str, float],
+    *,
+    baseline_path: Path = BASELINE_PATH,
+    threshold: float = REGRESSION_THRESHOLD_RATIO,
+) -> tuple[bool, dict[str, object]]:
+    if set(current) != set(FULL_STACK_VARIANTS):
+        raise ValueError(f"current ratios must contain exactly {FULL_STACK_VARIANTS!r}")
+    if threshold < 0:
+        raise ValueError("regression threshold must be non-negative")
+    data = json.loads(baseline_path.read_text(encoding="utf-8"))
+    variants = data.get("variants")
+    if not isinstance(variants, dict) or data.get("gate_variant") != "+di":
+        raise ValueError("baseline does not define the +di gate variant")
+    baseline_di = variants.get("+di")
+    baseline_no_di = variants.get("no-di")
+    if not isinstance(baseline_di, dict) or not isinstance(baseline_no_di, dict):
+        raise TypeError("baseline must contain no-di and +di variants")
+    try:
+        baseline_ratio = float(baseline_di["relative_overhead_ratio"])
+        baseline_no_di_ratio = float(baseline_no_di["relative_overhead_ratio"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("baseline variant ratios are invalid") from exc
+    limit = baseline_ratio * (1.0 + threshold)
+    current_di = float(current["+di"])
+    current_no_di = float(current["no-di"])
+    return current_di <= limit, {
+        "gate_variant": "+di",
+        "baseline_ratio": baseline_ratio,
+        "baseline_no_di_ratio": baseline_no_di_ratio,
+        "current_ratio": current_di,
+        "no_di_ratio": current_no_di,
+        "limit": limit,
+        "threshold": threshold,
+    }
+
+
+async def measure_stream_memory(
+    *,
+    total_bytes: int = STREAM_TOTAL_BYTES,
+    chunk_bytes: int = STREAM_CHUNK_BYTES,
+) -> int:
+    if total_bytes < 0:
+        raise ValueError("total_bytes must be non-negative")
+    if chunk_bytes <= 0:
+        raise ValueError("chunk_bytes must be greater than zero")
+
+    async def chunks() -> AsyncIterator[bytes]:
+        remaining = total_bytes
+        block = b"x" * chunk_bytes
+        while remaining:
+            size = min(remaining, chunk_bytes)
+            yield block if size == chunk_bytes else block[:size]
+            remaining -= size
+
+    async def handler(request: Request) -> Response:
+        return Response(
+            status=200,
+            headers=Headers(),
+            request=request,
+            extensions=ResponseExtensions(elapsed=0.0, attempt=1),
+            stream=chunks(),
+        )
+
+    mock = MockTransport()
+    mock.route("GET", "/big").respond_with(handler)
+    client = HttpClient(
+        UpstreamConfig.model_validate({"base_url": "https://mock.test"}),
+        transport=mock,
+    )
+    tracemalloc.start()
+    try:
+        async with client.stream("GET", "/big") as response:
+            async for _ in response.aiter_bytes(chunk_bytes):
+                pass
+        return tracemalloc.get_traced_memory()[1]
+    finally:
+        tracemalloc.stop()
+        await client.aclose()
+
+
 __all__ = (
     "ADVISORY_P99_US",
     "BASELINE_PATH",
@@ -365,10 +483,17 @@ __all__ = (
     "HEADROOM_PATH",
     "HEADROOM_THRESHOLD_PCT",
     "LAYER_VARIANTS",
+    "MEMORY_PEAK_LIMIT_BYTES",
+    "REGRESSION_THRESHOLD_RATIO",
+    "STREAM_CHUNK_BYTES",
+    "STREAM_TOTAL_BYTES",
     "VARIANTS",
     "VariantResult",
     "build_baseline",
     "build_headroom",
+    "check_baseline",
     "format_breakdown",
+    "measure_full_stack_ratio",
+    "measure_stream_memory",
     "run_breakdown",
 )

@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+from typing import Literal, cast
 
 from ._harness import (
     BASELINE_PATH,
@@ -10,12 +11,17 @@ from ._harness import (
     DEFAULT_ITERATIONS,
     DEFAULT_WARMUP,
     FULL_STACK,
+    FULL_STACK_VARIANTS,
     HEADROOM_PATH,
+    MEMORY_PEAK_LIMIT_BYTES,
     VARIANTS,
     VariantResult,
     build_baseline,
     build_headroom,
+    check_baseline,
     format_breakdown,
+    measure_full_stack_ratio,
+    measure_stream_memory,
     run_breakdown,
 )
 
@@ -71,12 +77,47 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--check-headroom", action="store_true")
     mode.add_argument("--freeze", action="store_true")
     mode.add_argument("--freeze-baseline", action="store_true")
+    mode.add_argument("--check-baseline", action="store_true")
+    mode.add_argument("--check-memory", action="store_true")
     parser.add_argument("--stack", default=FULL_STACK)
+    parser.add_argument("--variants")
     parser.add_argument("--iterations", type=int, default=DEFAULT_ITERATIONS)
     parser.add_argument("--warmup", type=int, default=DEFAULT_WARMUP)
     args = parser.parse_args(argv)
     if args.check_headroom:
         return _check_headroom()
+    if args.check_memory:
+        peak = asyncio.run(measure_stream_memory())
+        print(f"stream memory peak={peak} bytes limit={MEMORY_PEAK_LIMIT_BYTES} bytes")
+        return 0 if peak <= MEMORY_PEAK_LIMIT_BYTES else 1
+    if args.check_baseline:
+        variants = tuple(
+            part.strip() for part in (args.variants or "").split(",") if part.strip()
+        )
+        if variants != FULL_STACK_VARIANTS:
+            parser.error("--check-baseline requires --variants no-di,+di in that order")
+        current = {
+            variant: asyncio.run(
+                measure_full_stack_ratio(
+                    variant=cast("Literal['no-di', '+di']", variant),
+                    iterations=args.iterations,
+                    warmup=args.warmup,
+                )
+            )
+            for variant in variants
+        }
+        try:
+            passed, detail = check_baseline(current)
+        except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
+            print(f"invalid baseline: {exc}")
+            return 1
+        print(
+            f"no-di diagnostic={detail['no_di_ratio']:.4f}; "
+            f"+di baseline={detail['baseline_ratio']:.4f} "
+            f"current={detail['current_ratio']:.4f} "
+            f"limit={detail['limit']:.4f}"
+        )
+        return 0 if passed else 1
 
     variants = BASELINE_VARIANTS if args.freeze_baseline else VARIANTS
     results = asyncio.run(
