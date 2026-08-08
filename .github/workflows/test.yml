@@ -49,11 +49,43 @@ jobs:
 
   client:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-      - run: uv sync
-      - run: uv run python -c "import rapidy_client"
+      - run: uv sync --python ${{ matrix.python-version }}
+      - name: Type-check client public and usage contracts
+        run: >-
+          uv run --python ${{ matrix.python-version }} mypy --strict
+          packages/rapidy_client/rapidy_client
+          packages/rapidy_client/tests/typecheck
+      - name: Run client tests with coverage gate
+        run: >-
+          uv run --python ${{ matrix.python-version }} pytest
+          packages/rapidy_client/tests
+          --cov=rapidy_client
+          --cov-report=term-missing
+          --cov-fail-under=90
+
+  client-release-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --python 3.13
+      - name: Check import architecture
+        run: uv run --python 3.13 lint-imports
+      - name: Check full-stack performance baseline
+        run: >-
+          uv run --python 3.13 python -m packages.rapidy_client.benchmarks
+          --check-baseline --variants no-di,+di
+      - name: Check streaming memory ceiling
+        run: >-
+          uv run --python 3.13 python -m packages.rapidy_client.benchmarks
+          --check-memory
 
   lint:
     runs-on: ubuntu-latest
@@ -63,7 +95,7 @@ jobs:
       - run: uv sync
       - run: uv run --with ruff==0.8.4 ruff check .
         working-directory: packages/rapidy
-      - run: uv run ruff check packages/rapidy_core/rapidy_core packages/rapidy_client/rapidy_client
+      - run: uv run ruff check packages/rapidy_core/rapidy_core packages/rapidy_client
       - run: uv build --package rapidy
       - run: uv build --package rapidy-core
       - run: uv build --package rapidy-client
@@ -73,3 +105,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: RELEASE_TAG=rapidy-core-v0.1.0 bash scripts/parse_release_tag.sh | grep -qx rapidy-core
+      - run: RELEASE_TAG=rapidy-client-v0.1.0 bash scripts/parse_release_tag.sh | grep -qx rapidy-client
