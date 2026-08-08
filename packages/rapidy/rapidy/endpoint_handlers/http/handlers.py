@@ -8,6 +8,7 @@ from typing import Any, cast, TYPE_CHECKING
 from rapidy_core.enums import HTTPMethod
 
 from rapidy._base_exceptions import RapidyHandlerException
+from rapidy.depends import inject_http
 from rapidy.endpoint_handlers.http.controller import controller_factory
 from rapidy.exceptions import HTTPMethodNotAllowed
 from rapidy.request import Request
@@ -52,9 +53,8 @@ class MethodAlreadyRegisteredError(ValueError):
 
 
 def _di_wrap(handler: Handler) -> Handler:
-    """Keep the one replacement seam for HTTP DI integration."""
-    # TODO(07-di-dishka): return inject_http(handler) without changing either wrapper.  # noqa: FIX002
-    return handler
+    """Bind HTTP dependency injection before request validation."""
+    return inject_http(handler)
 
 
 def _create_pre_response(

@@ -1,9 +1,19 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator, MutableMapping
+from collections.abc import Iterable, Iterator, MutableMapping, Sequence
 from typing import Any, TYPE_CHECKING
 
 from rapidy.constants import CLIENT_MAX_SIZE
+from rapidy.depends import AsyncContainer, BaseScope, Provider, Scope, ValidationSettings
+from rapidy.di import (
+    close_owned_di,
+    DEFAULT_DI_LOCK_FACTORY,
+    DEFAULT_DI_VALIDATION_SETTINGS,
+    di_lifespan,
+    DIConfig,
+    LockFactory,
+    request_di_scope,
+)
 from rapidy.exceptions import HTTPException
 from rapidy.lifespan import Lifespan
 from rapidy.request import Request, State
@@ -25,7 +35,11 @@ class Rapidy(MutableMapping[str, Any]):
 
     __slots__ = (
         '_client_max_size',
+        '_di_config',
+        '_di_container_closed',
+        '_di_container_owned',
         '_matcher',
+        '_root_app',
         'lifespan',
         'server_info_in_response',
         'state',
@@ -41,16 +55,37 @@ class Rapidy(MutableMapping[str, Any]):
         on_shutdown: Iterable[LifespanHook] = (),
         on_cleanup: Iterable[LifespanHook] = (),
         http_route_handlers: Iterable[BaseHTTPRouter | Any] = (),
+        di_container: AsyncContainer | None = None,
+        di_providers: Sequence[Provider] = (),
+        di_scopes: type[BaseScope] = Scope,
+        di_context: dict[Any, Any] | None = None,
+        di_lock_factory: LockFactory | None = DEFAULT_DI_LOCK_FACTORY,
+        di_skip_validation: bool = False,
+        di_start_scope: BaseScope | None = None,
+        di_validation_settings: ValidationSettings = DEFAULT_DI_VALIDATION_SETTINGS,
     ) -> None:
         self._client_max_size = client_max_size
+        self._root_app: Rapidy | None = None
+        self._di_container_closed = False
+        self._di_container_owned = False
+        self._di_config = DIConfig(
+            container=di_container,
+            providers=tuple(di_providers),
+            scopes=di_scopes,
+            context=di_context,
+            lock_factory=di_lock_factory,
+            skip_validation=di_skip_validation,
+            start_scope=di_start_scope,
+            validation_settings=di_validation_settings,
+        )
         self.server_info_in_response = server_info_in_response
         self.state = State()
         self._matcher = UrlMatcher()
         self.lifespan = Lifespan(
             self,
-            lifespan_managers=list(lifespan),
+            lifespan_managers=[di_lifespan, *lifespan],
             on_startup=list(on_startup),
-            on_shutdown=list(on_shutdown),
+            on_shutdown=[*on_shutdown, close_owned_di],
             on_cleanup=list(on_cleanup),
         )
         self.add_http_routers(http_route_handlers)
@@ -67,6 +102,22 @@ class Rapidy(MutableMapping[str, Any]):
         TODO(08-middleware-mounts): aggregate subapp records with their prefixes.
         """
         return self._matcher.routes
+
+    @property
+    def di_container(self) -> AsyncContainer | None:
+        """Return the active root container, or ``None`` outside root startup."""
+        if self._root_app is not None:
+            return None
+        return self.state.get('di_container')
+
+    def _bind_to_root(self, root_app: Rapidy) -> None:
+        """Mark this application as a mounted child of the given root."""
+        self._root_app = root_app._root_app or root_app
+
+    def _request_di_container(self) -> AsyncContainer | None:
+        if self._root_app is not None:
+            return self._root_app.di_container
+        return self.di_container
 
     def add_http_router(self, http_router: BaseHTTPRouter | Any) -> None:
         """Register one HTTP router object."""
@@ -96,22 +147,38 @@ class Rapidy(MutableMapping[str, Any]):
 
         try:
             request = Request(scope, receive)
-            path = _strip_root_path(request.path, str(scope.get('root_path', '')))
+        except HTTPException as exc:
+            response = _response_from_http_exception(exc)
+            await self._send_response(response, response_send)
+            return
+        except Exception:  # noqa: BLE001
+            await self._send_response(Response('500: Internal Server Error', status=500), response_send)
+            return
+
+        container = self._request_di_container()
+        if container is None:
+            await self._handle_http(request, response_send)
+            return
+
+        async with request_di_scope(container, request):
+            await self._handle_http(request, response_send)
+
+    async def _handle_http(self, request: Request, response_send: Send) -> None:
+        try:
+            path = _strip_root_path(request.path, str(request.scope.get('root_path', '')))
             route_match = self._matcher.resolve(request.method, path)
-            scope['path_params'] = route_match.path_params
+            request.scope['path_params'] = route_match.path_params
             request.path_params = route_match.path_params
             response = await route_match.terminal(request)
         except HTTPException as exc:
             # TODO(09-exceptions-full): replace with the complete HTTPException response handler.  # noqa: FIX002
-            response = Response(
-                body=exc.body,
-                status=exc.status_code,
-                headers=exc.headers,
-                content_type=exc.content_type,
-            )
+            response = _response_from_http_exception(exc)
         except Exception:  # noqa: BLE001
             response = Response('500: Internal Server Error', status=500)
 
+        await self._send_response(response, response_send)
+
+    async def _send_response(self, response: Response, response_send: Send) -> None:
         server_info = SERVER_INFO if self.server_info_in_response else None
         await response._send(response_send, server_info=server_info)  # noqa: SLF001
 
@@ -136,6 +203,15 @@ def _strip_root_path(path: str, root_path: str) -> str:
     if root_path and path.startswith(root_path):
         return path[len(root_path) :] or '/'
     return path
+
+
+def _response_from_http_exception(exc: HTTPException) -> Response:
+    return Response(
+        body=exc.body,
+        status=exc.status_code,
+        headers=exc.headers,
+        content_type=exc.content_type,
+    )
 
 
 def _without_head_body(send: Send) -> Send:
