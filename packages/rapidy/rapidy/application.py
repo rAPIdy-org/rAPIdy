@@ -24,8 +24,8 @@ class Rapidy(MutableMapping[str, Any]):
     """rAPIdy 2.0 ASGI application."""
 
     __slots__ = (
+        '_client_max_size',
         '_matcher',
-        'client_max_size',
         'lifespan',
         'server_info_in_response',
         'state',
@@ -42,7 +42,7 @@ class Rapidy(MutableMapping[str, Any]):
         on_cleanup: Iterable[LifespanHook] = (),
         http_route_handlers: Iterable[BaseHTTPRouter | Any] = (),
     ) -> None:
-        self.client_max_size = client_max_size
+        self._client_max_size = client_max_size
         self.server_info_in_response = server_info_in_response
         self.state = State()
         self._matcher = UrlMatcher()
@@ -54,6 +54,11 @@ class Rapidy(MutableMapping[str, Any]):
             on_cleanup=list(on_cleanup),
         )
         self.add_http_routers(http_route_handlers)
+
+    @property
+    def client_max_size(self) -> int:
+        """Return the per-application request-body limit."""
+        return self._client_max_size
 
     @property
     def routes(self) -> tuple[RouteRecord, ...]:
@@ -87,11 +92,11 @@ class Rapidy(MutableMapping[str, Any]):
             raise RuntimeError(msg)
 
         scope['app'] = self
-        request = Request(scope, receive)
-        path = _strip_root_path(request.path, str(scope.get('root_path', '')))
-        response_send = _without_head_body(send) if request.method == 'HEAD' else send
+        response_send = _without_head_body(send) if str(scope.get('method', '')).upper() == 'HEAD' else send
 
         try:
+            request = Request(scope, receive)
+            path = _strip_root_path(request.path, str(scope.get('root_path', '')))
             route_match = self._matcher.resolve(request.method, path)
             scope['path_params'] = route_match.path_params
             request.path_params = route_match.path_params

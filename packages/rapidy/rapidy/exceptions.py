@@ -11,9 +11,11 @@ from rapidy.typedefs import LooseHeaders
 
 __all__ = (
     'ASGIProtocolError',
+    'HTTPBadRequest',
     'HTTPException',
     'HTTPMethodNotAllowed',
     'HTTPNotFound',
+    'HTTPRequestEntityTooLarge',
     'ResponseDuplicateBodyError',
     'ResponseEncodeError',
     'RouteConflictError',
@@ -74,6 +76,27 @@ class HTTPNotFound(HTTPException):
     """Resource path was not registered."""
 
     status_code = HTTPStatus.NOT_FOUND
+
+
+class HTTPBadRequest(HTTPException):
+    """The request metadata is malformed."""
+
+    status_code = HTTPStatus.BAD_REQUEST
+
+
+class HTTPRequestEntityTooLarge(HTTPException):
+    """The request body exceeded the configured application limit."""
+
+    status_code = HTTPStatus.REQUEST_ENTITY_TOO_LARGE
+
+    def __init__(self, max_size: int, actual_size: int, **kwargs: Any) -> None:
+        self.max_size = max_size
+        self.actual_size = actual_size
+        kwargs.setdefault(
+            'text',
+            f'Maximum request body size {max_size} exceeded, actual body size {actual_size}',
+        )
+        super().__init__(**kwargs)
 
 
 class HTTPMethodNotAllowed(HTTPException):
