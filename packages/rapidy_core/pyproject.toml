@@ -1,0 +1,33 @@
+[project]
+name = "rapidy-core"
+version = "0.1.0"
+description = "Internal shared core of the rAPIdy family. API may change while the package is 0.x."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+authors = [{ name = "Daniil Grois", email = "daniil.grois@gmail.com" }]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Developers",
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Typing :: Typed",
+]
+dependencies = [
+    "pydantic>=2.9,<3",
+    "dishka>=1.5.3,<2",
+]
+
+[build-system]
+requires = ["uv_build>=0.9,<1.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
+module-name = "rapidy_core"
+
+[tool.pytest.ini_options]
+filterwarnings = ["error"]

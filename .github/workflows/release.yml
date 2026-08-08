@@ -1,56 +1,41 @@
-name: Release
+name: Release documentation
 
 on:
   release:
-    types:
-      - created
+    types: [created]
 
 jobs:
-  release:
-    runs-on: ["ubuntu-latest"]
+  docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
-      - name: Dump GitHub context
-        env:
-          GITHUB_CONTEXT: ${{ toJson(github) }}
-        run: echo "$GITHUB_CONTEXT"
-
-      - name: Checkout git repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
-          fetch-depth: 0  # fetch all commits/branches
-
-      - name: Prepare python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.10"
-
-      - name: Install poetry
-        uses: abatilo/actions-poetry@v2
-        with:
-          poetry-version: "1.7.1"
-
-      - name: Install project dependencies
-        run: poetry install --with docs
-
+          fetch-depth: 0
+      - uses: astral-sh/setup-uv@v6
+      - name: Install documentation dependencies
+        run: uv sync --python 3.13 --package rapidy --group docs
       - name: Set up git author
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           remote_repo="https://${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git remote set-url origin "$remote_repo"
           git config --global user.name "${GITHUB_ACTOR}"
           git config --global user.email "${GITHUB_ACTOR}@users.noreply.github.com"
-
+      - name: Select server documentation version
+        id: guard
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          if [[ "$RELEASE_TAG" =~ ^rapidy-v([0-9]+\.[0-9]+)\.[0-9]+$ ]]; then
+            echo "version=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+          fi
       - name: Deploy documentation with mike
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          cd docs
-          VERSION=${{ github.event.release.tag_name }}
-          poetry run mike deploy --push --update-aliases $VERSION latest
-
-      - name: Build and publish
-        env:
-          PYPI_API_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-        run: |
-          poetry config pypi-token.pypi $PYPI_API_TOKEN
-          poetry publish --build
+        if: steps.guard.outputs.deploy == 'true'
+        working-directory: packages/rapidy/docs
+        run: uv run --no-sync mike deploy --push --update-aliases ${{ steps.guard.outputs.version }} latest

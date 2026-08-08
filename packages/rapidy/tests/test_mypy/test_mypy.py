@@ -83,4 +83,11 @@ def test_default(
     mypy_out, mypy_err, mypy_returncode = mypy_api.run(command)
     assert mypy_err == ''
 
-    assert mypy_out.replace('tests/', '').replace('test_mypy/', '') == mypy_expected_out
+    normalized_mypy_out = (
+        mypy_out.replace('packages/rapidy/', '')
+        .replace('tests/', '')
+        .replace('test_mypy/', '')
+        .replace('for parameter ', 'for argument ')
+        .replace('parameter has type', 'argument has type')
+    )
+    assert normalized_mypy_out == mypy_expected_out

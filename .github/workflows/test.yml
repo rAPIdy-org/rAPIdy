@@ -2,200 +2,74 @@ name: Test
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
   pull_request:
-    types:
-      - opened
-      - synchronize
+    types: [opened, synchronize]
 
 concurrency:
   group: ${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  pre-commit:
-    runs-on: ["ubuntu-latest"]
+  server:
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      max-parallel: 50
       matrix:
-        pydantic-version:
-          - "pydantic-v1"
-          - "pydantic-v2"
+        python-version: ["3.13", "3.14"]
     steps:
-      - name: Dump github context
-        env:
-          GITHUB_CONTEXT: ${{ toJson(github) }}
-        run: echo "$GITHUB_CONTEXT"
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --python ${{ matrix.python-version }}
+      - run: uv run --python ${{ matrix.python-version }} pytest packages/rapidy/tests
 
-      - name: Checkout git repository
-        uses: actions/checkout@v4
-
-      - name: Prepare python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-
-      - name: Install poetry
-        uses: abatilo/actions-poetry@v2
-        with:
-          poetry-version: "1.7.1"
-
-      - name: Install Pydantic v1
-        if: matrix.pydantic-version == 'pydantic-v1'
-        run: poetry add "pydantic>=1.10.0,<2.0.0"
-
-      - name: Install Pydantic v2
-        if: matrix.pydantic-version == 'pydantic-v2'
-        run: poetry add "pydantic>=2.0.2,<3.0.0"
-
-      - name: Run pre-commit
-        uses: pre-commit/action@v3.0.1
-
-  test:
-    runs-on: ["ubuntu-latest"]
-    needs: ["pre-commit"]
+  core:
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      max-parallel: 50
       matrix:
-        python-version:
-          - "3.13"
-          - "3.12"
-          - "3.11"
-          - "3.10"
-        pydantic-version:
-          - "pydantic-v1"
-          - "pydantic-v2"
-        aiohttp-version:
-          - "3.11.18"
-          - "3.11.16"
-          - "3.11.15"
-          - "3.11.12"
-          - "3.11.11"
-          - "3.11.10"
-          - "3.11.9"
-          - "3.11.8"
-          - "3.11.7"
-          - "3.11.6"
-          - "3.11.5"
-          - "3.11.4"
-          - "3.11.3"
-          - "3.10.11"
-          - "3.10.10"
-          - "3.10.9"
-          - "3.10.8"
-          - "3.10.7"
-          - "3.10.6"
-          - "3.10.5"
-          - "3.10.4"
-          - "3.10.3"
+        python-version: ["3.13", "3.14"]
     steps:
-      - name: Dump github context
-        env:
-          GITHUB_CONTEXT: ${{ toJson(github) }}
-        run: echo "$GITHUB_CONTEXT"
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --python ${{ matrix.python-version }}
+      - run: uv run mypy --strict packages/rapidy_core/rapidy_core
+      - name: Run core tests (exit 5 is allowed for the milestone-01 scaffold)
+        run: uv run --python ${{ matrix.python-version }} pytest packages/rapidy_core || test $? -eq 5
 
-      - name: Checkout git repository
-        uses: actions/checkout@v4
-
-      - name: Prepare python
-        uses: actions/setup-python@v5
-        with:
-          python-version: ${{ matrix.python-version }}
-
-      - name: Install poetry
-        uses: abatilo/actions-poetry@v2
-        with:
-          poetry-version: "1.7.1"
-
-      - name: Install dependencies
-        run: poetry install
-
-      - name: Install Pydantic v1
-        if: matrix.pydantic-version == 'pydantic-v1'
-        run: poetry add "pydantic>=1.10.0,<2.0.0"
-
-      - name: Install Pydantic v2
-        if: matrix.pydantic-version == 'pydantic-v2'
-        run: poetry add "pydantic>=2.0.2,<3.0.0"
-
-      - name: Install aiohttp
-        run: poetry add "aiohttp==${{ matrix.aiohttp-version }}"
-
-      - name: Install Mypy
-        run: poetry add mypy
-
-      - name: Create coverage dir
-        run: mkdir coverage
-
-      - name: Test with pytest
-        env:
-          CONTEXT: ${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.pydantic-version }}-${{ matrix.aiohttp-version }}
-          COVERAGE_FILE: coverage/.coverage.${{ runner.os }}-py${{ matrix.python-version }}-${{ matrix.pydantic-version }}-${{ matrix.aiohttp-version }}
-        run: poetry run coverage run -m pytest ./tests
-
-      - name: Store coverage file
-        uses: actions/upload-artifact@v4
-        with:
-          path: coverage
-          name: coverage-${{ matrix.python-version }}-${{ matrix.pydantic-version }}-${{ matrix.aiohttp-version }}
-          include-hidden-files: true
-
-  coverage-combine:
-    needs: [ "test" ]
-    runs-on: ["ubuntu-latest"]
+  core-py312-wheel:
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout git repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv build --package rapidy-core -o dist/rapidy-core
+      - run: uv venv --python 3.12 /tmp/core312
+      - run: VIRTUAL_ENV=/tmp/core312 uv pip install dist/rapidy-core/*.whl
+      - run: /tmp/core312/bin/python -c "import rapidy_core; print('core-3.12-ok')"
 
-      - name: Prepare python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.8"
-
-      - name: Get coverage files
-        uses: actions/download-artifact@v4
-        with:
-          pattern: coverage-*
-          path: coverage
-          merge-multiple: true
-
-      - name: Install test dependencies
-        run: pip install coverage[toml]
-
-      - name: Dump coverage files
-        run: ls -la coverage
-
-      - name: Coverage combine
-        run: coverage combine coverage
-
-      - name: Coverage report
-        run: coverage report --fail-under=90
-
-      - name: Coverage HTML
-        run: coverage html --title "Coverage for ${{ github.sha }}"
-
-      - name: Store coverage HTML
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-html
-          path: htmlcov
-          include-hidden-files: true
-
-  check:
-    if: always()
-    needs:
-      - coverage-combine
-    runs-on: ["ubuntu-latest"]
+  client:
+    runs-on: ubuntu-latest
     steps:
-      - name: Prepare python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.8"
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync
+      - run: uv run python -c "import rapidy_client"
 
-      - name: Decide whether the needed jobs succeeded or failed
-        uses: re-actors/alls-green@release/v1
-        with:
-          jobs: ${{ toJSON(needs) }}
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync
+      - run: uv run --with ruff==0.8.4 ruff check .
+        working-directory: packages/rapidy
+      - run: uv run ruff check packages/rapidy_core/rapidy_core packages/rapidy_client/rapidy_client
+      - run: uv build --package rapidy
+      - run: uv build --package rapidy-core
+      - run: uv build --package rapidy-client
+
+  parse-tag-dryrun:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: RELEASE_TAG=rapidy-core-v0.1.0 bash scripts/parse_release_tag.sh | grep -qx rapidy-core

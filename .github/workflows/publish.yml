@@ -1,0 +1,28 @@
+name: Publish
+
+on:
+  push:
+    tags: ["rapidy-v*", "rapidy-core-v*", "rapidy-client-v*"]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - name: Parse distribution from tag
+        id: dist
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: echo "name=$(bash scripts/parse_release_tag.sh)" >> "$GITHUB_OUTPUT"
+      - name: Verify tag version
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: bash scripts/parse_release_tag.sh --check-version
+      - name: Build
+        run: uv build --package ${{ steps.dist.outputs.name }} -o dist/${{ steps.dist.outputs.name }}
+      - name: Publish
+        run: uv publish dist/${{ steps.dist.outputs.name }}/*

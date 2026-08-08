@@ -137,6 +137,7 @@ venv.bak/
 
 # mkdocs documentation
 /site
+/packages/rapidy/docs/site
 
 # mypy
 .mypy_cache/
@@ -153,7 +154,7 @@ dmypy.json
 cython_debug/
 
 # Mike
-docs/site
+packages/rapidy/docs/site
 
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can

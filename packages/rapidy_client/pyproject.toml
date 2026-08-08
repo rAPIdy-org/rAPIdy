@@ -1,0 +1,31 @@
+[project]
+name = "rapidy-client"
+version = "0.1.0"
+description = "Declarative async HTTP client for the rAPIdy family."
+readme = "README.md"
+requires-python = ">=3.13"
+license = { text = "MIT" }
+authors = [{ name = "Daniil Grois", email = "daniil.grois@gmail.com" }]
+classifiers = [
+    "License :: OSI Approved :: MIT License",
+    "Intended Audience :: Developers",
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Typing :: Typed",
+    "Framework :: AsyncIO",
+]
+dependencies = ["rapidy-core"]
+
+[build-system]
+requires = ["uv_build>=0.9,<1.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-root = ""
+module-name = "rapidy_client"
+
+[tool.pytest.ini_options]
+addopts = "--import-mode=importlib"
+filterwarnings = ["error"]
