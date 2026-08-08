@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 from abc import ABC
+from collections.abc import Iterable
 from concurrent.futures import Executor
 from http import HTTPStatus
 from typing import Any, cast, NamedTuple, TYPE_CHECKING
@@ -10,6 +11,7 @@ from rapidy_core.constants import DEFAULT_JSON_ENCODER
 from rapidy_core.enums import Charset, ContentType, HTTPMethod, HTTPRequestParamType
 
 from rapidy._base_exceptions import RapidyException, RapidyHandlerException
+from rapidy.constants import CLIENT_MAX_SIZE
 from rapidy.endpoint_handlers.http.attrs_extractor import get_http_handler_info
 from rapidy.endpoint_handlers.http.handlers import handler_validation_wrapper
 from rapidy.routing.http.base import BaseHTTPRouter
@@ -18,6 +20,9 @@ from rapidy.typedefs import (
     ControllerHTTPRouterType,
     Handler,
     JSONEncoder,
+    LifespanCTX,
+    LifespanHook,
+    Middleware,
     Unset,
     UnsetType,
 )
@@ -30,6 +35,7 @@ if TYPE_CHECKING:
 
 __all__ = (
     'HandlerParameterRecord',
+    'HTTPRouter',
     'RouteParameter',
     'get_route_parameters',
     'get',
@@ -41,7 +47,6 @@ __all__ = (
     'options',
 )
 
-# TODO(08-middleware-mounts): add HTTPRouter to __all__.  # noqa: FIX002
 # TODO(10-response-contract): add controller to __all__.  # noqa: FIX002
 
 MethodName = HTTPMethod
@@ -93,12 +98,7 @@ def get_route_parameters(route: RouteRecord) -> tuple[HandlerParameterRecord, ..
 
 def is_dunder_name(name: str) -> bool:
     """Return whether a name has the canonical dunder form."""
-    return (
-        len(name) > DUNDER_NAME_MIN_LENGTH
-        and name[:2] == name[-2:] == '__'
-        and name[2] != '_'
-        and name[-3] != '_'
-    )
+    return len(name) > DUNDER_NAME_MIN_LENGTH and name[:2] == name[-2:] == '__' and name[2] != '_' and name[-3] != '_'
 
 
 class MissingPathError(RapidyHandlerException):
@@ -115,6 +115,40 @@ class HandlerIsNotAsyncFuncTypeError(RapidyException):
 
 def _is_async_callable(handler: Handler) -> bool:
     return inspect.iscoroutinefunction(handler) or inspect.iscoroutinefunction(type(handler).__call__)
+
+
+class HTTPRouter(BaseHTTPRouter):
+    """Group routes and application policy under a mounted subapplication."""
+
+    __slots__ = ('application', 'path')
+
+    def __init__(
+        self,
+        path: str,
+        route_handlers: Iterable[BaseHTTPRouter | Any] = (),
+        *,
+        middlewares: Iterable[Middleware] | None = None,
+        client_max_size: int = CLIENT_MAX_SIZE,
+        lifespan: list[LifespanCTX] | None = None,
+        on_startup: list[LifespanHook] | None = None,
+        on_shutdown: list[LifespanHook] | None = None,
+        on_cleanup: list[LifespanHook] | None = None,
+    ) -> None:
+        from rapidy.application import Rapidy  # noqa: PLC0415
+
+        super().__init__(path=path)
+        self.application = Rapidy(
+            middlewares=middlewares,
+            http_route_handlers=route_handlers,
+            client_max_size=client_max_size,
+            lifespan=lifespan or (),
+            on_startup=on_startup or (),
+            on_shutdown=on_shutdown or (),
+            on_cleanup=on_cleanup or (),
+        )
+
+    def route_register(self, application: Rapidy) -> None:
+        application.add_subapp(prefix=cast('str', self.path), subapp=self.application)
 
 
 class HTTPRouteHandler(BaseHTTPRouter, ABC):

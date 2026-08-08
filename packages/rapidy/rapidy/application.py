@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator, MutableMapping, Sequence
-from typing import Any, TYPE_CHECKING
+from collections.abc import AsyncIterator, Iterable, Iterator, MutableMapping, Sequence
+from contextlib import asynccontextmanager
+from typing import Any, cast, TYPE_CHECKING
 
 from rapidy.constants import CLIENT_MAX_SIZE
 from rapidy.depends import AsyncContainer, BaseScope, Provider, Scope, ValidationSettings
@@ -16,11 +17,12 @@ from rapidy.di import (
 )
 from rapidy.exceptions import HTTPException
 from rapidy.lifespan import Lifespan
+from rapidy.middlewares.runner import build_onion, prepare_middlewares
 from rapidy.request import Request, State
 from rapidy.response import Response
 from rapidy.routing.http.base import raise_if_not_base_http_router
 from rapidy.routing.matcher import RouteRecord, UrlMatcher
-from rapidy.typedefs import ASGIScope, LifespanCTX, LifespanHook, Receive, Send
+from rapidy.typedefs import ASGIScope, CallNext, LifespanCTX, LifespanHook, Middleware, Receive, Send
 from rapidy.version import SERVER_INFO
 from rapidy.websockets import close_unsupported_websocket
 
@@ -39,6 +41,9 @@ class Rapidy(MutableMapping[str, Any]):
         '_di_container_closed',
         '_di_container_owned',
         '_matcher',
+        '_middlewares',
+        '_onion',
+        '_onion_built',
         '_root_app',
         'lifespan',
         'server_info_in_response',
@@ -50,6 +55,7 @@ class Rapidy(MutableMapping[str, Any]):
         *,
         client_max_size: int = CLIENT_MAX_SIZE,
         server_info_in_response: bool = False,
+        middlewares: Iterable[Middleware] | None = None,
         lifespan: Iterable[LifespanCTX] = (),
         on_startup: Iterable[LifespanHook] = (),
         on_shutdown: Iterable[LifespanHook] = (),
@@ -68,6 +74,9 @@ class Rapidy(MutableMapping[str, Any]):
         self._root_app: Rapidy | None = None
         self._di_container_closed = False
         self._di_container_owned = False
+        self._middlewares = list(middlewares or ())
+        self._onion: CallNext | None = None
+        self._onion_built = False
         self._di_config = DIConfig(
             container=di_container,
             providers=tuple(di_providers),
@@ -83,7 +92,7 @@ class Rapidy(MutableMapping[str, Any]):
         self._matcher = UrlMatcher()
         self.lifespan = Lifespan(
             self,
-            lifespan_managers=[di_lifespan, *lifespan],
+            lifespan_managers=[di_lifespan, _onion_lifespan, *lifespan],
             on_startup=list(on_startup),
             on_shutdown=[*on_shutdown, close_owned_di],
             on_cleanup=list(on_cleanup),
@@ -97,11 +106,11 @@ class Rapidy(MutableMapping[str, Any]):
 
     @property
     def routes(self) -> tuple[RouteRecord, ...]:
-        """Return the public route-registry snapshot.
-
-        TODO(08-middleware-mounts): aggregate subapp records with their prefixes.
-        """
-        return self._matcher.routes
+        """Return root and recursively mounted route records with full paths."""
+        records = list(self._matcher.routes)
+        for prefix, subapp in self._subapps:
+            records.extend(record._replace(path=f'{prefix}{record.path}') for record in subapp.routes)
+        return tuple(records)
 
     @property
     def di_container(self) -> AsyncContainer | None:
@@ -113,6 +122,8 @@ class Rapidy(MutableMapping[str, Any]):
     def _bind_to_root(self, root_app: Rapidy) -> None:
         """Mark this application as a mounted child of the given root."""
         self._root_app = root_app._root_app or root_app
+        for _prefix, subapp in self._subapps:
+            subapp._bind_to_root(self._root_app)  # noqa: SLF001
 
     def _request_di_container(self) -> AsyncContainer | None:
         if self._root_app is not None:
@@ -121,6 +132,9 @@ class Rapidy(MutableMapping[str, Any]):
 
     def add_http_router(self, http_router: BaseHTTPRouter | Any) -> None:
         """Register one HTTP router object."""
+        if self._onion_built:
+            msg = 'Cannot add HTTP route after application startup'
+            raise RuntimeError(msg)
         raise_if_not_base_http_router(http_router)
         http_router.route_register(application=self)
 
@@ -128,6 +142,29 @@ class Rapidy(MutableMapping[str, Any]):
         """Register an iterable of HTTP router objects."""
         for route_handler in route_handlers:
             self.add_http_router(route_handler)
+
+    def add_subapp(self, prefix: str, subapp: Rapidy) -> Rapidy:
+        """Mount a child application under one normalized URL prefix."""
+        if not prefix.startswith('/'):
+            msg = "prefix must start with '/'"
+            raise ValueError(msg)
+        if prefix == '/':
+            msg = "prefix cannot be '/'"
+            raise ValueError(msg)
+        if prefix.endswith('/'):
+            msg = "prefix must not end with '/'"
+            raise ValueError(msg)
+        if self._onion_built:
+            msg = 'Cannot add sub application after application startup'
+            raise RuntimeError(msg)
+        if subapp is self:
+            msg = 'Application cannot mount itself'
+            raise ValueError(msg)
+
+        subapp._bind_to_root(self)
+        self._matcher.add_prefix(prefix, subapp)
+        self.lifespan.append(_subapp_lifespan(subapp))
+        return subapp
 
     async def __call__(self, scope: ASGIScope, receive: Receive, send: Send) -> None:
         """Dispatch one ASGI connection by scope type."""
@@ -155,6 +192,12 @@ class Rapidy(MutableMapping[str, Any]):
             await self._send_response(Response('500: Internal Server Error', status=500), response_send)
             return
 
+        if not self._onion_built:
+            # Compatibility fallback for in-process transports that omit ASGI lifespan.
+            self._build_onion()
+        scope['_rapidy_mount_path'] = _strip_root_path(request.path, str(scope.get('root_path', '')))
+        scope['_rapidy_mount_prefix'] = str(scope.get('root_path', '')).rstrip('/')
+
         container = self._request_di_container()
         if container is None:
             await self._handle_http(request, response_send)
@@ -165,11 +208,7 @@ class Rapidy(MutableMapping[str, Any]):
 
     async def _handle_http(self, request: Request, response_send: Send) -> None:
         try:
-            path = _strip_root_path(request.path, str(request.scope.get('root_path', '')))
-            route_match = self._matcher.resolve(request.method, path)
-            request.scope['path_params'] = route_match.path_params
-            request.path_params = route_match.path_params
-            response = await route_match.terminal(request)
+            response = await self._run_onion(request)
         except HTTPException as exc:
             # TODO(09-exceptions-full): replace with the complete HTTPException response handler.  # noqa: FIX002
             response = _response_from_http_exception(exc)
@@ -177,6 +216,53 @@ class Rapidy(MutableMapping[str, Any]):
             response = Response('500: Internal Server Error', status=500)
 
         await self._send_response(response, response_send)
+
+    async def _run_onion(self, request: Request) -> Response:
+        if self._onion is None:
+            msg = 'Application middleware onion has not been built'
+            raise RuntimeError(msg)
+        return await self._onion(request)
+
+    async def _dispatch_terminal(self, request: Request) -> Response:
+        path = str(request.scope['_rapidy_mount_path'])
+        for prefix, subapp in self._subapps:
+            if path == prefix or path.startswith(f'{prefix}/'):
+                request.app = subapp
+                request.scope['app'] = subapp
+                request.scope['_rapidy_mount_path'] = path[len(prefix) :] or '/'
+                current_prefix = str(request.scope.get('_rapidy_mount_prefix', ''))
+                request.scope['_rapidy_mount_prefix'] = f'{current_prefix}{prefix}'
+                # Request.client_max_size reads request.app lazily, after this rebind.
+                return await subapp._run_onion(request)  # noqa: SLF001
+
+        route_match = self._matcher.resolve(request.method, path)
+        request.scope['path_params'] = route_match.path_params
+        request.path_params = route_match.path_params
+        return await route_match.terminal(request)
+
+    def _can_resolve(self, method: str, path: str) -> bool:
+        for prefix, subapp in self._subapps:
+            if path == prefix or path.startswith(f'{prefix}/'):
+                return subapp._can_resolve(method, path[len(prefix) :] or '/')  # noqa: SLF001
+        try:
+            self._matcher.resolve(method, path)
+        except HTTPException:
+            return False
+        return True
+
+    @property
+    def _subapps(self) -> tuple[tuple[str, Rapidy], ...]:
+        return cast('tuple[tuple[str, Rapidy], ...]', tuple(self._matcher._prefixes))  # noqa: SLF001
+
+    def _build_onion(self) -> None:
+        if self._onion_built:
+            return
+        prepared_middlewares = prepare_middlewares(self._middlewares)
+        onion = build_onion(prepared_middlewares, self._dispatch_terminal)
+        for _prefix, subapp in self._subapps:
+            subapp._build_onion()  # noqa: SLF001
+        self._onion = onion
+        self._onion_built = True
 
     async def _send_response(self, response: Response, response_send: Send) -> None:
         server_info = SERVER_INFO if self.server_info_in_response else None
@@ -221,3 +307,19 @@ def _without_head_body(send: Send) -> Send:
         await send(message)
 
     return send_without_body
+
+
+@asynccontextmanager
+async def _onion_lifespan(app: Rapidy) -> AsyncIterator[None]:
+    if app._root_app is None:  # noqa: SLF001
+        app._build_onion()  # noqa: SLF001
+    yield
+
+
+def _subapp_lifespan(subapp: Rapidy) -> LifespanCTX:
+    @asynccontextmanager
+    async def lifespan_context(_parent: Rapidy) -> AsyncIterator[None]:
+        async with subapp.lifespan.ctx_manager():
+            yield
+
+    return lifespan_context

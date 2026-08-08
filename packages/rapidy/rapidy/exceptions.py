@@ -17,6 +17,7 @@ __all__ = (
     'HTTPException',
     'HTTPMethodNotAllowed',
     'HTTPNotFound',
+    'HTTPPermanentRedirect',
     'HTTPRequestEntityTooLarge',
     'HTTPValidationFailure',
     'ResponseDuplicateBodyError',
@@ -85,6 +86,32 @@ class HTTPBadRequest(HTTPException):
     """The request metadata is malformed."""
 
     status_code = HTTPStatus.BAD_REQUEST
+
+
+class HTTPPermanentRedirect(HTTPException):
+    """Redirect permanently while preserving the request method."""
+
+    status_code = HTTPStatus.PERMANENT_REDIRECT
+
+    def __init__(
+        self,
+        location: str,
+        *,
+        headers: LooseHeaders | None = None,
+        reason: str | None = None,
+        body: Any | None = None,
+        text: str | None = None,
+        content_type: str | None = None,
+    ) -> None:
+        self.location = location
+        super().__init__(
+            headers=headers,
+            reason=reason,
+            body=body,
+            text=text,
+            content_type=content_type,
+        )
+        self.headers['Location'] = location
 
 
 class HTTPRequestEntityTooLarge(HTTPException):

@@ -142,10 +142,10 @@ class UrlMatcher:
         return tuple(self._records)
 
     def add_prefix(self, prefix: str, subapp: Any) -> None:
-        """Store a future mount target in longest-prefix-first order."""
+        """Store a mount target in longest-prefix-first order."""
         self._prefixes.append((prefix, subapp))
         self._prefixes.sort(key=lambda item: len(item[0]), reverse=True)
-        # TODO(08-middleware-mounts): delegate with a stripped path.  # noqa: FIX002
+        # Delegation with a stripped path is owned by Rapidy._dispatch_terminal.
 
     def add_route(
         self,
@@ -255,9 +255,7 @@ class UrlMatcher:
         is_auto_head: bool,
         parameters: tuple[Any, ...],
     ) -> RouteRecord:
-        source_handler = (
-            handler if handler is not None else cast('Handler', getattr(terminal, '__wrapped__', terminal))
-        )
+        source_handler = handler if handler is not None else cast('Handler', getattr(terminal, '__wrapped__', terminal))
         return RouteRecord(
             path,
             method,

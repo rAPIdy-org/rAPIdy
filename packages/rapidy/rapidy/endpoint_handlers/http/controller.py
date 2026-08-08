@@ -6,6 +6,8 @@ from pprint import pformat
 from typing import Any, cast, TYPE_CHECKING
 
 from rapidy_core.client_errors import normalize_errors
+from rapidy_core.encoders import jsonify
+from rapidy_core.enums import ContentType
 
 from rapidy._base_exceptions import RapidyHandlerException
 from rapidy.endpoint_handlers.http.attrs_extractor import get_http_handler_info
@@ -22,7 +24,6 @@ from rapidy.typedefs import Handler, JSONEncoder, UnsetType, ValidationErrorList
 
 if TYPE_CHECKING:
     from rapidy_core.encoders import CustomEncoder, Exclude, Include
-    from rapidy_core.enums import ContentType
 
 __all__ = ('HandlerController', 'ResponseValidationError', 'controller_factory')
 
@@ -130,8 +131,22 @@ class HandlerController:
         if isinstance(handler_result, (str, bytes)):
             current_response.body = handler_result
             return current_response
-        msg = 'Arbitrary response serialization is implemented in milestone 10'
-        raise NotImplementedError(msg)
+        # TODO(10-response-contract): replace with the complete §5.4 body dispatcher.  # noqa: FIX002
+        current_response.content_type = current_response.content_type or ContentType.json.value
+        current_response.body = jsonify(
+            handler_result,
+            include=self._response_include_fields,
+            exclude=self._response_exclude_fields,
+            by_alias=self._response_by_alias,
+            exclude_unset=self._response_exclude_unset,
+            exclude_defaults=self._response_exclude_defaults,
+            exclude_none=self._response_exclude_none,
+            custom_encoder=self._response_custom_encoder,
+            charset=self._response_charset,
+            dumps=True,
+            dumps_encoder=self._response_json_encoder,
+        )
+        return current_response
 
 
 def controller_factory(
