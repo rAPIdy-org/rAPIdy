@@ -78,6 +78,75 @@ class _TraceState:
             self.connection_reused = True
 
 
+@dataclass(slots=True)
+class WSUpgradeResult:
+    status: int
+    headers: Headers
+    network_stream: WSNetworkStream | None
+    error_body: bytes
+
+
+class WSNetworkStream:
+    __slots__ = ("_closed", "_net", "_request", "_response")
+
+    def __init__(
+        self,
+        net_stream: httpcore2.AsyncNetworkStream,
+        httpx_response: httpx2.Response,
+        request: Request,
+    ) -> None:
+        self._net = net_stream
+        self._response = httpx_response
+        self._request = request
+        self._closed = False
+
+    async def read(self, max_bytes: int = 65536) -> bytes:
+        try:
+            return await self._net.read(max_bytes)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            raise map_transport_exception(exc, request=self._request) from exc
+
+    async def write(self, data: bytes) -> None:
+        try:
+            await self._net.write(data)
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            raise map_transport_exception(exc, request=self._request) from exc
+
+    async def aclose(self) -> None:
+        if self._closed:
+            return
+        self._closed = True
+        try:
+            await self._net.aclose()
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            raise map_transport_exception(exc, request=self._request) from exc
+        finally:
+            await self._response.aclose()
+
+
+async def _read_native_capped(
+    response: httpx2.Response,
+    limit: int,
+) -> bytes:
+    if hasattr(response, "_content"):
+        return response.content[:limit]
+    chunks: list[bytes] = []
+    total = 0
+    async for chunk in response.aiter_raw():
+        take = chunk[: limit - total]
+        chunks.append(take)
+        total += len(take)
+        if total >= limit:
+            break
+    return b"".join(chunks)
+
+
 def _default_user_agent() -> str:
     try:
         version = metadata.version("rapidy-client")
@@ -418,6 +487,69 @@ class HttpxTransport(BaseTransport):
             on_close=close,
         )
 
+    async def connect_ws(self, request: Request) -> WSUpgradeResult:
+        if self._closed:
+            raise RuntimeError("HttpxTransport is closed")
+        client = await self._get_client()
+        native_response: httpx2.Response | None = None
+        try:
+            native_request, trace_state = self._build_request(
+                client,
+                request,
+                request.extensions.timeout,
+            )
+            try:
+                native_response = await client.send(native_request, stream=True)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                raise _map_send_exception(
+                    exc,
+                    request=request,
+                    trace_state=trace_state,
+                ) from exc
+
+            headers = Headers(native_response.headers.multi_items())
+            if native_response.status_code == 101:
+                network_stream = cast(
+                    "httpcore2.AsyncNetworkStream | None",
+                    native_response.extensions.get("network_stream"),
+                )
+                if network_stream is not None:
+                    result = WSUpgradeResult(
+                        status=101,
+                        headers=headers,
+                        network_stream=WSNetworkStream(
+                            network_stream,
+                            native_response,
+                            request,
+                        ),
+                        error_body=b"",
+                    )
+                    native_response = None
+                    return result
+
+            try:
+                error_body = await _read_native_capped(native_response, 65536)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                raise map_transport_exception(exc, request=request) from exc
+            return WSUpgradeResult(
+                status=native_response.status_code,
+                headers=headers,
+                network_stream=None,
+                error_body=error_body,
+            )
+        finally:
+            if native_response is not None:
+                try:
+                    await native_response.aclose()
+                except asyncio.CancelledError:
+                    raise
+                except Exception as exc:
+                    raise map_transport_exception(exc, request=request) from exc
+
     async def handle(self, request: Request) -> Response:
         if self._closed:
             raise RuntimeError("HttpxTransport is closed")
@@ -509,4 +641,9 @@ class HttpxTransport(BaseTransport):
             await self._client.aclose()
 
 
-__all__ = ("HttpxTransport", "map_transport_exception")
+__all__ = (
+    "HttpxTransport",
+    "WSNetworkStream",
+    "WSUpgradeResult",
+    "map_transport_exception",
+)

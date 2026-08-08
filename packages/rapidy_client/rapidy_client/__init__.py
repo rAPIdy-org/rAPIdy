@@ -53,7 +53,7 @@ from rapidy_client.errors import (
 
 if TYPE_CHECKING:
     from rapidy_client._client import HttpClient
-    from rapidy_client._typed import bind, operation
+    from rapidy_client._typed import bind, operation, sse, ws
     from rapidy_client.config import (
         BackoffConfig,
         BreakerConfig,
@@ -79,6 +79,19 @@ if TYPE_CHECKING:
         post,
         put,
     )
+    from rapidy_client.sse import (
+        ServerSentEvent,
+        SSEConnect,
+        SSEReconnect,
+        SSEStream,
+    )
+    from rapidy_client.ws import (
+        Heartbeat,
+        WSConnect,
+        WSMessage,
+        WSSession,
+        WSSocket,
+    )
 
 __all__ = (
     "UNSET",
@@ -101,6 +114,7 @@ __all__ = (
     "DecodeError",
     "FilePart",
     "Headers",
+    "Heartbeat",
     "HttpClient",
     "HttpClientError",
     "HttpSettings",
@@ -124,8 +138,12 @@ __all__ = (
     "ResponseValidationError",
     "Result",
     "RetryConfig",
+    "SSEConnect",
+    "SSEReconnect",
+    "SSEStream",
     "SchemaDefinitionError",
     "ServerDisconnectedError",
+    "ServerSentEvent",
     "StatusError",
     "TLSConfig",
     "TLSError",
@@ -135,9 +153,13 @@ __all__ = (
     "Unset",
     "UpstreamConfig",
     "WSClosedError",
+    "WSConnect",
     "WSError",
     "WSHandshakeError",
+    "WSMessage",
     "WSQueueFullError",
+    "WSSession",
+    "WSSocket",
     "aiter_file",
     "bind",
     "controller",
@@ -151,6 +173,8 @@ __all__ = (
     "patch",
     "post",
     "put",
+    "sse",
+    "ws",
 )
 
 _LAZY: dict[str, str] = {
@@ -159,14 +183,23 @@ _LAZY: dict[str, str] = {
     "DeadlineConfig": "rapidy_client.config",
     "HttpClient": "rapidy_client._client",
     "HttpSettings": "rapidy_client.config",
+    "Heartbeat": "rapidy_client.ws",
     "LogConfig": "rapidy_client.config",
     "PoolLimits": "rapidy_client.config",
     "ProxyConfig": "rapidy_client.config",
     "RateLimitConfig": "rapidy_client.config",
     "RedirectConfig": "rapidy_client.config",
     "RetryConfig": "rapidy_client.config",
+    "SSEConnect": "rapidy_client.sse",
+    "SSEReconnect": "rapidy_client.sse",
+    "SSEStream": "rapidy_client.sse",
+    "ServerSentEvent": "rapidy_client.sse",
     "TLSConfig": "rapidy_client.config",
     "UpstreamConfig": "rapidy_client.config",
+    "WSConnect": "rapidy_client.ws",
+    "WSMessage": "rapidy_client.ws",
+    "WSSession": "rapidy_client.ws",
+    "WSSocket": "rapidy_client.ws",
     "aiter_file": "rapidy_client.files",
     "bind": "rapidy_client._typed",
     "controller": "rapidy_client.schema",
@@ -180,6 +213,8 @@ _LAZY: dict[str, str] = {
     "patch": "rapidy_client.schema",
     "post": "rapidy_client.schema",
     "put": "rapidy_client.schema",
+    "sse": "rapidy_client._typed",
+    "ws": "rapidy_client._typed",
 }
 
 

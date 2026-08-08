@@ -79,3 +79,27 @@ name = "client DI uses only rapidy_core DI facade"
 type = "forbidden"
 source_modules = ["rapidy_client.di"]
 forbidden_modules = ["dishka"]
+
+[[tool.importlinter.contracts]]
+name = "wsproto localized to ws.py (rule 5.1.1)"
+type = "forbidden"
+source_modules = [
+    "rapidy_client._models",
+    "rapidy_client._content",
+    "rapidy_client._redaction",
+    "rapidy_client._clock",
+    "rapidy_client.errors",
+    "rapidy_client.config",
+    "rapidy_client._pipeline",
+    "rapidy_client._client",
+    "rapidy_client.sse",
+    "rapidy_client.observability",
+    "rapidy_client.transports.httpx",
+    "rapidy_client.transports",
+    "rapidy_client.testing.chaos",
+]
+forbidden_modules = ["wsproto"]
+ignore_imports = [
+    "rapidy_client._client -> rapidy_client.ws",
+    "rapidy_client.sse -> rapidy_client._typed",
+]

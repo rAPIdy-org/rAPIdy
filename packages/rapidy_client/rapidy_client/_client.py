@@ -9,7 +9,7 @@ from collections.abc import AsyncIterable, Mapping, Sequence
 from contextlib import AbstractAsyncContextManager
 from datetime import date, datetime, timezone
 from enum import Enum
-from typing import Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol
 from urllib.parse import quote, urlencode
 from uuid import UUID
 
@@ -54,6 +54,10 @@ from rapidy_client.observability import (
     notify_observers,
 )
 from rapidy_client.transports.httpx import HttpxTransport
+
+if TYPE_CHECKING:
+    from rapidy_client.sse import ServerSentEvent, SSEConnect, SSEReconnect
+    from rapidy_client.ws import Heartbeat, WSConnect
 
 _IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "PUT", "DELETE", "OPTIONS", "TRACE"})
 _JSON_CONTENT_TYPE = "application/json"
@@ -556,17 +560,49 @@ class HttpClient:
     ) -> AbstractAsyncContextManager[Response]:
         return _StreamCM(self, method, path, kwargs)
 
-    def ws(self, path: str, **kwargs: Any) -> Any:
-        del path, kwargs
+    def ws(
+        self,
+        path: str,
+        *,
+        heartbeat: Heartbeat | None = None,
+        send_queue_limit: int = 256,
+        send_timeout: float = 10.0,
+        subprotocols: Sequence[str] = (),
+        headers: dict[str, str] | None = None,
+    ) -> WSConnect[BaseModel, BaseModel]:
         if self._closing:
             raise ClientClosedError("HttpClient is closed")
-        raise NotImplementedError("WebSocket sessions are implemented in milestone 19")
+        from rapidy_client.ws import WSConnect
 
-    def sse(self, path: str, **kwargs: Any) -> Any:
-        del path, kwargs
+        return WSConnect(
+            self,
+            path,
+            heartbeat=heartbeat,
+            send_queue_limit=send_queue_limit,
+            send_timeout=send_timeout,
+            subprotocols=subprotocols,
+            headers=headers,
+        )
+
+    def sse(
+        self,
+        path: str,
+        *,
+        last_event_id: str | None = None,
+        reconnect: SSEReconnect | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> SSEConnect[ServerSentEvent]:
         if self._closing:
             raise ClientClosedError("HttpClient is closed")
-        raise NotImplementedError("SSE sessions are implemented in milestone 19")
+        from rapidy_client.sse import SSEConnect
+
+        return SSEConnect(
+            self,
+            path,
+            last_event_id=last_event_id,
+            reconnect=reconnect,
+            headers=headers,
+        )
 
     async def _safe_aclose(self, drainable: _Drainable) -> None:
         try:

@@ -22,9 +22,11 @@ from rapidy_client import (
     ResponseExtensions,
     ServerDisconnectedError,
     Timeout,
+    TransportError,
 )
 from rapidy_client.observability import BaseObserver
 from rapidy_client.transports import BaseTransport, HttpxTransport
+from rapidy_client.transports.httpx import WSNetworkStream
 
 
 @dataclass(slots=True)
@@ -514,6 +516,61 @@ async def test_stream_wrapper_maps_body_errors() -> None:
     with pytest.raises(ProtocolError):
         await response.aread()
     assert not semaphore.locked()
+
+
+@pytest.mark.asyncio
+async def test_connect_ws_non_101_carries_capped_body(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(403, content=b"x" * 70_000)
+
+    _install_mock_client(monkeypatch, handler)
+    transport = _transport()
+
+    result = await transport.connect_ws(_request())
+
+    assert result.status == 403
+    assert result.network_stream is None
+    assert result.error_body == b"x" * 65_536
+    await transport.aclose()
+
+
+@pytest.mark.asyncio
+async def test_ws_network_stream_maps_errors_and_closes_response() -> None:
+    class BrokenNetworkStream:
+        closed = 0
+
+        async def read(self, max_bytes: int) -> bytes:
+            del max_bytes
+            raise httpx2.ReadError("broken")
+
+        async def write(self, data: bytes) -> None:
+            del data
+            raise httpx2.WriteError("broken")
+
+        async def aclose(self) -> None:
+            self.closed += 1
+
+    response = httpx2.Response(
+        101,
+        request=httpx2.Request("GET", "https://example.test"),
+    )
+    native = BrokenNetworkStream()
+    stream = WSNetworkStream(
+        cast(Any, native),
+        response,
+        _request(),
+    )
+
+    with pytest.raises(TransportError):
+        await stream.read()
+    with pytest.raises(TransportError):
+        await stream.write(b"frame")
+    await stream.aclose()
+    await stream.aclose()
+
+    assert native.closed == 1
 
 
 @pytest.mark.asyncio
