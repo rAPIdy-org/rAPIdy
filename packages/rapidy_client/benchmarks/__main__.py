@@ -6,10 +6,10 @@ import json
 
 from ._harness import (
     BASELINE_PATH,
+    BASELINE_VARIANTS,
     DEFAULT_ITERATIONS,
     DEFAULT_WARMUP,
     FULL_STACK,
-    FULL_STACK_VARIANTS,
     HEADROOM_PATH,
     VARIANTS,
     VariantResult,
@@ -78,7 +78,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.check_headroom:
         return _check_headroom()
 
-    variants = FULL_STACK_VARIANTS if args.freeze_baseline else VARIANTS
+    variants = BASELINE_VARIANTS if args.freeze_baseline else VARIANTS
     results = asyncio.run(
         run_breakdown(
             iterations=args.iterations,

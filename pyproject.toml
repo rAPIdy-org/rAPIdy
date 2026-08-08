@@ -73,3 +73,9 @@ forbidden_modules = [
     "httpx2",
     "httpcore2",
 ]
+
+[[tool.importlinter.contracts]]
+name = "client DI uses only rapidy_core DI facade"
+type = "forbidden"
+source_modules = ["rapidy_client.di"]
+forbidden_modules = ["dishka"]

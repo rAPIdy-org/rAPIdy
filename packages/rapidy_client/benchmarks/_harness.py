@@ -8,16 +8,22 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import cast
 
 import httpx2
-from rapidy_client import HttpClient, RedirectConfig, UpstreamConfig
+from rapidy_client import HttpClient, RedirectConfig, Response, UpstreamConfig, bind
 from rapidy_client.config import LogConfig, rapidy_client_request_id
+from rapidy_client.di import HttpApp, provide_endpoint
+from rapidy_client.schema import get
 from rapidy_client.testing.chaos import ChaosServer
+from rapidy_core.di import Component
 
 HEADROOM_PATH = Path(__file__).parent / "headroom.json"
 BASELINE_PATH = Path(__file__).parent / "baseline.json"
 VARIANTS = ("bare_httpx2", "+logging", "+correlation", "+redirect")
-FULL_STACK_VARIANTS = VARIANTS + ("+deadline", "+retry", "full")
+LAYER_VARIANTS = VARIANTS + ("+deadline", "+retry", "full")
+FULL_STACK_VARIANTS = ("no-di", "+di")
+BASELINE_VARIANTS = ("bare_httpx2", *FULL_STACK_VARIANTS)
 FULL_STACK = "redirect,retry,deadline,logging,correlation"
 
 ADVISORY_P99_US = 300.0
@@ -32,6 +38,18 @@ class VariantResult:
     p50_us: float
     p99_us: float
     overhead_pct: float | None
+
+
+BENCHMARK_COMPONENT = Component("benchmark")
+
+
+class BenchmarkEndpoint:
+    pass
+
+
+@get("/", deadline=60.0)
+async def _benchmark_endpoint() -> Response:
+    raise NotImplementedError
 
 
 def _percentile(values: list[int], percentile: float) -> float:
@@ -114,6 +132,65 @@ async def _measure_client(
         await client.aclose()
 
 
+def _full_stack_config(base_url: str) -> UpstreamConfig:
+    return UpstreamConfig(
+        base_url=base_url,
+        log=LogConfig(level="meta"),
+        redirects=RedirectConfig(follow=True),
+    )
+
+
+async def _measure_bound_endpoint(
+    base_url: str,
+    *,
+    use_di: bool,
+    iterations: int,
+    warmup: int,
+) -> tuple[float, float]:
+    token = rapidy_client_request_id.set("benchmark-request")
+    try:
+        if use_di:
+            app = HttpApp(
+                upstreams={BENCHMARK_COMPONENT: _full_stack_config(base_url)},
+                di_providers=(
+                    provide_endpoint(
+                        _benchmark_endpoint,
+                        provides=BenchmarkEndpoint,
+                        component=BENCHMARK_COMPONENT,
+                    ),
+                ),
+            )
+            async with app:
+
+                async def call() -> None:
+                    endpoint = cast(
+                        Callable[[], Awaitable[Response]],
+                        await app.container.get(BenchmarkEndpoint),
+                    )
+                    response = await endpoint()
+                    if response.status != 200:
+                        raise RuntimeError(
+                            f"unexpected benchmark status {response.status}"
+                        )
+
+                return await _measure(call, iterations=iterations, warmup=warmup)
+
+        client = HttpClient(_full_stack_config(base_url))
+        try:
+            endpoint = bind(_benchmark_endpoint, client)
+
+            async def call() -> None:
+                response = await endpoint()
+                if response.status != 200:
+                    raise RuntimeError(f"unexpected benchmark status {response.status}")
+
+            return await _measure(call, iterations=iterations, warmup=warmup)
+        finally:
+            await client.aclose()
+    finally:
+        rapidy_client_request_id.reset(token)
+
+
 async def run_breakdown(
     *,
     iterations: int = DEFAULT_ITERATIONS,
@@ -126,7 +203,8 @@ async def run_breakdown(
         raise ValueError("warmup must be non-negative")
     if not variants or variants[0] != "bare_httpx2":
         raise ValueError("variants must start with bare_httpx2")
-    if any(name not in FULL_STACK_VARIANTS for name in variants):
+    allowed_variants = {*LAYER_VARIANTS, *FULL_STACK_VARIANTS}
+    if any(name not in allowed_variants for name in variants):
         raise ValueError(f"unknown benchmark variant in {variants!r}")
 
     logger = logging.getLogger("rapidy_client.http")
@@ -142,19 +220,25 @@ async def run_breakdown(
                         iterations=iterations,
                         warmup=warmup,
                     )
+                elif name in FULL_STACK_VARIANTS:
+                    measurement = await _measure_bound_endpoint(
+                        server.url,
+                        use_di=name == "+di",
+                        iterations=iterations,
+                        warmup=warmup,
+                    )
                 else:
-                    layer = FULL_STACK_VARIANTS.index(name)
+                    layer = LAYER_VARIANTS.index(name)
                     measurement = await _measure_client(
                         server.url,
                         request_id=(
                             "benchmark-request"
-                            if layer >= FULL_STACK_VARIANTS.index("+correlation")
+                            if layer >= LAYER_VARIANTS.index("+correlation")
                             else None
                         ),
-                        follow_redirects=layer
-                        >= FULL_STACK_VARIANTS.index("+redirect"),
-                        enable_deadline=layer >= FULL_STACK_VARIANTS.index("+deadline"),
-                        enable_retry=layer >= FULL_STACK_VARIANTS.index("+retry"),
+                        follow_redirects=layer >= LAYER_VARIANTS.index("+redirect"),
+                        enable_deadline=layer >= LAYER_VARIANTS.index("+deadline"),
+                        enable_retry=layer >= LAYER_VARIANTS.index("+retry"),
                         iterations=iterations,
                         warmup=warmup,
                     )
@@ -219,25 +303,42 @@ def build_baseline(
     samples: int = DEFAULT_ITERATIONS,
 ) -> dict[str, object]:
     by_name = {result.name: result for result in results}
-    if tuple(by_name) != FULL_STACK_VARIANTS:
-        raise ValueError(f"results must follow variants {FULL_STACK_VARIANTS!r}")
+    if tuple(by_name) != BASELINE_VARIANTS:
+        raise ValueError(f"results must follow variants {BASELINE_VARIANTS!r}")
     requested = {part.strip() for part in stack.split(",") if part.strip()}
     expected = set(FULL_STACK.split(","))
     if requested != expected:
         raise ValueError(f"full-stack baseline requires layers {sorted(expected)!r}")
     bare = by_name["bare_httpx2"]
-    full = by_name["full"]
-    ratio = (full.p50_us - bare.p50_us) / bare.p50_us
+    environment = {
+        "host": platform.node(),
+        "platform": platform.platform(),
+        "python": platform.python_version(),
+    }
+    variants: dict[str, object] = {}
+    for name in FULL_STACK_VARIANTS:
+        result = by_name[name]
+        ratio = (result.p50_us - bare.p50_us) / bare.p50_us
+        variants[name] = {
+            "relative_overhead_ratio": round(ratio, 6),
+            "p50_us_advisory": result.p50_us,
+            "p99_us_advisory": result.p99_us,
+            "environment": dict(environment),
+        }
     return {
         "kind": "baseline",
         "stack": FULL_STACK,
         "auth_included": False,
-        "di_included": False,
-        "relative_overhead_ratio": round(ratio, 6),
-        "bare_httpx2_us_advisory": bare.p50_us,
-        "full_stack_us_advisory": full.p50_us,
+        "di_included": True,
+        "gate_variant": "+di",
+        "reference": {
+            "variant": "bare_httpx2",
+            "p50_us_advisory": bare.p50_us,
+            "p99_us_advisory": bare.p99_us,
+            "environment": environment,
+        },
+        "variants": variants,
         "samples": samples,
-        "machine": platform.node(),
         "frozen_at": datetime.now(timezone.utc).isoformat(),
     }
 
@@ -256,12 +357,14 @@ def format_breakdown(results: list[VariantResult]) -> str:
 __all__ = (
     "ADVISORY_P99_US",
     "BASELINE_PATH",
+    "BASELINE_VARIANTS",
     "DEFAULT_ITERATIONS",
     "DEFAULT_WARMUP",
     "FULL_STACK",
     "FULL_STACK_VARIANTS",
     "HEADROOM_PATH",
     "HEADROOM_THRESHOLD_PCT",
+    "LAYER_VARIANTS",
     "VARIANTS",
     "VariantResult",
     "build_baseline",

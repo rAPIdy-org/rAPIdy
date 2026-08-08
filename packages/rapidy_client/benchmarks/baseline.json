@@ -2,11 +2,40 @@
   "kind": "baseline",
   "stack": "redirect,retry,deadline,logging,correlation",
   "auth_included": false,
-  "di_included": false,
-  "relative_overhead_ratio": 0.175788,
-  "bare_httpx2_us_advisory": 474.292,
-  "full_stack_us_advisory": 557.667,
+  "di_included": true,
+  "gate_variant": "+di",
+  "reference": {
+    "variant": "bare_httpx2",
+    "p50_us_advisory": 500.25,
+    "p99_us_advisory": 725.25,
+    "environment": {
+      "host": "DK2M4LGDH9-MBP",
+      "platform": "macOS-26.6-arm64-arm-64bit-Mach-O",
+      "python": "3.13.13"
+    }
+  },
+  "variants": {
+    "no-di": {
+      "relative_overhead_ratio": 0.207396,
+      "p50_us_advisory": 604.0,
+      "p99_us_advisory": 823.208,
+      "environment": {
+        "host": "DK2M4LGDH9-MBP",
+        "platform": "macOS-26.6-arm64-arm-64bit-Mach-O",
+        "python": "3.13.13"
+      }
+    },
+    "+di": {
+      "relative_overhead_ratio": 0.220724,
+      "p50_us_advisory": 610.667,
+      "p99_us_advisory": 837.166,
+      "environment": {
+        "host": "DK2M4LGDH9-MBP",
+        "platform": "macOS-26.6-arm64-arm-64bit-Mach-O",
+        "python": "3.13.13"
+      }
+    }
+  },
   "samples": 2000,
-  "machine": "DK2M4LGDH9-MBP",
-  "frozen_at": "2026-08-08T14:36:54.373505+00:00"
+  "frozen_at": "2026-08-08T15:18:12.879690+00:00"
 }

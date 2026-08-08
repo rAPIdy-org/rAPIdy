@@ -5,9 +5,11 @@ import json
 import pytest
 from benchmarks import (
     BASELINE_PATH,
+    BASELINE_VARIANTS,
     FULL_STACK,
     FULL_STACK_VARIANTS,
     HEADROOM_PATH,
+    LAYER_VARIANTS,
     VARIANTS,
     VariantResult,
     build_baseline,
@@ -42,9 +44,13 @@ async def test_run_full_stack_breakdown_smoke() -> None:
     results = await run_breakdown(
         iterations=2,
         warmup=0,
-        variants=FULL_STACK_VARIANTS,
+        variants=BASELINE_VARIANTS,
     )
-    assert tuple(result.name for result in results) == FULL_STACK_VARIANTS
+    assert tuple(result.name for result in results) == BASELINE_VARIANTS
+
+
+def test_layer_breakdown_still_contains_full_stack() -> None:
+    assert LAYER_VARIANTS[-3:] == ("+deadline", "+retry", "full")
 
 
 def test_build_headroom_shape() -> None:
@@ -66,7 +72,7 @@ def test_build_baseline_shape() -> None:
             p99_us=150.0 + index,
             overhead_pct=None if index == 0 else float(index),
         )
-        for index, name in enumerate(FULL_STACK_VARIANTS)
+        for index, name in enumerate(BASELINE_VARIANTS)
     ]
 
     data = build_baseline(results, stack=FULL_STACK, samples=25)
@@ -74,9 +80,14 @@ def test_build_baseline_shape() -> None:
     assert data["kind"] == "baseline"
     assert data["stack"] == FULL_STACK
     assert data["auth_included"] is False
-    assert data["di_included"] is False
+    assert data["di_included"] is True
+    assert data["gate_variant"] == "+di"
     assert data["samples"] == 25
-    assert data["relative_overhead_ratio"] == 0.06
+    variants = data["variants"]
+    assert isinstance(variants, dict)
+    assert tuple(variants) == FULL_STACK_VARIANTS
+    assert variants["no-di"]["relative_overhead_ratio"] == 0.01
+    assert variants["+di"]["relative_overhead_ratio"] == 0.02
 
 
 def test_headroom_json_committed_and_valid() -> None:
@@ -92,7 +103,9 @@ def test_baseline_json_committed_and_valid() -> None:
     assert data["kind"] == "baseline"
     assert data["stack"] == FULL_STACK
     assert data["auth_included"] is False
-    assert data["di_included"] is False
+    assert data["di_included"] is True
+    assert data["gate_variant"] == "+di"
+    assert tuple(data["variants"]) == FULL_STACK_VARIANTS
 
 
 def test_format_breakdown_prints_all_variants() -> None:
