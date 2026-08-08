@@ -298,11 +298,11 @@ async def test_request_id_from_contextvar() -> None:
 @pytest.mark.asyncio
 async def test_deadline_from_arg_and_contextvar() -> None:
     clock = _FakeClock()
-    token = rapidy_client_deadline.set(2.0)
+    token = rapidy_client_deadline.set(4.0)
     try:
         client, transport = _client(_clock=clock)
         await client.get("/context")
-        assert transport.last.extensions.deadline == 102.0
+        assert transport.last.extensions.deadline == 104.0
         await client.get("/argument", deadline=5.0)
         assert transport.last.extensions.deadline == 105.0
     finally:

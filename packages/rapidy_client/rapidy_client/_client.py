@@ -42,7 +42,10 @@ from rapidy_client.config import (
 )
 from rapidy_client.errors import ClientClosedError, StatusError
 from rapidy_client.middleware.correlation import CorrelationMiddleware
+from rapidy_client.middleware.deadline import DeadlineMiddleware
 from rapidy_client.middleware.redirect import RedirectMiddleware
+from rapidy_client.middleware.retry import RetryMiddleware
+from rapidy_client.middleware.timeout import TotalTimeoutMiddleware
 from rapidy_client.observability import (
     LoggingObserver,
     Observer,
@@ -187,6 +190,16 @@ class HttpClient:
             correlation=CorrelationMiddleware(),
             middlewares=self._middlewares,
             per_attempt_middlewares=per_attempt_middlewares,
+            retry=RetryMiddleware(
+                self._config.retry,
+                clock=self._clock,
+                observers=self._observers,
+            ),
+            deadline=DeadlineMiddleware(
+                self._config.deadline,
+                clock=self._clock,
+            ),
+            timeout=TotalTimeoutMiddleware(),
             redirect=RedirectMiddleware(
                 allow_absolute_urls=self._config.allow_absolute_urls,
                 max_response_size=self._config.max_response_size,

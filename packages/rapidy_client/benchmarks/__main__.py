@@ -5,11 +5,15 @@ import asyncio
 import json
 
 from ._harness import (
+    BASELINE_PATH,
     DEFAULT_ITERATIONS,
     DEFAULT_WARMUP,
+    FULL_STACK,
+    FULL_STACK_VARIANTS,
     HEADROOM_PATH,
     VARIANTS,
     VariantResult,
+    build_baseline,
     build_headroom,
     format_breakdown,
     run_breakdown,
@@ -63,16 +67,39 @@ def _check_headroom() -> int:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="rapidy-client headroom harness")
-    parser.add_argument("--check-headroom", action="store_true")
-    parser.add_argument("--freeze", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--check-headroom", action="store_true")
+    mode.add_argument("--freeze", action="store_true")
+    mode.add_argument("--freeze-baseline", action="store_true")
+    parser.add_argument("--stack", default=FULL_STACK)
     parser.add_argument("--iterations", type=int, default=DEFAULT_ITERATIONS)
     parser.add_argument("--warmup", type=int, default=DEFAULT_WARMUP)
     args = parser.parse_args(argv)
     if args.check_headroom:
         return _check_headroom()
 
-    results = asyncio.run(run_breakdown(iterations=args.iterations, warmup=args.warmup))
+    variants = FULL_STACK_VARIANTS if args.freeze_baseline else VARIANTS
+    results = asyncio.run(
+        run_breakdown(
+            iterations=args.iterations,
+            warmup=args.warmup,
+            variants=variants,
+        )
+    )
     print(format_breakdown(results))
+    if args.freeze_baseline:
+        try:
+            baseline = build_baseline(
+                results,
+                stack=args.stack,
+                samples=args.iterations,
+            )
+        except ValueError as exc:
+            parser.error(str(exc))
+        BASELINE_PATH.write_text(
+            json.dumps(baseline, indent=2) + "\n",
+            encoding="utf-8",
+        )
     if args.freeze:
         HEADROOM_PATH.write_text(
             json.dumps(build_headroom(results), indent=2) + "\n",

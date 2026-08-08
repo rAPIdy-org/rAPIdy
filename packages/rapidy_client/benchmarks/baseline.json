@@ -1,0 +1,12 @@
+{
+  "kind": "baseline",
+  "stack": "redirect,retry,deadline,logging,correlation",
+  "auth_included": false,
+  "di_included": false,
+  "relative_overhead_ratio": 0.175788,
+  "bare_httpx2_us_advisory": 474.292,
+  "full_stack_us_advisory": 557.667,
+  "samples": 2000,
+  "machine": "DK2M4LGDH9-MBP",
+  "frozen_at": "2026-08-08T14:36:54.373505+00:00"
+}

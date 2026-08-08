@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import logging
 import math
+import platform
 import time
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 import httpx2
@@ -13,7 +15,10 @@ from rapidy_client.config import LogConfig, rapidy_client_request_id
 from rapidy_client.testing.chaos import ChaosServer
 
 HEADROOM_PATH = Path(__file__).parent / "headroom.json"
+BASELINE_PATH = Path(__file__).parent / "baseline.json"
 VARIANTS = ("bare_httpx2", "+logging", "+correlation", "+redirect")
+FULL_STACK_VARIANTS = VARIANTS + ("+deadline", "+retry", "full")
+FULL_STACK = "redirect,retry,deadline,logging,correlation"
 
 ADVISORY_P99_US = 300.0
 HEADROOM_THRESHOLD_PCT = 10.0
@@ -77,6 +82,8 @@ async def _measure_client(
     *,
     request_id: str | None,
     follow_redirects: bool,
+    enable_deadline: bool,
+    enable_retry: bool,
     iterations: int,
     warmup: int,
 ) -> tuple[float, float]:
@@ -90,7 +97,14 @@ async def _measure_client(
     try:
 
         async def call() -> None:
-            response = await client.get("/")
+            if enable_deadline and enable_retry:
+                response = await client.get("/", deadline=60.0)
+            elif enable_deadline:
+                response = await client.get("/", deadline=60.0, retry=None)
+            elif enable_retry:
+                response = await client.get("/")
+            else:
+                response = await client.get("/", retry=None)
             if response.status != 200:
                 raise RuntimeError(f"unexpected benchmark status {response.status}")
 
@@ -104,57 +118,47 @@ async def run_breakdown(
     *,
     iterations: int = DEFAULT_ITERATIONS,
     warmup: int = DEFAULT_WARMUP,
+    variants: tuple[str, ...] = VARIANTS,
 ) -> list[VariantResult]:
     if iterations <= 0:
         raise ValueError("iterations must be greater than zero")
     if warmup < 0:
         raise ValueError("warmup must be non-negative")
+    if not variants or variants[0] != "bare_httpx2":
+        raise ValueError("variants must start with bare_httpx2")
+    if any(name not in FULL_STACK_VARIANTS for name in variants):
+        raise ValueError(f"unknown benchmark variant in {variants!r}")
 
     logger = logging.getLogger("rapidy_client.http")
     previous_level = logger.level
     logger.setLevel(logging.CRITICAL + 1)
     try:
         async with ChaosServer().respond_ok(body=b"ok") as server:
-            raw = [
-                (
-                    "bare_httpx2",
-                    await _measure_bare(
+            raw: list[tuple[str, tuple[float, float]]] = []
+            for name in variants:
+                if name == "bare_httpx2":
+                    measurement = await _measure_bare(
                         server.url,
                         iterations=iterations,
                         warmup=warmup,
-                    ),
-                ),
-                (
-                    "+logging",
-                    await _measure_client(
+                    )
+                else:
+                    layer = FULL_STACK_VARIANTS.index(name)
+                    measurement = await _measure_client(
                         server.url,
-                        request_id=None,
-                        follow_redirects=False,
+                        request_id=(
+                            "benchmark-request"
+                            if layer >= FULL_STACK_VARIANTS.index("+correlation")
+                            else None
+                        ),
+                        follow_redirects=layer
+                        >= FULL_STACK_VARIANTS.index("+redirect"),
+                        enable_deadline=layer >= FULL_STACK_VARIANTS.index("+deadline"),
+                        enable_retry=layer >= FULL_STACK_VARIANTS.index("+retry"),
                         iterations=iterations,
                         warmup=warmup,
-                    ),
-                ),
-                (
-                    "+correlation",
-                    await _measure_client(
-                        server.url,
-                        request_id="benchmark-request",
-                        follow_redirects=False,
-                        iterations=iterations,
-                        warmup=warmup,
-                    ),
-                ),
-                (
-                    "+redirect",
-                    await _measure_client(
-                        server.url,
-                        request_id="benchmark-request",
-                        follow_redirects=True,
-                        iterations=iterations,
-                        warmup=warmup,
-                    ),
-                ),
-            ]
+                    )
+                raw.append((name, measurement))
     finally:
         logger.setLevel(previous_level)
 
@@ -208,6 +212,36 @@ def build_headroom(results: list[VariantResult]) -> dict[str, object]:
     }
 
 
+def build_baseline(
+    results: list[VariantResult],
+    *,
+    stack: str = FULL_STACK,
+    samples: int = DEFAULT_ITERATIONS,
+) -> dict[str, object]:
+    by_name = {result.name: result for result in results}
+    if tuple(by_name) != FULL_STACK_VARIANTS:
+        raise ValueError(f"results must follow variants {FULL_STACK_VARIANTS!r}")
+    requested = {part.strip() for part in stack.split(",") if part.strip()}
+    expected = set(FULL_STACK.split(","))
+    if requested != expected:
+        raise ValueError(f"full-stack baseline requires layers {sorted(expected)!r}")
+    bare = by_name["bare_httpx2"]
+    full = by_name["full"]
+    ratio = (full.p50_us - bare.p50_us) / bare.p50_us
+    return {
+        "kind": "baseline",
+        "stack": FULL_STACK,
+        "auth_included": False,
+        "di_included": False,
+        "relative_overhead_ratio": round(ratio, 6),
+        "bare_httpx2_us_advisory": bare.p50_us,
+        "full_stack_us_advisory": full.p50_us,
+        "samples": samples,
+        "machine": platform.node(),
+        "frozen_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
 def format_breakdown(results: list[VariantResult]) -> str:
     lines = ["variant          p50_us     p99_us   overhead_pct"]
     for result in results:
@@ -221,12 +255,16 @@ def format_breakdown(results: list[VariantResult]) -> str:
 
 __all__ = (
     "ADVISORY_P99_US",
+    "BASELINE_PATH",
     "DEFAULT_ITERATIONS",
     "DEFAULT_WARMUP",
+    "FULL_STACK",
+    "FULL_STACK_VARIANTS",
     "HEADROOM_PATH",
     "HEADROOM_THRESHOLD_PCT",
     "VARIANTS",
     "VariantResult",
+    "build_baseline",
     "build_headroom",
     "format_breakdown",
     "run_breakdown",
