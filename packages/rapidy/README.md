@@ -1,775 +1,155 @@
 <p align="center">
-    <a href="https://github.com/daniil-grois/rAPIdy" target="blank">
-        <img src=https://github.com/rAPIdy-org/rAPIdy/blob/main/docs/docs/assets/logo-teal.png?raw=true" alt="rAPIdy">
-    </a>
+  <img src="https://raw.githubusercontent.com/rAPIdy-org/rAPIdy/main/packages/rapidy/docs/docs/assets/logo-teal.png" alt="rAPIdy" width="420">
 </p>
 
-<p align="center">
-    <a href="https://pypi.org/project/rapidy" target="blank">
-        <img src="https://img.shields.io/pypi/v/rapidy?style=flat&logo=rapidy&logoColor=%237e56c2&color=%237e56c2&label=pypi%20rAPIdy" alt="Package version">
-    </a>
-    <a href="https://pypi.org/project/rapidy" target="blank">
-        <img src="https://img.shields.io/pypi/pyversions/rapidy?style=flat&logo=rapidy&logoColor=%237e56c2&color=%237e56c2" alt="Python versions">
-    </a>
-    <a href="https://github.com/rAPIdy-org/rAPIdy/actions/workflows/test.yml?query=branch%3Amain" target="blank">
-        <img src="https://github.com/rAPIdy-org/rAPIdy/actions/workflows/test.yml/badge.svg?branch=main" alt="license">
-    </a>
-    <a href="https://github.com/rAPIdy-org/rAPIdy/blob/main/LICENSE" target="blank">
-        <img src="https://img.shields.io/badge/license-_MIT-%237e56c2?style=flat" alt="license">
-    </a>
-    <a href="https://docs.pydantic.dev/latest/" target="blank">
-        <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/pydantic/pydantic/main/docs/badge/v1.json&logoColor=%237e56c2&color=%237e56c2" alt="Pydantic V1">
-    </a>
-    <a href="https://docs.pydantic.dev/latest/" target="blank">
-        <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/pydantic/pydantic/main/docs/badge/v2.json&logoColor=%237e56c2&color=%237e56c2" alt="Pydantic V2">
-    </a>
-</p>
+# rAPIdy 2.0
 
-<p align="center">
-    <i>
-        <a href="https://github.com/daniil-grois/rAPIdy" target="blank">rAPIdy</a> -
-        a fast, lightweight, and modern asynchronous web framework powered by
-        <a href="https://github.com/aio-libs/aiohttp" target="blank">aiohttp</a>
-        and
-        <a href="https://github.com/pydantic/pydantic" target="blank">pydantic</a>.
-    </i>
-</p>
+rAPIdy is an async-first ASGI framework with Pydantic v2 validation, dependency injection, middleware, mounts,
+WebSockets, Server-Sent Events, and streaming responses. Version 2.0 no longer depends on aiohttp: Granian is the
+default server, while Uvicorn and Hypercorn are supported through optional extras.
 
-<p align="center">
-    ⭐️ If you like rAPIdy, consider starring the project on GitHub — it helps a lot!
-</p>
+- Python 3.12+
+- Pydantic `>=2.9,<3`
+- Typed package with `py.typed`
+- Preserves the `import rapidy` application API from 1.x
 
-# 🚀 Why rAPIdy?
+## Install
 
-rAPIdy is designed for developers who need a fast, async-first web framework that combines the performance of aiohttp
-with the simplicity and modern features of frameworks like FastAPI.
+After the 2.0 packages are published:
 
-Simple rAPIdy server:
-```python
-from rapidy import Rapidy
-from rapidy.http import get
-
-@get("/")
-async def hello() -> dict[str, str]:
-    return {"message": "Hello, rAPIdy!"}
-
-app = Rapidy(http_route_handlers=[hello])
+```bash
+python -m pip install "rapidy[granian]"
 ```
 
-## 🔥 Key Features
+From this repository before publication, install core first:
 
-- Fast & Lightweight – Minimal overhead, built on aiohttp
-- Async-First – Fully asynchronous by design
-- Built-in Validation – Uses pydantic for request validation
-- Simple & Flexible – Supports both rAPIdy-style handler definitions and traditional aiohttp function-based and
-class-based routing
-- Middleware Support – Easily extend functionality with middleware, including built-in validation for HTTP parameters
-(headers, cookies, and body).
-
----
-
-# 📦 Installation & Setup
-
-Install rAPIdy via pip:
-```shell
-pip install rapidy
+```bash
+python -m pip install -e packages/rapidy_core
+python -m pip install -e "packages/rapidy[granian]"
 ```
 
----
+Use `rapidy[uvicorn]` or `rapidy[hypercorn]` if that server is your deployment target.
 
-# 📄 Documentation
-Documentation: https://rapidy.dev
-
-Migration from rAPIdy 1.x: [MIGRATION.md](../../MIGRATION.md)
-
----
-
-# 📢 Updates Channel
-Updates Channel: https://t.me/rapidy_dev
-
----
-
-# 🏁 Quickstart: First Simple Server
-
-Simple rAPIdy server:
-
-_Copy the following code into a file named `main.py`:_
-```python
-from rapidy import Rapidy
-from rapidy.http import get
-
-@get("/")
-async def hello() -> dict[str, str]:
-    return {"message": "Hello, rAPIdy!"}
-
-rapidy = Rapidy(http_route_handlers=[hello])
-```
-
-## Server Startup
-There are several ways to start the server:
-- Using `run_app`
-- Using `WSGI (gunicorn)`
-
-### Using `run_app`
-<details open>
-<summary>Example:</summary>
-Copy the following code to `main.py`:
+## Quickstart
 
 ```python
-from rapidy import Rapidy, run_app
-from rapidy.http import get
-
-@get("/")
-async def hello() -> dict[str, str]:
-    return {"message": "Hello, rAPIdy!"}
-
-rapidy = Rapidy(http_route_handlers=[hello])
-
-if __name__ == '__main__':
-    run_app(rapidy, host="0.0.0.0", port=8000)
-```
-
-Run the server in real-time:
-```shell
-python3 main.py
-```
-
-Your API will be available at http://localhost:8000 🚀
-</details>
-
----
-
-### Using WSGI (gunicorn)
-<details>
-<summary>Example:</summary>
-Gunicorn is a Python WSGI HTTP server for UNIX.
-
-Install gunicorn for your project:
-```shell
-pip install gunicorn
-```
-
-Copy the following code to `main.py`:
-```python
-from rapidy import Rapidy
-from rapidy.http import get
-
-@get("/")
-async def hello() -> dict[str, str]:
-    return {"message": "Hello, rAPIdy!"}
-
-rapidy = Rapidy(http_route_handlers=[hello])
-```
-
-Run the following command in the terminal:
-```shell
-gunicorn main:rapidy --bind localhost:8000 --reload --worker-class aiohttp.GunicornWebWorker
-```
-
-- `main`: Name of the `main.py` file (Python module).
-- `rapidy`: Object created inside `main.py` (line: `rapidy = Rapidy()`).
-- `--reload`: Restarts the server when code changes are detected. Recommended only for development purposes.
-
-Your API will be available at http://localhost:8000 🚀
-</details>
-
----
-
-# 📌 Advanced Features
-
-## 1️⃣ Routing
-Define multiple routes with function-based or class-based views:
-
-_Functional Handlers:_
-```python
-from rapidy.http import post, Body
-
-@post("/items")
-async def create_item(item: dict[str, str] = Body()) -> dict[str, str]:
-    return item
-```
-> [!TIP]
-> <details>
->   <summary>Registering without decorators:</summary>
->   <br>
->
->   ```python
->   from rapidy import Rapidy
->   from rapidy.http import post, Body
->
->   async def create_item(item: dict[str, str] = Body()) -> dict[str, str]:
->       return item
->
->   rapidy = Rapidy()
->   rapidy.add_http_routers([post.reg('/items', create_item)])
->   ```
-> </details>
-
-_Class-Based Handlers:_
-
-_All methods decorated with @get, @post, etc., are automatically registered as sub-routes._
-
-```python
-from rapidy.http import controller, get, post, put, patch, delete, PathParam, Body
-
-@controller('/')
-class ItemController:
-    @get('/{item_id}')
-    async def get_by_id(self, item_id: str = PathParam()) -> dict[str, str]:
-        return {'hello': 'rapidy'}
-
-    @get()
-    async def get_all(self) -> list[dict[str, str]]:
-        return [{'hello': 'rapidy'}, {'hello': 'rapidy'}]
-
-    @post()
-    async def post(self, item: dict[str, str] = Body()) -> dict[str, str]:
-        return item
-
-    @put()
-    async def put(self, item: dict[str, str] = Body()) -> dict[str, str]:
-        return item
-
-    @patch()
-    async def patch(self, item: dict[str, str] = Body()) -> dict[str, str]:
-        return item
-
-    @delete()
-    async def delete(self, item: dict[str, str] = Body()) -> dict[str, str]:
-        return item
-```
-
-> [!TIP]
-> <details>
->   <summary>Registering without decorators:</summary>
->   <br>
->
-> ```python
-> from rapidy import Rapidy
-> from rapidy.http import PathParam, get, post, put, patch, delete, controller, Body
->
-> class ItemController:
->     @get('/{item_id}')
->     async def get_by_id(self, item_id: str = PathParam()) -> dict[str, str]:
->         return {'hello': 'rapidy'}
->
->     @get()
->     async def get_all(self) -> list[dict[str, str]]:
->         return [{'hello': 'rapidy'}, {'hello': 'rapidy'}]
->
->     @post()
->     async def post(self, item: dict[str, str] = Body()) -> dict[str, str]:
->         return item
->
->     @put()
->     async def put(self, item: dict[str, str] = Body()) -> dict[str, str]:
->         return item
->
->     @patch()
->     async def patch(self, item: dict[str, str] = Body()) -> dict[str, str]:
->         return item
->
->     @delete()
->     async def delete(self, item: dict[str, str] = Body()) -> dict[str, str]:
->         return item
->
-> rapidy = Rapidy(
->     http_route_handlers=[controller.reg('/', ItemController)],
-> )
-> ```
-> You can register a `controller` in a router without a decorator, but the methods still need to be wrapped with decorators.
-> </details>
-
-## 2️⃣ Request Validation
-rAPIdy uses pydantic not only to validate request data but also for response data serialization.
-This ensures data consistency and type safety throughout the entire request-response cycle:
-
-```python
-from rapidy.http import post, Body
 from pydantic import BaseModel
 
-class ItemSchema(BaseModel):
+from rapidy import Rapidy
+from rapidy.http import Body, get, post
+
+
+class UserIn(BaseModel):
     name: str
-    price: float
+    age: int
 
-@post("/items")
-async def create_item(data: ItemSchema = Body()) -> ItemSchema:
-    return data
-```
-
-_If validation fails, a 422 Unprocessable Entity response with error details is automatically returned._
-
-> [!TIP]
-> <details>
->   <summary>Example:</summary>
->   <br>
->
->   ```python
->   from pydantic import BaseModel, Field
->   from rapidy import Rapidy
->   from rapidy.http import PathParam, Body, Request, Header, StreamResponse, middleware, post
->   from rapidy.typedefs import CallNext
->
->   TOKEN_REGEXP = '^[Bb]earer (?P<token>[A-Za-z0-9-_=]*)'
->
->   class RequestBody(BaseModel):
->       username: str = Field(min_length=2, max_length=50)
->       password: str = Field(min_length=2, max_length=50)
->
->   class ResponseBody(BaseModel):
->       hello: str = 'rapidy'
->
->   @middleware
->   async def get_bearer_middleware(
->           request: Request,
->           call_next: CallNext,
->           bearer_token: str = Header(alias='Authorization', pattern=TOKEN_REGEXP),
->   ) -> StreamResponse:
->       # process token here ...
->       return await call_next(request)
->
->   @post('/{user_id}')
->   async def handler(
->           user_id: str = PathParam(),
->           body: RequestBody = Body(),
->   ) -> str:
->       return 'success'
->
->   app = Rapidy(
->       middlewares=[get_bearer_middleware],
->       http_route_handlers=[handler],
->   )
->   ```
->   _Successful Request Validation_:
->   ```shell
->   curl -X POST \
->   -H "Content-Type: application/json" \
->   -H "Authorization: Bearer my-token" \
->   -d '{"username": "Username", "password": "Password"}' \
->   -v http://127.0.0.1:8080/1
->   ```
->   ```text
->   < HTTP/1.1 200 OK ...
->   success
->   ```
->
->   _Failed Request Validation_:
->   ```shell
->   curl -X POST \
->   -H "Content-Type: application/json" \
->   -H "Authorization: Bearer my-token" \
->   -d '{"username": "U", "password": "P"}' \
->   -v http://127.0.0.1:8080/1
->   ```
->   ```text
->   < HTTP/1.1 422 Unprocessable Entity ...
->   {
->       "errors": [
->           {
->               "type": "string_too_short",
->               "loc": ["body", "username"],
->               "msg": "String should have at least 2 characters",
->               "ctx": {"min_length": 2}
->           },
->           {
->               "type": "string_too_short",
->               "loc": ["body", "password"],
->               "msg": "String should have at least 2 characters",
->               "ctx": {"min_length": 2}
->           }
->       ]
->   }
->   ```
-> </details>
-
-## 3️⃣ Middleware Support
-Easily add powerful middleware for authentication, logging, and more. rAPIdy allows you to validate HTTP parameters
-(headers, cookies, body) directly within middleware for enhanced flexibility:
-
-_Middleware can be used for authentication, logging, or other cross-cutting concerns._
-
-```python
-from rapidy import Rapidy
-from rapidy.http import PathParam, Request, Header, StreamResponse, middleware, post
-from rapidy.typedefs import CallNext
-
-TOKEN_REGEXP = '^[Bb]earer (?P<token>[A-Za-z0-9-_=]*)'
-
-@middleware
-async def get_bearer_middleware(
-    request: Request,
-    call_next: CallNext,
-    bearer_token: str = Header(alias='Authorization', pattern=TOKEN_REGEXP),
-) -> StreamResponse:
-    # process token here ...
-    return await call_next(request)
-
-@post('/{user_id}')
-async def handler(user_id: str = PathParam()) -> str:
-    return 'success'
-
-app = Rapidy(
-    middlewares=[get_bearer_middleware],
-    http_route_handlers=[handler],
-)
-```
-
-> [!NOTE]
-> Middleware functions must always take `Request` as the first argument and `call_next` as the second argument.
-
----
-
-## 4️⃣ Dependency Injection
-
-`Rapidy` uses the [dishka](https://dishka.readthedocs.io/en/stable/) library as its built-in Dependency Injection (DI) mechanism.
-
-We aimed to choose a DI library aligned with the philosophy of `Rapidy`: simplicity, speed, transparency, and scalability.
-`dishka` perfectly fits these principles, offering developers a powerful tool without unnecessary complexity.
-
-In `Rapidy`, dishka is available out-of-the-box — no additional setup required.
-
-```python
-from rapidy import Rapidy
-from rapidy.http import Request, StreamResponse, get, middleware
-from rapidy.typedefs import CallNext
-from rapidy.depends import provide, Provider, Scope, FromDI
-
-class FooProvider(Provider):
-    @provide(scope=Scope.REQUEST)
-    async def some_obj(self) -> int:
-        return 1
-
-@middleware
-async def some_middleware(
-    request: Request,
-    call_next: CallNext,
-    some_obj: FromDI[int],
-) -> StreamResponse:
-    print({"value": some_obj})
-    return await call_next(request)
-
-@get('/')
-async def handler(some_obj: FromDI[int]) -> dict:
-    return {"value": some_obj}
-
-app = Rapidy(
-    middlewares=[some_middleware],
-    http_route_handlers=[handler],
-    di_providers=[FooProvider()],
-)
-```
-
-To gain a deeper understanding of how the DI mechanism works, refer to the documentation for [Rapidy](https://rapidy.dev) and [dishka](https://dishka.readthedocs.io/en/stable/).
-
----
-
-## 5️⃣ Lifespan Support
-Lifespan is a lifecycle manager for background tasks within Rapidy.
-
-_Although aiohttp supports the background tasks feature, rapidy does it more conveniently._
-
-Lifespan manages tasks that should be started: before or after server startup, or should always run.
-
-There are several ways to start tasks: `on_startup`, `on_shutdown`, `on_cleanup`, `lifespan`.
-
----
-
-### on_startup
-`on_startup` - tasks that will be executed in the event loop along with the application's request handlers immediately
-after the application starts.
-
-```python
-from rapidy import Rapidy
-
-def startup() -> None:
-    print('startup')
-
-rapidy = Rapidy(on_startup=[startup])
-```
-
-<details>
-<summary>Additional examples:</summary>
-
-```python
-from rapidy import Rapidy
-
-def startup(rapidy: Rapidy) -> None:
-    print(f'startup, application: {rapidy}')
-
-rapidy = Rapidy(on_startup=[startup])
-```
-```python
-from rapidy import Rapidy
-
-async def async_startup() -> None:
-    print('async_startup')
-
-rapidy = Rapidy(on_startup=[async_startup])
-```
-```python
-from rapidy import Rapidy
-
-async def async_startup(rapidy: Rapidy) -> None:
-    print(f'async_startup, application: {rapidy}')
-
-rapidy = Rapidy(on_startup=[async_startup])
-```
-</details>
-
-_Adding `on_startup` to an already created `Application` object._
-```python
-rapidy = Rapidy()
-rapidy.lifespan.on_startup.append(startup)
-```
-
----
-
-### on_shutdown
-`on_shutdown` - tasks that will be executed after the server stops.
-
-```python
-from rapidy import Rapidy
-
-def shutdown() -> None:
-    print('shutdown')
-
-rapidy = Rapidy(on_shutdown=[shutdown])
-```
-
-<details>
-<summary>Additional examples:</summary>
-
-```python
-from rapidy import Rapidy
-
-def shutdown(rapidy: Rapidy) -> None:
-    print(f'shutdown, application: {rapidy}')
-
-rapidy = Rapidy(on_shutdown=[shutdown])
-```
-```python
-from rapidy import Rapidy
-
-async def async_shutdown() -> None:
-    print('async_shutdown')
-
-rapidy = Rapidy(on_shutdown=[async_shutdown])
-```
-```python
-from rapidy import Rapidy
-
-async def async_shutdown(rapidy: Rapidy) -> None:
-    print(f'async_shutdown, application: {rapidy}')
-
-rapidy = Rapidy(on_shutdown=[async_shutdown])
-```
-</details>
-
-_Adding `on_shutdown` to an already created `Application` object._
-```python
-rapidy = Rapidy()
-rapidy.lifespan.on_shutdown.append(shutdown)
-```
-
----
-
-### on_cleanup
-`on_cleanup` - tasks that will be executed after the server stops and all `on_shutdown` tasks are completed.
-
-```python
-from rapidy import Rapidy
-
-def cleanup() -> None:
-    print('cleanup')
-
-rapidy = Rapidy(on_cleanup=[cleanup])
-```
-
-<details>
-<summary>Additional examples:</summary>
-
-```python
-from rapidy import Rapidy
-
-def cleanup(rapidy: Rapidy) -> None:
-    print(f'cleanup, application: {rapidy}')
-
-rapidy = Rapidy(on_cleanup=[cleanup])
-```
-```python
-from rapidy import Rapidy
-
-async def async_cleanup() -> None:
-    print('async_cleanup')
-
-rapidy = Rapidy(on_cleanup=[async_cleanup])
-```
-```python
-from rapidy import Rapidy
-
-async def async_cleanup(rapidy: Rapidy) -> None:
-    print(f'async_cleanup, application: {rapidy}')
-
-rapidy = Rapidy(on_cleanup=[async_cleanup])
-```
-</details>
-
-_Adding `on_cleanup` to an already created `Application` object._
-```python
-rapidy = Rapidy()
-rapidy.lifespan.on_cleanup.append(cleanup)
-```
-
----
-
-### lifespan
-`lifespan` - manages background tasks.
-
-```python
-from contextlib import asynccontextmanager
-from typing import AsyncGenerator
-from rapidy import Rapidy
-
-@asynccontextmanager
-async def bg_task() -> AsyncGenerator[None, None]:
-    try:
-        print('starting background task')
-        yield
-    finally:
-        print('finishing background task')
-
-rapidy = Rapidy(
-    lifespan=[bg_task()],
-)
-```
-
-<details>
-<summary>Additional example:</summary>
-
-```python
-from contextlib import asynccontextmanager
-from typing import AsyncGenerator
-from rapidy import Rapidy
-
-@asynccontextmanager
-async def bg_task_with_app(rapidy: Rapidy) -> AsyncGenerator[None, None]:
-    try:
-        print('starting background task')
-        yield
-    finally:
-        print('finishing background task')
-
-rapidy = Rapidy(
-    lifespan=[bg_task_with_app],
-)
-```
-</details>
-
-_Adding `lifespan` to an already created `Application` object._
-```python
-rapidy = Rapidy()
-rapidy.lifespan.append(bg_task())
-```
-
-# 🧪 Testing with rAPIdy
-You can use `pytest` and `pytest-aiohttp` for testing your rAPIdy application:
-
-_Install pytest and pytest-aiohttp_
-```shell
-pip install pytest pytest-aiohttp
-```
-
-Example of a simple test:
-```python
-from rapidy import Rapidy
-from rapidy.http import get
-from pytest_aiohttp.plugin import AiohttpClient
 
 @get('/')
 async def hello() -> dict[str, str]:
-    return {'message': 'Hello, rAPIdy!'}
+    return {'message': 'Hello, rAPIdy 2.0!'}
 
-async def test_hello(aiohttp_client: AiohttpClient) -> None:
-    app = Rapidy(http_route_handlers=[hello])
 
-    client = await aiohttp_client(app)
+@post('/users', status_code=201)
+async def create_user(user: UserIn = Body()) -> UserIn:
+    return user
 
-    resp = await client.get('/')
-    assert resp.status == 200
-    assert await resp.json() == {'message': 'Hello, rAPIdy!'}
+
+app = Rapidy(http_route_handlers=[hello, create_user])
 ```
 
+Run it with Granian:
 
-
-# 🔄 Migration from aiohttp
-rAPIdy is built on top of aiohttp, offering a familiar development experience with powerful enhancements:
-
-- Full Compatibility with aiohttp Syntax – rAPIdy fully supports the definition of HTTP handlers just like in aiohttp,
-offering the same capabilities. For more details, refer to the rAPIdy documentation.
-- Cleaner Routing Syntax – No need for web.RouteTableDef, making route definitions more concise and readable.
-- Significantly Reduced Boilerplate Code – rAPIdy minimizes the amount of code required compared to aiohttp,
-allowing developers to focus on business logic rather than repetitive setup.
-- Built-in Request Validation and Response Serialization – Powered by pydantic, rAPIdy automatically validates incoming
-requests and serializes responses, ensuring data consistency and reducing potential errors.
-- Powerful Middlewares – First-class support for middleware and easy-to-use dependency injection out of
-the box.
-- Lifespan support.
-
----
-
-# 🛠️ Mypy Support
-`rAPIdy` includes its own plugin for <a href="https://mypy.readthedocs.io/en/stable/getting_started.html" target="blank">mypy</a>.
-
-_The rapidy.mypy plugin helps with type checking in code that uses rAPIdy._
-
-Add the auxiliary configuration to your mypy configuration file.
-
-_mypy.ini_
-```ini
-; Example configuration for mypy.ini
-; ...
-[tool.mypy]
-plugins =
-    pydantic.mypy
-    rapidy.mypy
-; ...
+```bash
+granian --interface asgi --host 127.0.0.1 --port 8000 main:app
 ```
 
-_pyproject.toml_
-```toml
-# Example configuration for pyproject.toml
-# ...
-[tool.mypy]
-plugins = [
-    "pydantic.mypy",
-    "rapidy.mypy"
-]
-# ...
+Or keep a Python entry point:
+
+```python
+from rapidy import run_app
+
+if __name__ == '__main__':
+    run_app(app, host='127.0.0.1', port=8000, workers=1)
 ```
 
----
+The complete executable version is in [`examples/quickstart.py`](examples/quickstart.py).
 
-# 🛤️ Roadmap
+## Request sources
 
-We're actively improving rAPIdy to make it more powerful and efficient. Stay up-to-date with our latest milestones and
-future plans by checking out the detailed roadmap below.
+Handler parameters declare where values come from. Pydantic validates the converted values and invalid input returns
+HTTP 422 with an `errors` list.
 
-You can find the full and detailed roadmap on our GitHub page:
-[ROADMAP.md](https://github.com/daniil-grois/rAPIdy/blob/main/ROADMAP.md)
+```python
+from rapidy.http import Body, Cookie, Header, PathParam, QueryParam, post
 
----
 
-# 🤝 Contributing & Support
-Want to improve rAPIdy? We welcome contributions! 🚀
-- Report Issues: [GitHub Issues](https://github.com/daniil-grois/rAPIdy/issues)
-- Pull Requests: Fork & create PRs!
-- Contribution Guide: [CONTRIBUTING.md](https://github.com/daniil-grois/rAPIdy/blob/main/CONTRIBUTING.md)
+@post('/users/{user_id}')
+async def update_user(
+    payload: UserIn = Body(),
+    user_id: int = PathParam(),
+    token: str = Header(alias='X-Token'),
+    page: int = QueryParam(alias='page'),
+    session: str = Cookie(),
+) -> dict[str, object]:
+    return {'user_id': user_id, 'name': payload.name, 'page': page}
+```
 
----
+JSON, text, bytes, urlencoded forms, and multipart uploads are supported. Raw access remains available through
+`Request.read()`, `Request.text()`, `Request.json()`, and `Request.post()`.
 
-# 📜 License
-rAPIdy is licensed under the MIT License. See [LICENSE](./LICENSE) for details.
+## Framework features
 
----
+- Dependency injection is exposed from `rapidy.depends`; application singletons are process-local, request resources
+  are finalized after the response is sent, and WebSocket resources use `Scope.SESSION`.
+- `@middleware` can extract and validate request parameters and accepts the same `response_*` serialization options
+  as HTTP handlers.
+- `HTTPRouter('/v1', handlers)` creates nested mounts with their own middleware, limits, and lifespan while sharing
+  the root DI container.
+- `@websocket`, `WebSocket`, `SSEResponse`, and `StreamResponse` provide native ASGI realtime and streaming APIs.
+- Type checking uses `plugins = rapidy_core.mypy`; there is no `rapidy.mypy` package in 2.0.
 
-Start building fast, reliable, and modern APIs with rAPIdy today! 🚀
+Executable examples live in [`examples/`](examples/), and the full guide is published at
+[rapidy.dev](https://rapidy.dev).
+
+## Deployment
+
+```bash
+# Granian (recommended)
+granian --interface asgi --workers 4 --workers-kill-timeout 30s main:app
+
+# Uvicorn
+uvicorn main:app --workers 4
+
+# Hypercorn
+hypercorn --workers 4 main:app
+```
+
+Each worker has its own application lifespan and DI container, so application-scoped dependencies are per-process.
+Choose graceful-shutdown timeouts long enough for active streaming responses; rAPIdy closes accepted WebSockets with
+code 1001 during shutdown.
+
+## Testing
+
+Use any ASGI client. With HTTPX:
+
+```python
+import httpx
+
+async with httpx.AsyncClient(
+    transport=httpx.ASGITransport(app=app),
+    base_url='http://testserver',
+) as client:
+    response = await client.get('/')
+    assert response.status_code == 200
+```
+
+## Migration and performance
+
+- [1.x → 2.0 migration guide](https://github.com/rAPIdy-org/rAPIdy/blob/main/MIGRATION.md): `import rapidy` stays;
+  the transport layer and dropped aiohttp-specific APIs are the breaking changes.
+- [Reproducible benchmark method and results](benchmarks/RESULTS.md): raw JSON, RPS, p50/p95/p99, and CV are checked
+  in. The report explicitly records both wins and losses; it does not make unsupported marketing claims.
+
+## License
+
+MIT. See [`LICENSE`](LICENSE).

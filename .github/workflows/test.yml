@@ -17,11 +17,71 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.13", "3.14"]
+        runtime: [granian, uvicorn]
+    env:
+      RAPIDY_LIVE_RUNTIME: ${{ matrix.runtime }}
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-      - run: uv sync --python ${{ matrix.python-version }}
-      - run: uv run --python ${{ matrix.python-version }} pytest packages/rapidy/tests
+      - run: uv sync --python ${{ matrix.python-version }} --group test
+      - name: Run server suite with coverage gate
+        run: >-
+          uv run --python ${{ matrix.python-version }} pytest
+          packages/rapidy/tests
+          --cov=rapidy
+          --cov-report=term-missing
+          --cov-fail-under=90
+
+  server-py312-wheel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv build --package rapidy-core -o dist/rapidy-core
+      - run: uv build --package rapidy -o dist/rapidy
+      - run: uv venv --python 3.12 /tmp/rapidy312
+      - name: Install built core and server wheels
+        run: >-
+          VIRTUAL_ENV=/tmp/rapidy312 uv pip install
+          dist/rapidy-core/*.whl dist/rapidy/*.whl pytest
+      - run: /tmp/rapidy312/bin/python scripts/smoke_rapidy_wheel.py
+      - name: Run source-independent public parity subset
+        run: |
+          mkdir -p /tmp/rapidy-wheel-tests/tests
+          cp packages/rapidy/tests/test_import_parity.py /tmp/rapidy-wheel-tests/tests/
+          cp -R packages/rapidy/tests/parity /tmp/rapidy-wheel-tests/tests/parity
+          cd /tmp/rapidy-wheel-tests
+          /tmp/rapidy312/bin/pytest --import-mode=importlib -q
+      - run: VIRTUAL_ENV=/tmp/rapidy312 uv pip check
+
+  server-release-gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --python 3.13 --group docs
+      - name: Strict server and usage typing
+        working-directory: packages/rapidy
+        run: uv run --python 3.13 mypy --strict rapidy tests/typecheck
+      - name: Check rapidy-core mypy plugin fixture
+        run: >-
+          uv run --python 3.13 mypy
+          --config-file packages/rapidy/tests/mypy_plugin/mypy.ini
+          packages/rapidy/tests/mypy_plugin/sample_ok.py
+      - name: Check server source and examples
+        run: uv run --python 3.13 ruff check packages/rapidy
+      - name: Check import architecture
+        run: uv run --python 3.13 lint-imports
+      - name: Build documentation strictly
+        working-directory: packages/rapidy/docs
+        env:
+          DISABLE_MKDOCS_2_WARNING: "true"
+        run: uv run --python 3.13 --no-sync mkdocs build --strict
+      - run: uv build --package rapidy -o dist/rapidy
+      - name: Check wheel and sdist contents
+        run: >-
+          uv run --python 3.13 python scripts/check_rapidy_dist.py
+          dist/rapidy/*.whl dist/rapidy/*.tar.gz
 
   core:
     runs-on: ubuntu-latest
@@ -93,7 +153,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
       - run: uv sync
-      - run: uv run --with ruff==0.8.4 ruff check .
+      - run: uv run ruff check .
         working-directory: packages/rapidy
       - run: uv run ruff check packages/rapidy_core/rapidy_core packages/rapidy_client
       - run: uv build --package rapidy
@@ -106,3 +166,31 @@ jobs:
       - uses: actions/checkout@v4
       - run: RELEASE_TAG=rapidy-core-v0.1.0 bash scripts/parse_release_tag.sh | grep -qx rapidy-core
       - run: RELEASE_TAG=rapidy-client-v0.1.0 bash scripts/parse_release_tag.sh | grep -qx rapidy-client
+      - run: RELEASE_TAG=rapidy-v2.0.0 bash scripts/parse_release_tag.sh | grep -qx rapidy
+      - run: RELEASE_TAG=rapidy-v2.0.0 bash scripts/parse_release_tag.sh --check-version | grep -qx rapidy
+
+  required:
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    needs:
+      - server
+      - server-py312-wheel
+      - server-release-gates
+      - core
+      - core-py312-wheel
+      - client
+      - client-release-gates
+      - lint
+      - parse-tag-dryrun
+    steps:
+      - name: Require all family gates
+        run: |
+          test "${{ needs.server.result }}" = success
+          test "${{ needs.server-py312-wheel.result }}" = success
+          test "${{ needs.server-release-gates.result }}" = success
+          test "${{ needs.core.result }}" = success
+          test "${{ needs.core-py312-wheel.result }}" = success
+          test "${{ needs.client.result }}" = success
+          test "${{ needs.client-release-gates.result }}" = success
+          test "${{ needs.lint.result }}" = success
+          test "${{ needs.parse-tag-dryrun.result }}" = success

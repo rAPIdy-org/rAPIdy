@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import socket
 import subprocess
 import sys
@@ -7,6 +8,8 @@ import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
+
+import pytest
 
 
 def free_port() -> int:
@@ -32,6 +35,9 @@ def wait_for_port(process: subprocess.Popen[bytes], port: int, timeout: float = 
 
 @contextmanager
 def live_server(runtime: str, target: str) -> Iterator[str]:
+    selected_runtime = os.environ.get('RAPIDY_LIVE_RUNTIME')
+    if selected_runtime and runtime in {'granian', 'uvicorn'} and runtime != selected_runtime:
+        pytest.skip(f'{runtime} live test belongs to the {selected_runtime} CI dimension')
     port = free_port()
     bin_dir = Path(sys.executable).parent
     if runtime == 'uvicorn':

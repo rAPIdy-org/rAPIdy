@@ -92,6 +92,7 @@ line-length = 120
 indent-width = 4
 target-version = "py312"
 exclude = [
+    "benchmarks/*",
     "docs/*",
     "spikes/*",
     "tests/app_checkers.py",

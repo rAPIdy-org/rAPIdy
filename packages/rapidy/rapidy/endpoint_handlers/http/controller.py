@@ -113,7 +113,7 @@ class HandlerController:
     ) -> Response | StreamResponse:
         """Validate a handler result and merge it into the active response."""
         if annotation_is_stream_response(type(handler_result)):
-            return handler_result
+            return cast('StreamResponse', handler_result)
 
         if self._response_validate:
             handler_result, validated_errors = await self._result_validator.validate(handler_result)

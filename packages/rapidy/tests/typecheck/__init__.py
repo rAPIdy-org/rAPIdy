@@ -1,0 +1,1 @@
+"""Strict public usage fixtures."""
