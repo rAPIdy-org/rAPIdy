@@ -1,13 +1,15 @@
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from http import HTTPStatus
-from typing import Any
+from typing import Any, cast
 
 from multidict import CIMultiDict
+from rapidy_core.client_errors import normalize_errors
+from rapidy_core.constants import DEFAULT_JSON_ENCODER
 from rapidy_core.exceptions import RapidyException
 
-from rapidy.typedefs import LooseHeaders
+from rapidy.typedefs import LooseHeaders, ValidationErrorList
 
 __all__ = (
     'ASGIProtocolError',
@@ -16,6 +18,7 @@ __all__ = (
     'HTTPMethodNotAllowed',
     'HTTPNotFound',
     'HTTPRequestEntityTooLarge',
+    'HTTPValidationFailure',
     'ResponseDuplicateBodyError',
     'ResponseEncodeError',
     'RouteConflictError',
@@ -97,6 +100,43 @@ class HTTPRequestEntityTooLarge(HTTPException):
             f'Maximum request body size {max_size} exceeded, actual body size {actual_size}',
         )
         super().__init__(**kwargs)
+
+
+class HTTPValidationFailure(HTTPException):
+    """Carry normalized request validation errors in the stable 422 schema."""
+
+    # TODO(09-exceptions-full): inherit from HTTPUnprocessableEntity without changing this contract.  # noqa: FIX002
+    status_code = HTTPStatus.UNPROCESSABLE_ENTITY
+    validation_failure_field_name: str = 'errors'
+
+    def __init__(
+        self,
+        errors: ValidationErrorList,
+        *,
+        headers: LooseHeaders | None = None,
+        reason: str | None = None,
+        body: Any | None = None,
+        text: str | None = None,
+        content_type: str | None = None,
+    ) -> None:
+        self._errors = normalize_errors(errors, pop_useless_keys=False)
+        if text is None:
+            text = cast('Callable[..., str]', DEFAULT_JSON_ENCODER)(
+                {self.validation_failure_field_name: self._errors},
+                default=str,
+            )
+        super().__init__(
+            headers=headers,
+            reason=reason,
+            body=body,
+            text=text,
+            content_type='application/json' if content_type is None else content_type,
+        )
+
+    @property
+    def validation_errors(self) -> ValidationErrorList:
+        """Return normalized Pydantic-v2 error details."""
+        return self._errors
 
 
 class HTTPMethodNotAllowed(HTTPException):

@@ -3,38 +3,92 @@ from __future__ import annotations
 import inspect
 from abc import ABC
 from concurrent.futures import Executor
-from functools import wraps
 from http import HTTPStatus
-from typing import Any, cast, TYPE_CHECKING
+from typing import Any, cast, NamedTuple, TYPE_CHECKING
 
 from rapidy_core.constants import DEFAULT_JSON_ENCODER
-from rapidy_core.enums import Charset, ContentType, HTTPMethod
+from rapidy_core.enums import Charset, ContentType, HTTPMethod, HTTPRequestParamType
 
 from rapidy._base_exceptions import RapidyException, RapidyHandlerException
-from rapidy.response import Response
+from rapidy.endpoint_handlers.http.attrs_extractor import get_http_handler_info
+from rapidy.endpoint_handlers.http.handlers import handler_validation_wrapper
 from rapidy.routing.http.base import BaseHTTPRouter
+from rapidy.routing.matcher import RouteRecord
 from rapidy.typedefs import (
     ControllerHTTPRouterType,
     Handler,
     JSONEncoder,
-    TerminalHandler,
     Unset,
     UnsetType,
 )
 
 if TYPE_CHECKING:
     from rapidy_core.encoders import CustomEncoder, Exclude, Include
+    from rapidy_core.parameters.http import RequestParamFieldInfo
 
     from rapidy.application import Rapidy
-    from rapidy.request import Request
 
-__all__ = ('get', 'post', 'put', 'patch', 'delete', 'head', 'options')
+__all__ = (
+    'HandlerParameterRecord',
+    'RouteParameter',
+    'get_route_parameters',
+    'get',
+    'post',
+    'put',
+    'patch',
+    'delete',
+    'head',
+    'options',
+)
 
 # TODO(08-middleware-mounts): add HTTPRouter to __all__.  # noqa: FIX002
 # TODO(10-response-contract): add controller to __all__.  # noqa: FIX002
 
 MethodName = HTTPMethod
 DUNDER_NAME_MIN_LENGTH = 4
+
+
+class HandlerParameterRecord(NamedTuple):
+    """Immutable OpenAPI-ready request parameter metadata captured at registration."""
+
+    name: str
+    annotation: Any
+    param_type: HTTPRequestParamType
+    alias: str | None
+    required: bool
+    default: Any
+    extract_single: bool
+    field_info: RequestParamFieldInfo
+
+    @property
+    def source(self) -> HTTPRequestParamType:
+        """Expose the parameter source under the terminology used by OpenAPI consumers."""
+        return self.param_type
+
+
+RouteParameter = HandlerParameterRecord
+
+
+def _get_handler_parameters(handler: Handler) -> tuple[HandlerParameterRecord, ...]:
+    handler_info = get_http_handler_info(handler, request_attr_can_declare_fst=True)
+    return tuple(
+        HandlerParameterRecord(
+            name=attr.attribute_name,
+            annotation=attr.field_info.annotation,
+            param_type=attr.http_param_type,
+            alias=attr.field_info.alias,
+            required=attr.field_info.is_required(),
+            default=attr.field_info.default,
+            extract_single=attr.extract_as_single_param,
+            field_info=attr.field_info,
+        )
+        for attr in handler_info.request_params
+    )
+
+
+def get_route_parameters(route: RouteRecord) -> tuple[HandlerParameterRecord, ...]:
+    """Return the immutable registration-time parameter snapshot for a route."""
+    return cast('tuple[HandlerParameterRecord, ...]', route.parameters)
 
 
 def is_dunder_name(name: str) -> bool:
@@ -61,28 +115,6 @@ class HandlerIsNotAsyncFuncTypeError(RapidyException):
 
 def _is_async_callable(handler: Handler) -> bool:
     return inspect.iscoroutinefunction(handler) or inspect.iscoroutinefunction(type(handler).__call__)
-
-
-def _build_terminal(handler: Handler, route_kwargs: dict[str, Any]) -> TerminalHandler:
-    parameters = inspect.signature(handler).parameters
-
-    @wraps(handler)
-    async def terminal(request: Request) -> Response:
-        if not parameters:
-            result = await handler()
-        elif len(parameters) == 1:
-            result = await handler(request)
-        else:
-            msg = 'Milestone 03 handlers accept zero arguments or one Request argument'
-            raise TypeError(msg)
-
-        if isinstance(result, Response):
-            return result
-        status = int(route_kwargs.get('status_code', HTTPStatus.OK))
-        return Response(result, status=status)
-
-    # TODO(10-response-contract): apply all response_* route kwargs in the controller.  # noqa: FIX002
-    return terminal
 
 
 class HTTPRouteHandler(BaseHTTPRouter, ABC):
@@ -230,13 +262,16 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
 
         route_kwargs = dict(self._route_kwargs)
         allow_head = bool(route_kwargs.pop('allow_head', True))
-        terminal = _build_terminal(self._handler, route_kwargs)
+        terminal = handler_validation_wrapper(self._handler, **route_kwargs)
+        parameters = _get_handler_parameters(self._handler)
         application._matcher.add_route(  # noqa: SLF001
             self._method_name.value,
             self.path,
             terminal,
             route_kwargs,
             allow_head=allow_head,
+            handler=self._handler,
+            parameters=parameters,
         )
 
 

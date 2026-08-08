@@ -29,6 +29,7 @@ class RouteRecord(NamedTuple):
     handler: Handler
     allow_head: bool
     is_auto_head: bool
+    parameters: tuple[Any, ...] = ()
 
 
 class DuplicateRouteError(RapidyException):
@@ -154,6 +155,8 @@ class UrlMatcher:
         route_kwargs: dict[str, Any],
         *,
         allow_head: bool = True,
+        handler: Handler | None = None,
+        parameters: tuple[Any, ...] = (),
     ) -> None:
         """Compile and register one method/template pair."""
         method = method.upper()
@@ -174,8 +177,10 @@ class UrlMatcher:
                 method=method,
                 route_kwargs=route_kwargs,
                 terminal=terminal,
+                handler=handler,
                 allow_head=allow_head,
                 is_auto_head=False,
+                parameters=parameters,
             )
         )
 
@@ -191,8 +196,10 @@ class UrlMatcher:
                     method='HEAD',
                     route_kwargs=route_kwargs,
                     terminal=terminal,
+                    handler=handler,
                     allow_head=allow_head,
                     is_auto_head=True,
+                    parameters=parameters,
                 )
             )
 
@@ -243,12 +250,23 @@ class UrlMatcher:
         method: str,
         route_kwargs: dict[str, Any],
         terminal: TerminalHandler,
+        handler: Handler | None,
         allow_head: bool,
         is_auto_head: bool,
+        parameters: tuple[Any, ...],
     ) -> RouteRecord:
-        # functools.wraps on the terminal preserves the original handler without widening add_route's public API.
-        handler = cast('Handler', getattr(terminal, '__wrapped__', terminal))
-        return RouteRecord(path, method, dict(route_kwargs), handler, allow_head, is_auto_head)
+        source_handler = (
+            handler if handler is not None else cast('Handler', getattr(terminal, '__wrapped__', terminal))
+        )
+        return RouteRecord(
+            path,
+            method,
+            dict(route_kwargs),
+            source_handler,
+            allow_head,
+            is_auto_head,
+            parameters,
+        )
 
     def _remove_auto_head_record(self, path: str) -> None:
         self._records = [
