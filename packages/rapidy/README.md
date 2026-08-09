@@ -69,7 +69,9 @@ app = Rapidy(
 )
 ```
 
-The schema is served at `/schema/openapi.json`, Swagger UI at `/schema`, and ReDoc at `/schema/redoc`. Request and
+The schema is served at `/schema/openapi.json`, Swagger UI at `/schema`, and ReDoc at `/schema/redoc`. Use
+`OpenAPIConfig.docs(title='Users API', version='1.0.0')` for the conventional opt-in `/openapi.json`, `/docs`, and
+`/redoc` paths. Request and
 response schemas come from the same Pydantic annotations used for runtime validation. Reusable components,
 callbacks, webhooks, and response links use their native OpenAPI 3.1 object shapes. UI render plugins can use CDN,
 internal-host, or application-local asset URLs and support custom renderers without adding runtime dependencies.
@@ -108,6 +110,33 @@ if __name__ == '__main__':
 ```
 
 The complete executable version is in [`examples/quickstart.py`](examples/quickstart.py).
+
+The built-in CLI adds development reload, route introspection, and configuration diagnostics:
+
+```bash
+rapidy dev main:app --reload
+rapidy run main:app --host 0.0.0.0 --port 8080
+rapidy routes main:app
+rapidy check main:app
+```
+
+## Observability and reverse routing
+
+Routes can be named and reversed without interpolating templates manually:
+
+```python
+@get('/users/{user_id:\\d+}', name='user.detail')
+async def user(user_id: int = PathParam()) -> dict[str, int]:
+    return {'id': user_id}
+
+path = app.url_for('user.detail', user_id=42)
+```
+
+`request.url_for(...)` includes the deployment `root_path`; named static trees expose `app.static_url(...)`.
+`AccessLogMiddleware` emits redacted records keyed by route template, while `ProblemDetailsRenderer` plugs into the
+application-local `exception_handlers` registry. Install `rapidy[otel]` and call `instrument_app(...)` for HTTP/WS
+spans and metrics through the official OpenTelemetry ASGI instrumentation. See
+[`examples/observability_dx.py`](examples/observability_dx.py).
 
 ## Request sources
 

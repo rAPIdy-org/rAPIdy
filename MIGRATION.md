@@ -324,7 +324,23 @@ app = Rapidy(http_route_handlers=routes)
 Configure server logging through `run_app`/Granian settings and express handler behavior through
 route handlers or middleware.
 
-### 13. Authentication and authorization
+### 13. Observability, errors, and reverse URLs
+
+Concrete request paths should no longer be used as metric or log labels. Wrap the application with
+`AccessLogMiddleware` for redacted route-template records, or install `rapidy[otel]` and use `instrument_app` for
+official ASGI spans and metrics. OpenTelemetry remains absent from the base installation.
+
+Application-specific error middleware can move to the public exception registry. `ProblemDetailsRenderer` converts
+registered HTTP or domain exceptions into RFC 9457 responses and inherits through mounted applications. Handlers are
+never invoked after response start.
+
+Replace hand-built internal links with explicit route names and `app.url_for(...)` / `request.url_for(...)`. Named
+`StaticFiles` trees use `static_url`; typed errors report missing, unexpected, invalid, or ambiguous parameters.
+
+The new CLI provides `rapidy dev`, `rapidy run`, `rapidy routes`, and `rapidy check`. OpenAPI remains opt-in;
+`OpenAPIConfig.docs(...)` selects `/openapi.json`, `/docs`, and `/redoc` without changing the legacy config defaults.
+
+### 14. Authentication and authorization
 
 OpenAPI security metadata remains documentation-only until runtime security is explicitly installed. Applications
 that previously implemented authentication in middleware or DI can migrate incrementally to `SecurityConfig`.

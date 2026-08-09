@@ -10,7 +10,10 @@ REQUIRED_WHEEL = {
     "rapidy/http.py",
     "rapidy/depends.py",
     "rapidy/background.py",
+    "rapidy/observability.py",
+    "rapidy/problems.py",
     "rapidy/responses/files.py",
+    "rapidy/routing/reverse.py",
     "rapidy/staticfiles.py",
     "rapidy/testing/__init__.py",
     "rapidy/py.typed",
@@ -50,8 +53,11 @@ def check_wheel(path: Path) -> None:
     assert "Requires-Dist: aiohttp" not in metadata
     assert "Requires-Dist: dishka" not in metadata
     assert 'Provides-Extra: test' in metadata
+    assert 'Provides-Extra: otel' in metadata
     assert 'Requires-Dist: httpx' in metadata and 'extra == "test"' in metadata
     assert 'Requires-Dist: brotli' in metadata and 'extra == "brotli"' in metadata
+    assert 'Requires-Dist: opentelemetry-api' in metadata and 'extra == "otel"' in metadata
+    assert 'Requires-Dist: opentelemetry-instrumentation-asgi' in metadata and 'extra == "otel"' in metadata
 
 
 def check_sdist(path: Path) -> None:

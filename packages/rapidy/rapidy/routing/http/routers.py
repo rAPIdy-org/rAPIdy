@@ -66,6 +66,7 @@ _ROUTE_METADATA_KWARGS = frozenset(
         'deprecated',
         'description',
         'include_in_schema',
+        'name',
         'operation_id',
         'response_description',
         'responses',
@@ -250,14 +251,18 @@ class websocket(BaseHTTPRouter):
         self,
         path: str | None = None,
         *,
+        name: str | None = None,
         security: Sequence[Mapping[str, Sequence[str]]] | UnsetType = Unset,
         guards: Sequence[Guard] | UnsetType = Unset,
         public: bool | UnsetType = Unset,
     ) -> None:
         super().__init__(path=path)
+        if name is not None and (not isinstance(name, str) or not name):
+            msg = 'Route name must be a non-empty string or None'
+            raise ValueError(msg)
         self._route_kwargs = {
             key: value
-            for key, value in {'security': security, 'guards': guards, 'public': public}.items()
+            for key, value in {'name': name, 'security': security, 'guards': guards, 'public': public}.items()
             if value is not Unset
         }
         if public is True:
@@ -291,6 +296,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         self,
         path: str | None = None,
         *,
+        name: str | UnsetType | None = Unset,
         status_code: int | HTTPStatus | UnsetType = Unset,
         response_validate: bool | UnsetType = Unset,
         response_type: type[Any] | UnsetType | None = Unset,
@@ -322,6 +328,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         **kwargs: Any,
     ) -> None:
         raw_kwargs = {
+            'name': name,
             'status_code': status_code,
             'response_validate': response_validate,
             'response_type': response_type,
@@ -359,6 +366,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         self,
         path: str | None = None,
         *,
+        name: str | None = None,
         status_code: int | HTTPStatus = HTTPStatus.OK,
         response_validate: bool = True,
         response_type: type[Any] | UnsetType | None = Unset,
@@ -389,7 +397,11 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         public: bool | UnsetType = Unset,
         **kwargs: Any,
     ) -> None:
+        if name is not None and (not isinstance(name, str) or not name):
+            msg = 'Route name must be a non-empty string or None'
+            raise ValueError(msg)
         self._route_kwargs = {
+            'name': name,
             'status_code': status_code,
             'response_validate': response_validate,
             'response_type': response_type,
@@ -434,6 +446,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         path: str,
         handler: Handler | ControllerHTTPRouterType,
         *,
+        name: str | UnsetType | None = Unset,
         status_code: int | HTTPStatus | UnsetType = Unset,
         response_validate: bool | UnsetType = Unset,
         response_type: type[Any] | UnsetType | None = Unset,
@@ -466,6 +479,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
     ) -> HTTPRouteHandler:
         route = cls(
             path=path,
+            name=name,
             status_code=status_code,
             response_validate=response_validate,
             response_type=response_type,

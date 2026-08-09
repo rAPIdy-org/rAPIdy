@@ -38,6 +38,7 @@ granian --interface asgi main:app
 - Типизированные Body, Path, Header, Cookie и Query параметры.
 - APP-, REQUEST- и WebSocket SESSION-scopes для зависимостей.
 - Middleware, вложенные `HTTPRouter`, WebSocket, SSE и streaming.
+- Именованные reverse routes, RFC 9457 errors, structured access logs и опциональный OpenTelemetry.
 - Миграция с сохранением `import rapidy` и удалением aiohttp-специфичного API.
 
 [Быстрый старт](quickstart/index.md) · [руководство](guide/parameters.md) · [бенчмарки](guide/benchmarks.md)

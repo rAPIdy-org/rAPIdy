@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import AsyncIterator, Iterable, Iterator, MutableMapping, Sequence
+from collections.abc import AsyncIterator, Iterable, Iterator, Mapping, MutableMapping, Sequence
 from contextlib import asynccontextmanager, suppress
 from dataclasses import replace
+from inspect import isawaitable
 from typing import Any, cast, TYPE_CHECKING
 
 from rapidy.constants import CLIENT_MAX_SIZE
@@ -22,12 +23,20 @@ from rapidy.lifespan import Lifespan
 from rapidy.middlewares._utils import apply_response_hooks
 from rapidy.middlewares.runner import build_onion, prepare_middlewares
 from rapidy.openapi import create_openapi_schema, OpenAPIConfig, OpenAPIRenderPlugin
+from rapidy.problems import ExceptionHandler
 from rapidy.request import Request, State
 from rapidy.response import Response
 from rapidy.responses.streaming import StreamResponse
 from rapidy.routing.http.base import raise_if_not_base_http_router
 from rapidy.routing.http.routers import get
 from rapidy.routing.matcher import RouteMatch, RouteRecord, UrlMatcher
+from rapidy.routing.reverse import (
+    DuplicateRouteNameError,
+    InvalidPathParameterError,
+    render_path_template,
+    RouteNotFoundError,
+    URLPath,
+)
 from rapidy.security import Guard, SecurityConfig, SecurityScheme
 from rapidy.security.runtime import authorize_request
 from rapidy.typedefs import ASGIScope, CallNext, Handler, LifespanCTX, LifespanHook, Middleware, Receive, Send, Unset
@@ -50,6 +59,7 @@ class Rapidy(MutableMapping[str, Any]):
         '_di_config',
         '_di_container_closed',
         '_di_container_owned',
+        '_exception_handlers',
         '_matcher',
         '_middlewares',
         '_onion',
@@ -85,6 +95,7 @@ class Rapidy(MutableMapping[str, Any]):
         di_validation_settings: ValidationSettings = DEFAULT_DI_VALIDATION_SETTINGS,
         openapi_config: OpenAPIConfig | None = None,
         security: SecurityConfig | None = None,
+        exception_handlers: Mapping[type[Exception], ExceptionHandler] | None = None,
     ) -> None:
         self._client_max_size = client_max_size
         self._parent_app: Rapidy | None = None
@@ -95,6 +106,9 @@ class Rapidy(MutableMapping[str, Any]):
         self._onion: CallNext | None = None
         self._onion_built = False
         self._security_config = security
+        self._exception_handlers: dict[type[Exception], ExceptionHandler] = {}
+        for exception_type, handler in (exception_handlers or {}).items():
+            self.add_exception_handler(exception_type, handler)
         self._openapi_config = _bind_openapi_security(openapi_config, security)
         self._openapi_schema: dict[str, Any] | None = None
         self._di_config = DIConfig(
@@ -151,6 +165,37 @@ class Rapidy(MutableMapping[str, Any]):
             self._openapi_schema = create_openapi_schema(self.routes, self._openapi_generation_config())
         return self._openapi_schema
 
+    def url_for(self, name: str, **path_params: object) -> URLPath:
+        """Build an application-relative URL for one explicitly named route."""
+        records = [record for record in self.routes if record.route_kwargs.get('name') == name]
+        if not records:
+            raise RouteNotFoundError(name=name)
+        templates = {record.path for record in records}
+        if len(templates) != 1:
+            raise DuplicateRouteNameError(name=name)
+        template = templates.pop()
+        path = render_path_template(template, path_params, route_name=name)
+        if not any(self._can_resolve(record.method, path) for record in records):
+            raise InvalidPathParameterError(name=name)
+        return path
+
+    def static_url(self, name: str, path: str) -> URLPath:
+        """Build a URL for a named :class:`StaticFiles` tree."""
+        return self.url_for(name, path=path)
+
+    def route_template(self, path: str, *, method: str = 'GET', websocket: bool = False) -> str | None:
+        """Resolve a low-cardinality route template without exposing path values."""
+        _ = method  # Retained in the public API so callers can describe the attempted operation.
+        for prefix, subapp in self._subapps:
+            if path == prefix or path.startswith(f'{prefix}/'):
+                child_template = subapp.route_template(
+                    path[len(prefix) :] or '/',
+                    method=method,
+                    websocket=websocket,
+                )
+                return None if child_template is None else f'{prefix}{child_template}'
+        return self._matcher.route_template(path, websocket=websocket)
+
     @property
     def di_container(self) -> AsyncContainer | None:
         """Return the active root container, or ``None`` outside root startup."""
@@ -183,6 +228,23 @@ class Rapidy(MutableMapping[str, Any]):
         """Register an iterable of HTTP router objects."""
         for route_handler in route_handlers:
             self.add_http_router(route_handler)
+
+    def add_exception_handler(
+        self,
+        exception_type: type[Exception],
+        handler: ExceptionHandler,
+    ) -> None:
+        """Register an application-local exception handler before startup."""
+        if self._onion_built:
+            msg = 'Cannot add exception handler after application startup'
+            raise RuntimeError(msg)
+        if not isinstance(exception_type, type) or not issubclass(exception_type, Exception):
+            msg = 'Exception handler key must be an Exception subclass'
+            raise TypeError(msg)
+        if not callable(handler):
+            msg = 'Exception handler must be callable'
+            raise TypeError(msg)
+        self._exception_handlers[exception_type] = handler
 
     def add_subapp(self, prefix: str, subapp: Rapidy) -> Rapidy:
         """Mount a child application under one normalized URL prefix."""
@@ -307,6 +369,9 @@ class Rapidy(MutableMapping[str, Any]):
             return
 
         path = _strip_root_path(str(scope.get('path', '')), str(scope.get('root_path', '')))
+        route_template = self.route_template(path, websocket=True)
+        if route_template is not None:
+            scope['_rapidy_route_template'] = route_template
         resolved = self._resolve_ws_target(path)
         if resolved is None:
             await receive()
@@ -406,16 +471,61 @@ class Rapidy(MutableMapping[str, Any]):
                 logger.exception('HTTP exception raised after response was started')
                 await _finalize_started_response(tracking_send)
             else:
-                response = await apply_response_hooks(request, _exception_response(exc))
-                await self._send_response(response, tracking_send, app=request.app, request=request)
+                exception_response = await self._registered_exception_response(request, exc)
+                if exception_response is None:
+                    exception_response = _exception_response(exc)
+                exception_response = await apply_response_hooks(request, exception_response)
+                await self._send_response(exception_response, tracking_send, app=request.app, request=request)
         except Exception as exc:
-            _raise_server_exception_for_tests(request.scope, exc)
-            logger.exception('Unhandled exception during request processing')
             if tracking_send.started:
+                logger.exception('Unhandled exception after response was started')
                 await _finalize_started_response(tracking_send)
             else:
-                response = await apply_response_hooks(request, _internal_server_error_response())
-                await self._send_response(response, tracking_send, app=request.app, request=request)
+                exception_response = await self._registered_exception_response(request, exc)
+                if exception_response is None:
+                    logger.exception('Unhandled exception during request processing')
+                    _raise_server_exception_for_tests(request.scope, exc)
+                    exception_response = _internal_server_error_response()
+                exception_response = await apply_response_hooks(request, exception_response)
+                await self._send_response(exception_response, tracking_send, app=request.app, request=request)
+
+    async def _registered_exception_response(
+        self,
+        request: Request,
+        exception: Exception,
+    ) -> Response | StreamResponse | None:
+        handler = self._find_exception_handler(request.app, exception)
+        if handler is None:
+            return None
+        try:
+            response = handler(request, exception)
+            if isawaitable(response):
+                response = await response
+        except Exception as handler_exception:
+            _raise_server_exception_for_tests(request.scope, handler_exception)
+            logger.exception('Unhandled exception in application exception handler')
+            return _internal_server_error_response()
+        if not isinstance(response, (Response, StreamResponse)):
+            msg = 'Exception handlers must return a Response or StreamResponse'
+            type_error = TypeError(msg)
+            _raise_server_exception_for_tests(request.scope, type_error)
+            logger.error(msg)
+            return _internal_server_error_response()
+        return response
+
+    @staticmethod
+    def _find_exception_handler(app: Rapidy, exception: Exception) -> ExceptionHandler | None:
+        exception_type = type(exception)
+        mro = exception_type.mro()
+        for candidate_app in reversed(app._application_chain):
+            matches = [
+                (mro.index(registered) if registered in mro else len(mro), handler)
+                for registered, handler in candidate_app._exception_handlers.items()  # noqa: SLF001
+                if isinstance(exception, registered)
+            ]
+            if matches:
+                return min(matches, key=lambda item: item[0])[1]
+        return None
 
     async def _run_onion(self, request: Request) -> Response | StreamResponse:
         if self._onion is None:
@@ -435,6 +545,10 @@ class Rapidy(MutableMapping[str, Any]):
                 # Request.client_max_size reads request.app lazily, after this rebind.
                 return await subapp._run_onion(request)  # noqa: SLF001
 
+        local_template = self._matcher.route_template(path)
+        mount_prefix = str(request.scope.get('_rapidy_mount_prefix', ''))
+        if local_template is not None:
+            request.scope['_rapidy_route_template'] = f'{mount_prefix}{local_template}'
         route_match = self._matcher.resolve(request.method, path)
         request.scope['path_params'] = route_match.path_params
         request.path_params = route_match.path_params

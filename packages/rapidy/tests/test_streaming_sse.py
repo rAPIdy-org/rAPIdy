@@ -260,7 +260,8 @@ async def test_iteration_exception_is_logged_and_not_replayed(caplog: pytest.Log
     with caplog.at_level('ERROR', logger='rapidy'):
         await StreamResponse(body=chunks())._send_stream(transport.send, transport.receive)
 
-    assert transport.sent[-1] == {'type': 'http.response.body', 'body': b'partial', 'more_body': True}
+    assert transport.sent[-2] == {'type': 'http.response.body', 'body': b'partial', 'more_body': True}
+    assert transport.sent[-1] == {'type': 'http.response.body', 'body': b'', 'more_body': False}
     assert 'Unhandled error while streaming response body' in caplog.text
 
 

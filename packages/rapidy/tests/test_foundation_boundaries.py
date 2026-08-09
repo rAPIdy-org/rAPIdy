@@ -16,6 +16,10 @@ EXPECTED_DEPENDENCIES = {
 EXPECTED_EXTRAS = {
     'brotli': ['brotli>=1.1,<2'],
     'granian': ['granian>=2.7,<3'],
+    'otel': [
+        'opentelemetry-api>=1.44,<2',
+        'opentelemetry-instrumentation-asgi>=0.65b0,<1',
+    ],
     'uvicorn': ['uvicorn>=0.34,<1'],
     'hypercorn': ['hypercorn>=0.17,<1'],
     'test': ['anyio>=4,<5', 'httpx>=0.28,<1'],

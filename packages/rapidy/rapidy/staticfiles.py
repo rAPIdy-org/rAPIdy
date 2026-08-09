@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path, PurePosixPath
-from typing import cast, TYPE_CHECKING
+from typing import Any, cast, TYPE_CHECKING
 
 from rapidy.exceptions import HTTPNotFound, HTTPTemporaryRedirect
 from rapidy.middlewares._utils import external_path
@@ -25,6 +25,7 @@ class StaticFiles(BaseHTTPRouter):
         '_follow_symlinks',
         '_html',
         '_index_file',
+        '_name',
         '_public',
     )
 
@@ -33,6 +34,7 @@ class StaticFiles(BaseHTTPRouter):
         path: str,
         *,
         directory: str | Path,
+        name: str | None = None,
         html: bool = False,
         index_file: str = 'index.html',
         follow_symlinks: bool = False,
@@ -63,6 +65,10 @@ class StaticFiles(BaseHTTPRouter):
             msg = 'cache_control must not contain control characters'
             raise ValueError(msg)
         self._directory = directory_path
+        if name is not None and (not isinstance(name, str) or not name):
+            msg = 'Static route name must be a non-empty string'
+            raise ValueError(msg)
+        self._name = name
         self._html = html
         self._index_file = index_file
         self._follow_symlinks = follow_symlinks
@@ -78,13 +84,17 @@ class StaticFiles(BaseHTTPRouter):
         """Register static root and recursive GET/HEAD routes."""
         root = cast('str', self.path)
         child = f'{root.rstrip("/")}/{{path:.*}}' if root != '/' else '/{path:.*}'
-        metadata = {'include_in_schema': False, 'public': self._public}
+        metadata: dict[str, Any] = {'include_in_schema': False, 'public': self._public}
+        root_metadata = dict(metadata)
+        if self._name is not None:
+            metadata['name'] = self._name
+            root_metadata['name'] = f'{self._name}:index'
         terminal = cast('TerminalHandler', self._serve)
         application._matcher.add_route(  # noqa: SLF001
             'GET',
             root,
             terminal,
-            metadata,
+            root_metadata,
             handler=cast('TerminalHandler', self._serve),
         )
         application._matcher.add_route(  # noqa: SLF001

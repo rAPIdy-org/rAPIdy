@@ -22,8 +22,6 @@ keywords = [
     "fast",
     "http server",
     "Daniil Grois",
-    "Lev Zaplatin",
-    "Nikita Tolstoy",
 ]
 classifiers = [
     "Environment :: Web Environment",
@@ -56,12 +54,19 @@ dependencies = [
 [project.optional-dependencies]
 brotli = ["brotli>=1.1,<2"]
 granian = ["granian>=2.7,<3"]
+otel = [
+    "opentelemetry-api>=1.44,<2",
+    "opentelemetry-instrumentation-asgi>=0.65b0,<1",
+]
 uvicorn = ["uvicorn>=0.34,<1"]
 hypercorn = ["hypercorn>=0.17,<1"]
 test = [
     "anyio>=4,<5",
     "httpx>=0.28,<1",
 ]
+
+[project.scripts]
+rapidy = "rapidy.__main__:main"
 
 [tool.poetry]
 packages = [
@@ -74,6 +79,8 @@ dev = ["pre-commit>=4.1.0,<5.0.0"]
 test = [
     "brotli>=1.1,<2",
     "openapi-spec-validator>=0.7.2,<1.0.0",
+    "opentelemetry-sdk>=1.44,<2",
+    "opentelemetry-instrumentation-asgi>=0.65b0,<1",
     "pytest>=8.0,<9.0",
     "pytest-asyncio>=1.0,<2.0",
     "pytest-cov>=5.0,<7.0",

@@ -232,7 +232,7 @@ class UrlMatcher:
         if static_methods is not None:
             entry = static_methods.get(method)
             if entry is not None:
-                return self._to_match(entry, {})
+                return self._to_match(entry, {}, path)
             allowed_methods.update(static_methods)
 
         for candidate in self._dynamic:
@@ -241,7 +241,7 @@ class UrlMatcher:
                 continue
             entry = candidate.methods.get(method)
             if entry is not None:
-                return self._to_match(entry, match.groupdict())
+                return self._to_match(entry, match.groupdict(), candidate.path)
             allowed_methods.update(candidate.methods)
 
         if allowed_methods:
@@ -269,13 +269,34 @@ class UrlMatcher:
         static_route = self._ws_static.get(path)
         if static_route is not None:
             terminal, route_kwargs = static_route
-            return RouteMatch(terminal, {}, dict(route_kwargs))
+            return self._to_ws_match(terminal, route_kwargs, {}, path)
 
         for candidate in self._ws_dynamic:
             match = candidate.pattern.fullmatch(path)
             if match is not None:
-                return RouteMatch(candidate.terminal, match.groupdict(), dict(candidate.route_kwargs))
+                return self._to_ws_match(
+                    candidate.terminal,
+                    candidate.route_kwargs,
+                    match.groupdict(),
+                    candidate.path,
+                )
         raise HTTPNotFound
+
+    def route_template(self, path: str, *, websocket: bool = False) -> str | None:
+        """Return the matching template independently of HTTP method semantics."""
+        if websocket:
+            if path in self._ws_static:
+                return path
+            for ws_candidate in self._ws_dynamic:
+                if ws_candidate.pattern.fullmatch(path) is not None:
+                    return ws_candidate.path
+            return None
+        if path in self._static:
+            return path
+        for http_candidate in self._dynamic:
+            if http_candidate.pattern.fullmatch(path) is not None:
+                return http_candidate.path
+        return None
 
     def _get_or_create_methods(
         self,
@@ -323,5 +344,18 @@ class UrlMatcher:
         ]
 
     @staticmethod
-    def _to_match(entry: _RouteEntry, path_params: dict[str, str]) -> RouteMatch:
-        return RouteMatch(entry.terminal, path_params, dict(entry.route_kwargs))
+    def _to_match(entry: _RouteEntry, path_params: dict[str, str], template: str) -> RouteMatch:
+        route_kwargs = dict(entry.route_kwargs)
+        route_kwargs['_rapidy_route_template'] = template
+        return RouteMatch(entry.terminal, path_params, route_kwargs)
+
+    @staticmethod
+    def _to_ws_match(
+        terminal: Handler,
+        route_kwargs: dict[str, Any],
+        path_params: dict[str, str],
+        template: str,
+    ) -> RouteMatch:
+        metadata = dict(route_kwargs)
+        metadata['_rapidy_route_template'] = template
+        return RouteMatch(cast('TerminalHandler', terminal), path_params, metadata)

@@ -39,6 +39,7 @@ granian --interface asgi main:app
 - Typed body, path, header, cookie, and query parameters.
 - Application, request, and WebSocket-session dependency scopes.
 - Middleware, nested `HTTPRouter`, WebSockets, SSE, and incremental streaming.
+- Named reverse routes, RFC 9457 errors, structured access logs, and optional OpenTelemetry.
 - Migration from 1.x that keeps `import rapidy` while removing aiohttp-specific APIs.
 
 [Start with the quickstart](quickstart/index.md), explore the [guide](guide/parameters.md), or inspect the

@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from python_multipart.multipart import MultipartCallbacks
 
     from rapidy.application import Rapidy
+    from rapidy.routing.reverse import URLPath
     from rapidy.security import AuthCredentials, SecurityIdentity
 
 __all__ = ('BaseRequest', 'FileField', 'Request', 'State')
@@ -317,6 +318,19 @@ class Request:
     def deadline_remaining_ms(self) -> int | None:
         """Return the validated deadline budget snapshot without enforcing it."""
         return self._deadline_remaining_ms
+
+    def url_for(self, name: str, **path_params: object) -> URLPath:
+        """Build a named route URL including the deployment root path."""
+        from rapidy.routing.reverse import URLPath  # noqa: PLC0415
+
+        root_app = self.app._root_app or self.app  # noqa: SLF001
+        path = root_app.url_for(name, **path_params)
+        root_path = str(self.scope.get('root_path', '')).rstrip('/')
+        return URLPath(f'{root_path}{path}')
+
+    def static_url(self, name: str, path: str) -> URLPath:
+        """Build a URL for a named static file tree."""
+        return self.url_for(name, path=path)
 
     async def read(self) -> bytes:
         """Read and cache the complete request body exactly once."""

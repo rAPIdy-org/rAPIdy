@@ -198,6 +198,15 @@ class StreamResponse:
                 except Exception as exc:
                     logger.exception('Unhandled error while streaming response body', exc_info=exc)
                     await self._aclose_body()
+                    try:
+                        await self._guarded_send(
+                            send,
+                            {'type': 'http.response.body', 'body': b'', 'more_body': False},
+                        )
+                    except _ClientDisconnectedError:
+                        pass
+                    else:
+                        self._eof_sent = True
             else:
                 await _cancel_and_wait(stream_task)
                 await self._aclose_body()

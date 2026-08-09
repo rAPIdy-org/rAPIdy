@@ -80,6 +80,16 @@ class OpenAPIConfig:
     redoc_path: str | None = '/schema/redoc'
     render_plugins: Sequence[OpenAPIRenderPlugin] | None = None
 
+    @classmethod
+    def docs(cls, **config: Any) -> OpenAPIConfig:
+        """Create the conventional opt-in ``/docs`` + ``/redoc`` preset."""
+        return cls(
+            json_path='/openapi.json',
+            swagger_path='/docs',
+            redoc_path='/redoc',
+            **config,
+        )
+
     def get_render_plugins(self) -> tuple[OpenAPIRenderPlugin, ...]:
         """Return explicit render plugins or the backward-compatible Swagger UI and ReDoc defaults."""
         if self.render_plugins is not None:
