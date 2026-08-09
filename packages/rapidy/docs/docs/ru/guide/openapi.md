@@ -84,6 +84,40 @@ async def health() -> str:
 Эти параметры только описывают API для OpenAPI-клиентов и интерфейсов документации. Они не аутентифицируют запросы
 и не устанавливают runtime-политику авторизации — её нужно реализовать через зависимости или middleware rAPIdy.
 
+## UI render plugins и offline assets
+
+Поведение `swagger_path` и `redoc_path` по умолчанию не меняется. Явный набор UI, собственные пути и локальные assets
+задаются render plugins:
+
+```python
+from rapidy.openapi import OpenAPIConfig, RedocRenderPlugin, SwaggerRenderPlugin
+
+
+config = OpenAPIConfig(
+    title='Internal API',
+    version='2026.1',
+    render_plugins=(
+        SwaggerRenderPlugin(
+            path='/docs',
+            js_url='/assets/swagger-ui-bundle.js',
+            css_url='/assets/swagger-ui.css',
+            options={'displayRequestDuration': True},
+        ),
+        RedocRenderPlugin(
+            path='/reference',
+            js_url='/assets/redoc.standalone.js',
+        ),
+    ),
+)
+```
+
+Локальные URL можно отдавать маршрутами приложения, отдельным static server или reverse proxy. rAPIdy не встраивает
+крупные сторонние JavaScript/CSS bundles, поэтому новая возможность не добавляет runtime-зависимость и не увеличивает
+package. Явный `render_plugins` заменяет legacy UI routes; `render_plugins=()` оставляет только JSON schema.
+
+Другой UI подключается наследованием от `OpenAPIRenderPlugin` и реализацией `render(request, openapi_schema, *,
+schema_url) -> bytes`. Plugin управляет path и media type, а rAPIdy передаёт mount-aware URL схемы.
+
 ## Что выводится автоматически
 
 - `PathParam`, `QueryParam`, `Header` и `Cookie` становятся параметрами с alias, default, constraints, description и

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Mapping
 from typing import Any
 
 import pytest
@@ -9,7 +10,15 @@ from rapidy_core.enums import ContentType
 
 from rapidy import Rapidy
 from rapidy.http import Body, controller, Cookie, get, head, Header, PathParam, post, QueryParam, QueryParams
-from rapidy.openapi import create_openapi_schema, OpenAPIConfig, OpenAPIGenerationError
+from rapidy.openapi import (
+    create_openapi_schema,
+    OpenAPIConfig,
+    OpenAPIGenerationError,
+    OpenAPIRenderPlugin,
+    RedocRenderPlugin,
+    SwaggerRenderPlugin,
+)
+from rapidy.request import Request
 
 
 class ItemIn(BaseModel):
@@ -290,6 +299,93 @@ async def test_openapi_json_swagger_and_redoc_routes_are_served_and_not_self_doc
     assert 'spec-url="/schema/openapi.json"' in redoc_response.text
 
 
+@pytest.mark.asyncio
+async def test_render_plugins_support_local_assets_options_and_explicit_ui_routes() -> None:
+    app = Rapidy(
+        openapi_config=OpenAPIConfig(
+            title='Local assets',
+            version='1.0',
+            render_plugins=(
+                SwaggerRenderPlugin(
+                    path='/docs',
+                    js_url='/assets/swagger-ui-bundle.js',
+                    css_url='/assets/swagger-ui.css',
+                    options={'displayRequestDuration': True, 'unsafe': '</script>'},
+                    init_oauth={'clientId': 'docs-client'},
+                ),
+                RedocRenderPlugin(
+                    path='/reference',
+                    js_url='/assets/redoc.standalone.js',
+                ),
+            ),
+        ),
+    )
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url='http://testserver') as client:
+        swagger_response = await client.get('/docs')
+        redoc_response = await client.get('/reference')
+        legacy_response = await client.get('/schema')
+
+    assert swagger_response.status_code == 200
+    assert '/assets/swagger-ui-bundle.js' in swagger_response.text
+    assert '/assets/swagger-ui.css' in swagger_response.text
+    assert 'displayRequestDuration' in swagger_response.text
+    assert 'ui.initOAuth' in swagger_response.text
+    assert '\\u003c/script\\u003e' in swagger_response.text
+    assert 'cdn.jsdelivr.net' not in swagger_response.text
+    assert redoc_response.status_code == 200
+    assert '/assets/redoc.standalone.js' in redoc_response.text
+    assert 'cdn.jsdelivr.net' not in redoc_response.text
+    assert legacy_response.status_code == 404
+    assert app.openapi_schema is not None
+    assert app.openapi_schema['paths'] == {}
+
+
+@pytest.mark.asyncio
+async def test_custom_render_plugin_receives_mounted_schema_url_and_can_change_media_type() -> None:
+    class TextRenderPlugin(OpenAPIRenderPlugin):
+        def render(
+            self,
+            request: Request,
+            openapi_schema: Mapping[str, Any],
+            *,
+            schema_url: str,
+        ) -> bytes:
+            title = str(openapi_schema['info']['title'])
+            return f'{request.path}|{title}|{schema_url}'.encode()
+
+    child = Rapidy(
+        openapi_config=OpenAPIConfig(
+            title='Mounted API',
+            version='1.0',
+            render_plugins=(TextRenderPlugin(path='/schema/text', media_type='text/plain'),),
+        ),
+    )
+    root = Rapidy()
+    root.add_subapp('/v1', child)
+
+    async with AsyncClient(transport=ASGITransport(app=root), base_url='http://testserver') as client:
+        response = await client.get('/v1/schema/text')
+
+    assert response.status_code == 200
+    assert response.headers['content-type'].startswith('text/plain')
+    assert response.text == '/v1/schema/text|Mounted API|/v1/schema/openapi.json'
+
+
+@pytest.mark.asyncio
+async def test_empty_render_plugin_sequence_disables_ui_but_keeps_openapi_json() -> None:
+    app = Rapidy(openapi_config=OpenAPIConfig(render_plugins=()))
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url='http://testserver') as client:
+        json_response = await client.get('/schema/openapi.json')
+        swagger_response = await client.get('/schema')
+        redoc_response = await client.get('/schema/redoc')
+
+    assert json_response.status_code == 200
+    assert swagger_response.status_code == 404
+    assert redoc_response.status_code == 404
+
+
 def test_schema_cache_is_invalidated_by_late_route_registration() -> None:
     app = Rapidy(openapi_config=OpenAPIConfig())
     first_schema = app.openapi_schema
@@ -318,6 +414,17 @@ def test_openapi_is_opt_in_and_config_rejects_ambiguous_paths() -> None:
         OpenAPIConfig(json_path='/schema', swagger_path='/schema')
     with pytest.raises(ValueError, match='must start'):
         OpenAPIConfig(json_path='schema.json')
+    with pytest.raises(ValueError, match='must be unique'):
+        OpenAPIConfig(
+            render_plugins=(
+                SwaggerRenderPlugin(path='/docs'),
+                RedocRenderPlugin(path='/docs'),
+            ),
+        )
+    with pytest.raises(ValueError, match='must inherit'):
+        OpenAPIConfig(render_plugins=(object(),))  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match='must be a sequence'):
+        OpenAPIConfig(render_plugins=iter(()))  # type: ignore[arg-type]
 
 
 def test_duplicate_operation_ids_are_rejected() -> None:

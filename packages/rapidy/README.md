@@ -69,8 +69,8 @@ app = Rapidy(
 ```
 
 The schema is served at `/schema/openapi.json`, Swagger UI at `/schema`, and ReDoc at `/schema/redoc`. Request and
-response schemas come from the same Pydantic annotations used for runtime validation. The UI pages load their assets
-from a CDN; schema generation and JSON serving have no extra runtime dependency.
+response schemas come from the same Pydantic annotations used for runtime validation. UI render plugins can use CDN,
+internal-host, or application-local asset URLs and support custom renderers without adding runtime dependencies.
 
 Run it with Granian:
 

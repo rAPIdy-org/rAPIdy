@@ -19,8 +19,7 @@ from rapidy.di import (
 from rapidy.exceptions import HTTPException, HTTPNotFound
 from rapidy.lifespan import Lifespan
 from rapidy.middlewares.runner import build_onion, prepare_middlewares
-from rapidy.openapi import create_openapi_schema, OpenAPIConfig
-from rapidy.openapi.ui import render_redoc, render_swagger_ui
+from rapidy.openapi import create_openapi_schema, OpenAPIConfig, OpenAPIRenderPlugin
 from rapidy.request import Request, State
 from rapidy.response import Response
 from rapidy.responses.streaming import StreamResponse
@@ -217,23 +216,21 @@ class Rapidy(MutableMapping[str, Any]):
             )(openapi_json)
         )
 
-        if config.swagger_path is not None:
-
-            async def swagger_ui(request: Request) -> Response:
+        def create_ui_handler(plugin: OpenAPIRenderPlugin) -> Handler:
+            async def openapi_ui(request: Request) -> Response:
                 prefix = str(request.scope.get('_rapidy_mount_prefix', ''))
-                document = render_swagger_ui(title=config.title, schema_url=f'{prefix}{config.json_path}')
-                return Response(document, content_type='text/html')
+                schema = cast('dict[str, Any]', self.openapi_schema)
+                document = plugin.render(
+                    request,
+                    schema,
+                    schema_url=f'{prefix}{config.json_path}',
+                )
+                return Response(document, content_type=plugin.media_type)
 
-            self.add_http_router(get(config.swagger_path, include_in_schema=False)(swagger_ui))
+            return openapi_ui
 
-        if config.redoc_path is not None:
-
-            async def redoc(request: Request) -> Response:
-                prefix = str(request.scope.get('_rapidy_mount_prefix', ''))
-                document = render_redoc(title=config.title, schema_url=f'{prefix}{config.json_path}')
-                return Response(document, content_type='text/html')
-
-            self.add_http_router(get(config.redoc_path, include_in_schema=False)(redoc))
+        for plugin in config.get_render_plugins():
+            self.add_http_router(get(plugin.path, include_in_schema=False)(create_ui_handler(plugin)))
 
     async def __call__(self, scope: ASGIScope, receive: Receive, send: Send) -> None:
         """Dispatch one ASGI connection by scope type."""

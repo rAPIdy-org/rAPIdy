@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 from rapidy import Rapidy, run_app
 from rapidy.http import Body, get, PathParam, post, QueryParam
-from rapidy.openapi import OpenAPIConfig
+from rapidy.openapi import OpenAPIConfig, RedocRenderPlugin, SwaggerRenderPlugin
 
 
 class ItemIn(BaseModel):
@@ -52,6 +52,10 @@ app = Rapidy(
             },
         },
         security=({'bearerAuth': ()},),
+        render_plugins=(
+            SwaggerRenderPlugin(options={'displayRequestDuration': True}),
+            RedocRenderPlugin(),
+        ),
     ),
 )
 

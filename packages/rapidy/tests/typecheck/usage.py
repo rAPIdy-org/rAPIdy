@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from rapidy import Rapidy
 from rapidy.depends import FromDI
 from rapidy.http import Body, get, PathParam, post
-from rapidy.openapi import create_openapi_schema, OpenAPIConfig
+from rapidy.openapi import create_openapi_schema, OpenAPIConfig, SwaggerRenderPlugin
 
 
 class Payload(BaseModel):
@@ -25,7 +25,16 @@ async def create_item(payload: Annotated[Payload, Body()], dependency: FromDI[st
     return payload
 
 
-openapi_config = OpenAPIConfig(title='Typed API', version='1.0.0')
+openapi_config = OpenAPIConfig(
+    title='Typed API',
+    version='1.0.0',
+    render_plugins=(
+        SwaggerRenderPlugin(
+            js_url='/assets/swagger-ui-bundle.js',
+            css_url='/assets/swagger-ui.css',
+        ),
+    ),
+)
 app: Rapidy = Rapidy(
     http_route_handlers=[get_item, create_item],
     openapi_config=openapi_config,

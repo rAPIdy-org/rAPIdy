@@ -84,6 +84,40 @@ generation instead of producing a broken document.
 These values describe the API to OpenAPI clients and documentation UIs only. They do not authenticate requests or
 install runtime authorization policy; implement that policy with rAPIdy dependencies or middleware.
 
+## UI render plugins and offline assets
+
+The default `swagger_path` and `redoc_path` behavior remains unchanged. For explicit UI selection, custom paths, or
+self-hosted assets, pass render plugins:
+
+```python
+from rapidy.openapi import OpenAPIConfig, RedocRenderPlugin, SwaggerRenderPlugin
+
+
+config = OpenAPIConfig(
+    title='Internal API',
+    version='2026.1',
+    render_plugins=(
+        SwaggerRenderPlugin(
+            path='/docs',
+            js_url='/assets/swagger-ui-bundle.js',
+            css_url='/assets/swagger-ui.css',
+            options={'displayRequestDuration': True},
+        ),
+        RedocRenderPlugin(
+            path='/reference',
+            js_url='/assets/redoc.standalone.js',
+        ),
+    ),
+)
+```
+
+Local URLs may be served by application routes, an upstream static server, or a reverse proxy. rAPIdy does not vendor
+the large third-party JavaScript and CSS bundles, so this adds no runtime dependency or package-size cost. Explicit
+`render_plugins` replace the legacy UI routes; use `render_plugins=()` for JSON-only schema serving.
+
+To integrate another UI, subclass `OpenAPIRenderPlugin` and implement `render(request, openapi_schema, *,
+schema_url) -> bytes`. The plugin controls its path and media type, while rAPIdy supplies the mount-aware schema URL.
+
 ## What is inferred
 
 - `PathParam`, `QueryParam`, `Header`, and `Cookie` become OpenAPI parameters with aliases, defaults, constraints,
