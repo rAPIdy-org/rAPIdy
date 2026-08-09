@@ -321,6 +321,7 @@ def test_stream_checker_signatures_and_exports() -> None:
         'headers',
         'content_type',
         'charset',
+        'background',
     ]
     assert inspect.signature(StreamResponse.write_eof).parameters['data'].default == b''
     assert list(inspect.signature(SSEResponse.__init__).parameters)[1:] == [
@@ -328,6 +329,7 @@ def test_stream_checker_signatures_and_exports() -> None:
         'status',
         'headers',
         'retry',
+        'background',
     ]
 
 

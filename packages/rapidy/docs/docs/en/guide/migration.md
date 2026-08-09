@@ -19,7 +19,7 @@ Read the complete, executable before/after guide in
 | `cleanup_ctx` | `app.lifespan.append(...)` |
 | `app.router.*` / `add_routes` | decorators and `add_http_router(s)` |
 | streaming request injection | cached `Request.read/text/json/post` |
-| static files / background tasks | external server/service; no 2.0 equivalent |
+| `app.router.add_static` / ad-hoc tasks | `StaticFiles`, `FileResponse`, `BackgroundTask(s)` |
 | `AppKey` | `app.state` / `request.state` |
 | `rapidy.mypy` | `rapidy_core.mypy` |
 | middleware/DI authentication | `SecurityConfig`, built-in schemes, route requirements, and guards |

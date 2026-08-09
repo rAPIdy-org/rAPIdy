@@ -231,10 +231,10 @@ app.add_http_routers([admin_router, health_router])
 Use middleware instead of response-prepare signals. Startup and shutdown are driven by ASGI
 lifespan; register resource contexts through `lifespan` rather than calling lifecycle methods.
 
-### 09. Static files
+### 09. Static files and downloads
 
-Inherited `app.router.add_static(...)`, `static`, and `FileResponse` serving are outside the 2.0
-scope.
+Inherited `app.router.add_static(...)` is replaced by the native ASGI `StaticFiles` route object. Downloads use
+`FileResponse` from its own public response module.
 
 **Before**
 
@@ -245,28 +245,40 @@ return FileResponse('./downloads/report.pdf')
 
 **After**
 
-```nginx
-location /assets/ {
-    root /srv/application;
-}
+```python
+from rapidy.responses import FileResponse
+from rapidy.staticfiles import StaticFiles
+
+assets = StaticFiles('/assets', directory='./assets', html=True)
+
+@get('/downloads/report')
+async def report() -> FileResponse:
+    return FileResponse('./downloads/report.pdf', filename='report.pdf')
+
+app = Rapidy(http_route_handlers=[assets, report])
 ```
 
-There is no framework equivalent in 2.0. Serve static assets and downloads through a reverse
-proxy, object storage, or a CDN.
+`FileResponse` handles HEAD, one byte range, validators, and conditional requests. `StaticFiles` rejects traversal and
+symlinks by default and supports index HTML, cache headers, security policy, and mounts. A reverse proxy, object
+storage, or CDN is still preferable for large or user-managed trees.
 
 ### 10. BackgroundTasks
 
 **After**
 
 ```python
+from rapidy.background import BackgroundTasks
+
 @post('/reports')
 async def create_report(job: ReportJob = Body()) -> Response:
-    await broker.publish('reports', job.model_dump())
-    return Response(status_code=202)
+    tasks = BackgroundTasks()
+    tasks.add_task(write_audit_record, job)
+    return Response(status=202, background=tasks)
 ```
 
-rAPIdy has no `BackgroundTasks` abstraction. Use your own task primitives for small in-process
-work and a durable broker or job queue for important background work.
+Tasks run after the last response frame and before REQUEST DI finalizers. They are ordered and awaited as part of the
+request; cancellation propagates and the first failure stops later tasks. This is intentionally not a durable queue:
+keep a broker for retryable or business-critical work.
 
 ### 11. AppKey and NotAppKeyWarning
 

@@ -13,7 +13,7 @@
 | `WebSocketResponse` в `@get` | `@websocket` + `WebSocket` |
 | `cleanup_ctx` | `app.lifespan.append(...)` |
 | `app.router.*` | decorators / `add_http_router(s)` |
-| static / BackgroundTasks | внешняя инфраструктура; аналога в 2.0 нет |
+| `app.router.add_static` / ad-hoc tasks | `StaticFiles`, `FileResponse`, `BackgroundTask(s)` |
 | `AppKey` | `app.state` / `request.state` |
 | `rapidy.mypy` | `rapidy_core.mypy` |
 | authentication через middleware/DI | `SecurityConfig`, встроенные схемы, route requirements и guards |

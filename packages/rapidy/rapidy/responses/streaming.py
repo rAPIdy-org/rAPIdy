@@ -16,6 +16,7 @@ from rapidy.typedefs import ASGIMessage, LooseHeaders, Receive, Send
 from rapidy.version import SERVER_INFO
 
 if TYPE_CHECKING:
+    from rapidy.background import Background, BackgroundCallable, BackgroundRunner
     from rapidy.request import Request
 
 __all__ = ('SSEEvent', 'SSEResponse', 'StreamResponse')
@@ -52,6 +53,7 @@ class StreamResponse:
 
     __slots__ = (
         '_body',
+        '_background',
         '_charset',
         '_content_type',
         '_eof_sent',
@@ -72,8 +74,12 @@ class StreamResponse:
         headers: LooseHeaders | None = None,
         content_type: str | ContentType = ContentType.stream,
         charset: str | Charset | None = None,
+        background: Background | BackgroundCallable | None = None,
     ) -> None:
+        from rapidy.background import normalize_background  # noqa: PLC0415
+
         self._body = body
+        self._background = normalize_background(background)
         self._status = status
         self._headers = _make_headers(headers)
         self._content_type = _enum_value(content_type)
@@ -93,6 +99,17 @@ class StreamResponse:
     @status.setter
     def status(self, value: int) -> None:
         self._status = value
+
+    @property
+    def background(self) -> BackgroundRunner | None:
+        """Return the post-response task attached to this response."""
+        return self._background
+
+    @background.setter
+    def background(self, value: Background | BackgroundCallable | None) -> None:
+        from rapidy.background import normalize_background  # noqa: PLC0415
+
+        self._background = normalize_background(value)
 
     @property
     def headers(self) -> CIMultiDict[str]:
@@ -228,7 +245,8 @@ class StreamResponse:
 
     def _start_payload(self) -> ASGIMessage:
         headers = CIMultiDict(self._headers)
-        headers.popall('content-length', None)
+        if not self._preserve_content_length():
+            headers.popall('content-length', None)
         headers.popall('transfer-encoding', None)
         if 'content-type' not in headers:
             content_type = self._content_type
@@ -242,6 +260,9 @@ class StreamResponse:
             headers['server'] = self._server_info
         encoded_headers = [(name.encode('latin-1'), value.encode('latin-1')) for name, value in headers.items()]
         return {'type': 'http.response.start', 'status': self._status, 'headers': encoded_headers}
+
+    def _preserve_content_length(self) -> bool:
+        return False
 
     def _default_headers(self) -> list[tuple[str, str]]:
         return []
@@ -259,6 +280,7 @@ class SSEResponse(StreamResponse):
         status: int = 200,
         headers: LooseHeaders | None = None,
         retry: int | None = None,
+        background: Background | BackgroundCallable | None = None,
     ) -> None:
         self._events = events
         self._retry = retry
@@ -268,6 +290,7 @@ class SSEResponse(StreamResponse):
             headers=headers,
             content_type='text/event-stream',
             charset=Charset.utf8,
+            background=background,
         )
 
     async def _frames(self) -> AsyncIterator[str]:

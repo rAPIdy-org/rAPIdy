@@ -1,12 +1,14 @@
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Annotated, TYPE_CHECKING
 
 from pydantic import BaseModel
 
 from rapidy import Rapidy
+from rapidy.background import BackgroundTask, BackgroundTasks
 from rapidy.depends import FromDI
-from rapidy.http import Body, get, PathParam, post
+from rapidy.http import Body, get, PathParam, post, Response
 from rapidy.middlewares import (
     CompressionMiddleware,
     CORSMiddleware,
@@ -19,7 +21,9 @@ from rapidy.middlewares import (
     TrustedHostMiddleware,
 )
 from rapidy.openapi import create_openapi_schema, OpenAPIComponents, OpenAPIConfig, SwaggerRenderPlugin
+from rapidy.responses import FileResponse
 from rapidy.security import APIKeyAuth, AuthCredentials, SecurityConfig, SecurityIdentity
+from rapidy.staticfiles import StaticFiles
 from rapidy.testing import (
     AsyncSSESession,
     AsyncTestClient,
@@ -31,6 +35,18 @@ from rapidy.testing import (
 
 class Payload(BaseModel):
     value: int
+
+
+async def notify(value: int) -> None:
+    value.bit_length()
+
+
+background_task: BackgroundTask = BackgroundTask(notify, 20)
+background_tasks = BackgroundTasks([background_task])
+background_tasks.add_task(notify, 21)
+typed_response: Response = Response('accepted', background=background_tasks)
+file_response: FileResponse = FileResponse(Path('report.txt'), filename='report.txt', background=background_task)
+static_files: StaticFiles = StaticFiles('/assets', directory=Path())
 
 
 @get('/items/{item_id}')

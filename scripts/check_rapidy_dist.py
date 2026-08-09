@@ -9,6 +9,9 @@ REQUIRED_WHEEL = {
     "rapidy/__init__.py",
     "rapidy/http.py",
     "rapidy/depends.py",
+    "rapidy/background.py",
+    "rapidy/responses/files.py",
+    "rapidy/staticfiles.py",
     "rapidy/testing/__init__.py",
     "rapidy/py.typed",
 }

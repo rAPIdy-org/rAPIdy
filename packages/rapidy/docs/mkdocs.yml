@@ -110,6 +110,7 @@ nav:
   - Dependency injection: guide/di.md
   - Middleware and mounts: guide/middleware-routing.md
   - WebSockets and streaming: guide/realtime.md
+  - Background tasks and files: guide/background-files.md
   - Deployment: guide/deployment.md
   - Testing and typing: guide/testing-typing.md
   - Migrating from 1.x: guide/migration.md

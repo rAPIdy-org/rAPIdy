@@ -22,6 +22,8 @@ if TYPE_CHECKING:
     from rapidy_core.encoders import CustomEncoder, Exclude, Include
     from rapidy_core.typedefs import JSONEncoder
 
+    from rapidy.background import Background, BackgroundCallable, BackgroundRunner
+
 __all__ = ('StreamResponse', 'Response')
 
 DEFAULT_JSON_TYPES: tuple[type[Any], ...] = (
@@ -79,6 +81,7 @@ class Response(StreamResponse):
 
     __slots__ = (
         '_body',
+        '_background',
         '_by_alias',
         '_charset',
         '_content_type',
@@ -117,8 +120,11 @@ class Response(StreamResponse):
         json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
         text: Any | None = None,
         reason: str | None = None,
+        background: Background | BackgroundCallable | None = None,
     ) -> None:
         """Create a response; zlib options tune an active compression middleware."""
+        from rapidy.background import normalize_background  # noqa: PLC0415
+
         self._json_encoder = json_encoder
         self._include_fields = include
         self._exclude_fields = exclude
@@ -137,6 +143,7 @@ class Response(StreamResponse):
         self._charset = _enum_value(charset)
         self._zlib_executor = zlib_executor
         self._zlib_executor_size = zlib_executor_size
+        self._background = normalize_background(background)
 
         body_exists = body is not None
         text_exists = text is not None
@@ -155,6 +162,17 @@ class Response(StreamResponse):
     @status.setter
     def status(self, value: int) -> None:
         self._status = int(value)
+
+    @property
+    def background(self) -> BackgroundRunner | None:
+        """Return the post-response task attached to this response."""
+        return self._background
+
+    @background.setter
+    def background(self, value: Background | BackgroundCallable | None) -> None:
+        from rapidy.background import normalize_background  # noqa: PLC0415
+
+        self._background = normalize_background(value)
 
     def set_status(self, status: int) -> None:
         """Set the HTTP status code using the rAPIdy 1.x compatibility API."""

@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 type ResponseHook = Callable[[HTTPResponse], HTTPResponse | Awaitable[HTTPResponse | None] | None]
 
 _RESPONSE_HOOKS_KEY = '_rapidy_response_hooks'
+_RESPONSE_HOOKS_APPLIED_KEY = '_rapidy_response_hooks_applied'
 
 
 def add_response_hook(request: Request, hook: ResponseHook) -> None:
@@ -24,7 +25,11 @@ def add_response_hook(request: Request, hook: ResponseHook) -> None:
 
 async def apply_response_hooks(request: Request, response: HTTPResponse) -> HTTPResponse:
     """Apply registered hooks in response/onion order."""
-    hooks = cast('list[ResponseHook]', request.scope.pop(_RESPONSE_HOOKS_KEY, []))
+    applied = cast('set[int]', request.scope.setdefault(_RESPONSE_HOOKS_APPLIED_KEY, set()))
+    if id(response) in applied:
+        return response
+    applied.add(id(response))
+    hooks = cast('list[ResponseHook]', request.scope.get(_RESPONSE_HOOKS_KEY, []))
     current = response
     for hook in reversed(hooks):
         result = hook(current)
@@ -32,6 +37,7 @@ async def apply_response_hooks(request: Request, response: HTTPResponse) -> HTTP
             result = await result
         if result is not None:
             current = result
+    applied.add(id(current))
     return current
 
 

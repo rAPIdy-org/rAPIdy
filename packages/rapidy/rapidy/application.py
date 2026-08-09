@@ -580,8 +580,23 @@ class Rapidy(MutableMapping[str, Any]):
                 request._asgi_receive,  # noqa: SLF001
                 server_info=server_info,
             )
+            if response._eof_sent:  # noqa: SLF001
+                await self._run_background(response, request)
             return
         await response._send(response_send, server_info=server_info)  # noqa: SLF001
+        if request is not None:
+            await self._run_background(response, request)
+
+    @staticmethod
+    async def _run_background(response: Response | StreamResponse, request: Request) -> None:
+        background = response.background
+        if background is None:
+            return
+        try:
+            await background()
+        except Exception as exc:
+            logger.exception('Unhandled exception in response background task', exc_info=exc)
+            _raise_server_exception_for_tests(request.scope, exc)
 
     def __getitem__(self, key: str) -> Any:
         return self.state[key]
@@ -651,9 +666,12 @@ class _TrackingSend:
 
     async def __call__(self, message: dict[str, Any]) -> None:
         message_type = message.get('type')
+        completed_body = message_type in {'http.response.body', 'http.response.zerocopysend'} and not message.get(
+            'more_body', False
+        )
         if message_type == 'http.response.start':
             self.started = True
-        elif message_type == 'http.response.body' and not message.get('more_body', False):
+        elif completed_body or message_type == 'http.response.pathsend':
             self.completed = True
         await self._send(message)
 

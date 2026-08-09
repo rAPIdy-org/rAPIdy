@@ -9,6 +9,7 @@ import websockets
 import httpx
 import pytest
 from examples import (
+    background_files,
     di,
     middleware_mounts,
     openapi,
@@ -142,6 +143,26 @@ async def test_production_middlewares_example() -> None:
     assert response.headers['Content-Encoding'] == 'gzip'
     assert response.headers['Access-Control-Allow-Origin'] == 'https://console.example.com'
     assert preflight.status_code == 204
+
+
+@pytest.mark.asyncio
+async def test_background_files_example() -> None:
+    background_files.notifications.clear()
+    async with background_files.app.lifespan.ctx_manager():
+        accepted = await request(background_files.app, 'POST', '/exports')
+        ranged = await request(
+            background_files.app,
+            'GET',
+            '/downloads/report',
+            headers={'Range': 'bytes=0-5'},
+        )
+        index = await request(background_files.app, 'GET', '/assets/')
+
+    assert accepted.status_code == 202
+    assert background_files.notifications == ['export:20']
+    assert ranged.status_code == 206
+    assert ranged.text == 'rAPIdy'
+    assert 'Static files are ready' in index.text
 
 
 @pytest.mark.parametrize('runtime', ['granian', 'uvicorn'])

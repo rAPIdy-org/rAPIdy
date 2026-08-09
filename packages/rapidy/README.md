@@ -5,8 +5,8 @@
 # rAPIdy 2.0
 
 rAPIdy is an async-first ASGI framework with Pydantic v2 validation, dependency injection, middleware, mounts,
-WebSockets, Server-Sent Events, and streaming responses. Version 2.0 no longer depends on aiohttp: Granian is the
-default server, while Uvicorn and Hypercorn are supported through optional extras.
+WebSockets, Server-Sent Events, streaming responses, post-response tasks, and safe file serving. Version 2.0 no longer
+depends on aiohttp: Granian is the default server, while Uvicorn and Hypercorn are supported through optional extras.
 
 - Python 3.12+
 - Pydantic `>=2.9,<3`
@@ -164,6 +164,8 @@ provide in-process WebSocket/SSE sessions plus isolated Dishka provider override
 - `HTTPRouter('/v1', handlers)` creates nested mounts with their own middleware, limits, and lifespan while sharing
   the root DI container.
 - `@websocket`, `WebSocket`, `SSEResponse`, and `StreamResponse` provide native ASGI realtime and streaming APIs.
+- `rapidy.background`, `FileResponse`, and `StaticFiles` provide ordered post-response work, conditional/range file
+  responses, and traversal-safe mounted assets with optional ASGI zero-copy extensions.
 - `rapidy.testing` provides sync/async HTTPX clients, lifespan, DI overrides, WebSocket, and incremental SSE testing.
 - Type checking uses `plugins = rapidy_core.mypy`; there is no `rapidy.mypy` package in 2.0.
 
