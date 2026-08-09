@@ -23,8 +23,10 @@ from rapidy_core.enums import (
 )
 from rapidy_core.exceptions import RapidyException
 from rapidy_core.typedefs import UNSET, Unset
+from rapidy_core.version import CORE_API_VERSION, __version__
 
 __all__ = (
+    "CORE_API_VERSION",
     "UNSET",
     "Charset",
     "ClientBaseError",
@@ -36,6 +38,7 @@ __all__ = (
     "RapidyException",
     "RequiredFieldIsMissingError",
     "Unset",
+    "__version__",
     "is_annotated",
     "is_empty",
     "is_optional",

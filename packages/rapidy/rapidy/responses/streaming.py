@@ -1,28 +1,21 @@
 from __future__ import annotations
 
 import asyncio
-import logging
 from collections.abc import AsyncIterable, AsyncIterator, Mapping
-from contextlib import suppress
 from enum import Enum
-from typing import Any, NamedTuple, TYPE_CHECKING
+from typing import Any, NamedTuple
 
 from multidict import CIMultiDict
 from rapidy_core.enums import Charset, ContentType
 
+from rapidy import request as _request
 from rapidy._base_exceptions import RapidyException
+from rapidy.background import Background, BackgroundCallable, BackgroundRunner
 from rapidy.constants import DEFAULT_JSON_ENCODER
 from rapidy.typedefs import ASGIMessage, LooseHeaders, Receive, Send
 from rapidy.version import SERVER_INFO
 
-if TYPE_CHECKING:
-    from rapidy.background import Background, BackgroundCallable, BackgroundRunner
-    from rapidy.request import Request
-
 __all__ = ('SSEEvent', 'SSEResponse', 'StreamResponse')
-
-logger = logging.getLogger('rapidy')
-
 
 class StreamNotPreparedError(RapidyException):
     """Raised when imperative writes precede ``prepare``."""
@@ -134,7 +127,7 @@ class StreamResponse:
     def charset(self, value: str | Charset | None) -> None:
         self._charset = _optional_enum_value(value)
 
-    async def prepare(self, request: Request) -> None:
+    async def prepare(self, request: _request.Request) -> None:
         """Send the response start frame once and bind the request transport."""
         if self._started:
             return
@@ -195,18 +188,9 @@ class StreamResponse:
                     await stream_task
                 except _ClientDisconnectedError:
                     await self._aclose_body()
-                except Exception as exc:
-                    logger.exception('Unhandled error while streaming response body', exc_info=exc)
+                except Exception:
                     await self._aclose_body()
-                    try:
-                        await self._guarded_send(
-                            send,
-                            {'type': 'http.response.body', 'body': b'', 'more_body': False},
-                        )
-                    except _ClientDisconnectedError:
-                        pass
-                    else:
-                        self._eof_sent = True
+                    raise
             else:
                 await _cancel_and_wait(stream_task)
                 await self._aclose_body()
@@ -223,6 +207,10 @@ class StreamResponse:
                     send,
                     {'type': 'http.response.body', 'body': data, 'more_body': True},
                 )
+                # Some ASGI servers return from send() immediately after a peer
+                # disconnects. Always yield so the disconnect listener and
+                # cancellation can run even for a non-suspending generator.
+                await asyncio.sleep(0)
         await self._guarded_send(
             send,
             {'type': 'http.response.body', 'body': b'', 'more_body': False},
@@ -292,7 +280,7 @@ class SSEResponse(StreamResponse):
         background: Background | BackgroundCallable | None = None,
     ) -> None:
         self._events = events
-        self._retry = retry
+        self._retry = _validate_sse_retry(retry)
         super().__init__(
             body=self._frames(),
             status=status,
@@ -334,18 +322,52 @@ def _render_sse_frame(payload: SSEEvent | str | dict[str, Any]) -> str:
     text = DEFAULT_JSON_ENCODER(data) if isinstance(data, dict) else data
     lines: list[str] = []
     if event_id is not None:
+        _validate_sse_field('id', event_id)
         lines.append(f'id: {event_id}')
     if event_name is not None:
+        _validate_sse_field('event', event_name)
         lines.append(f'event: {event_name}')
-    lines.extend(f'data: {line}' for line in text.split('\n'))
+    normalized_text = text.replace('\r\n', '\n').replace('\r', '\n')
+    lines.extend(f'data: {line}' for line in normalized_text.split('\n'))
     return f"{'\n'.join(lines)}\n\n"
 
 
+def _validate_sse_field(name: str, value: str) -> None:
+    if not isinstance(value, str):
+        msg = f'SSE {name} must be a string'
+        raise TypeError(msg)
+    if '\r' in value or '\n' in value:
+        msg = f'SSE {name} must not contain CR or LF characters'
+        raise ValueError(msg)
+    if name == 'id' and '\x00' in value:
+        msg = 'SSE id must not contain NUL characters'
+        raise ValueError(msg)
+
+
+def _validate_sse_retry(value: int | None) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, int):
+        msg = 'SSE retry must be an integer'
+        raise TypeError(msg)
+    if value < 0:
+        msg = 'SSE retry must not be negative'
+        raise ValueError(msg)
+    return value
+
+
 async def _cancel_and_wait(task: asyncio.Task[Any]) -> None:
+    current_task = asyncio.current_task()
+    cancellation_count = current_task.cancelling() if current_task is not None else 0
     if not task.done():
         task.cancel()
-    with suppress(asyncio.CancelledError, Exception):
+    try:
         await task
+    except asyncio.CancelledError:
+        if current_task is not None and current_task.cancelling() > cancellation_count:
+            raise
+    except Exception:  # noqa: BLE001 - cleanup must not replace the stream outcome with a sibling-task failure.
+        return
 
 
 def _as_header_text(value: str | bytes) -> str:

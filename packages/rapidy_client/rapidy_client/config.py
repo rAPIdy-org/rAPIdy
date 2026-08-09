@@ -4,7 +4,8 @@ import os
 from collections.abc import Mapping
 from contextvars import ContextVar
 from pathlib import Path
-from typing import Literal
+from types import UnionType
+from typing import Any, Literal, Union, get_args, get_origin
 
 from pydantic import BaseModel, Field, FilePath, HttpUrl
 from pydantic_settings import (
@@ -108,14 +109,64 @@ class UpstreamConfig(BaseModel):
     allow_absolute_urls: bool = False
 
 
+def _unwrap_optional(annotation: Any) -> Any:
+    if get_origin(annotation) in (Union, UnionType):
+        args = tuple(item for item in get_args(annotation) if item is not type(None))
+        if len(args) == 1:
+            return args[0]
+    return annotation
+
+
+def _targets_declared_field(
+    settings_cls: type[BaseSettings],
+    key: str,
+    *,
+    prefix: str,
+    delimiter: str,
+) -> bool:
+    if not key.startswith(prefix):
+        return False
+    parts = tuple(part for part in key[len(prefix) :].split(delimiter) if part)
+    annotation: Any = settings_cls
+    for part in parts:
+        annotation = _unwrap_optional(annotation)
+        if isinstance(annotation, type) and issubclass(annotation, BaseModel):
+            field_info = annotation.model_fields.get(part)
+            if field_info is None:
+                return False
+            annotation = field_info.annotation
+            continue
+        origin = get_origin(annotation)
+        if origin in (dict, Mapping):
+            args = get_args(annotation)
+            if len(args) != 2:
+                return False
+            annotation = args[1]
+            continue
+        return False
+    return bool(parts)
+
+
 class _FileSecretEnvSource(EnvSettingsSource):
     def _load_env_vars(self) -> Mapping[str, str | None]:
         raw = dict(super()._load_env_vars())
         prefix = self.env_prefix.lower()
+        delimiter = self.env_nested_delimiter or "__"
         resolved: dict[str, str | None] = {}
         secrets: dict[str, str] = {}
         for key, value in raw.items():
-            if key.startswith(prefix) and key.endswith("_file") and value:
+            if (
+                key.startswith(prefix)
+                and key.endswith("_file")
+                and value is not None
+                and value != ""
+                and not _targets_declared_field(
+                    self.settings_cls,
+                    key,
+                    prefix=prefix,
+                    delimiter=delimiter,
+                )
+            ):
                 target = key[: -len("_file")]
                 secrets[target] = Path(value).read_text(encoding="utf-8").strip()
             else:

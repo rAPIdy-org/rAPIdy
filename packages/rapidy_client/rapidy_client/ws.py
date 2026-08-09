@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import contextlib
 import hashlib
 import logging
 import os
@@ -48,6 +49,7 @@ from rapidy_client.errors import (
     ProtocolError,
     WSClosedError,
     WSHandshakeError,
+    WSMessageTooLargeError,
     WSQueueFullError,
 )
 from rapidy_client.middleware.deadline import DeadlineMiddleware
@@ -149,6 +151,8 @@ class WSConnect(Generic[TSend, TRecv]):
         path: str,
         *,
         heartbeat: Heartbeat | None = None,
+        max_message_size: int = 16_777_216,
+        receive_queue_limit: int = 256,
         send_queue_limit: int = 256,
         send_timeout: float = 10.0,
         subprotocols: Sequence[str] = (),
@@ -158,6 +162,10 @@ class WSConnect(Generic[TSend, TRecv]):
         _path_params: dict[str, object] | None = None,
         _query: dict[str, QueryValue] | None = None,
     ) -> None:
+        if max_message_size <= 0:
+            raise ValueError("max_message_size must be greater than zero")
+        if receive_queue_limit <= 0:
+            raise ValueError("receive_queue_limit must be greater than zero")
         if send_queue_limit <= 0:
             raise ValueError("send_queue_limit must be greater than zero")
         if send_timeout < 0:
@@ -167,6 +175,8 @@ class WSConnect(Generic[TSend, TRecv]):
         self._client = client
         self._path = path
         self._heartbeat = heartbeat or Heartbeat()
+        self._max_message_size = max_message_size
+        self._receive_queue_limit = receive_queue_limit
         self._send_queue_limit = send_queue_limit
         self._send_timeout = send_timeout
         self._subprotocols = tuple(subprotocols)
@@ -185,7 +195,6 @@ class WSConnect(Generic[TSend, TRecv]):
 
         websocket_key = base64.b64encode(os.urandom(16)).decode("ascii")
         headers = {
-            **client._config.default_headers,
             "Connection": "Upgrade",
             "Upgrade": "websocket",
             "Sec-WebSocket-Version": "13",
@@ -272,6 +281,8 @@ class WSConnect(Generic[TSend, TRecv]):
             _client=client,
             _request=request,
             _heartbeat=self._heartbeat,
+            _max_message_size=self._max_message_size,
+            _receive_queue_limit=self._receive_queue_limit,
             _send_queue_limit=self._send_queue_limit,
             _send_timeout=self._send_timeout,
             _subprotocol=selected,
@@ -353,6 +364,8 @@ class WSSession(Generic[TSend, TRecv]):
         _client: HttpClient,
         _request: Request,
         _heartbeat: Heartbeat,
+        _max_message_size: int,
+        _receive_queue_limit: int,
         _send_queue_limit: int,
         _send_timeout: float,
         _subprotocol: str | None,
@@ -363,13 +376,14 @@ class WSSession(Generic[TSend, TRecv]):
         self._client = _client
         self._request = _request
         self._heartbeat = _heartbeat
+        self._max_message_size = _max_message_size
         self._send_timeout = _send_timeout
         self._subprotocol = _subprotocol
         self._send_adapter = _send_adapter
         self._recv_adapter = _recv_adapter
         self._connection = _WSFrameConnection(ConnectionType.CLIENT)
-        self._receive_queue: asyncio.Queue[WSMessage | _ReceiveFailure] = (
-            asyncio.Queue()
+        self._receive_queue: asyncio.Queue[WSMessage | _ReceiveFailure] = asyncio.Queue(
+            maxsize=_receive_queue_limit
         )
         self._send_queue: asyncio.Queue[bytes | _CloseItem] = asyncio.Queue(
             maxsize=_send_queue_limit
@@ -384,6 +398,7 @@ class WSSession(Generic[TSend, TRecv]):
         self._close_exc: BaseException | None = None
         self._text_fragments: list[str] = []
         self._binary_fragments: list[bytes] = []
+        self._message_size = 0
 
     @property
     def subprotocol(self) -> str | None:
@@ -400,27 +415,43 @@ class WSSession(Generic[TSend, TRecv]):
             return
         self._closed = True
         self._close_exc = exc
-        self._receive_queue.put_nowait(_RECEIVE_FAILURE)
+        with contextlib.suppress(asyncio.QueueFull):
+            self._receive_queue.put_nowait(_RECEIVE_FAILURE)
         self._client._infinite.discard(self)
 
-    def _message_event(self, event: _TextMessage | _BytesMessage) -> None:
+    def _message_event(self, event: _TextMessage | _BytesMessage) -> WSMessage | None:
+        fragment_size = (
+            len(event.data.encode("utf-8"))
+            if isinstance(event, _TextMessage)
+            else len(cast("bytes", event.data))
+        )
+        self._message_size += fragment_size
+        if self._message_size > self._max_message_size:
+            received = self._message_size
+            self._message_size = 0
+            self._text_fragments.clear()
+            self._binary_fragments.clear()
+            raise WSMessageTooLargeError(
+                f"WebSocket message exceeded max_message_size={self._max_message_size} "
+                f"bytes (received at least {received})",
+                **_error_context(self._request),
+            )
         if isinstance(event, _TextMessage):
             self._text_fragments.append(event.data)
             if event.message_finished:
                 text = "".join(self._text_fragments)
                 self._text_fragments.clear()
-                self._receive_queue.put_nowait(
-                    WSMessage(kind="text", text=text, data=None)
-                )
-            return
+                self._message_size = 0
+                return WSMessage(kind="text", text=text, data=None)
+            return None
 
         self._binary_fragments.append(cast("bytes", event.data))
         if event.message_finished:
             data = b"".join(self._binary_fragments)
             self._binary_fragments.clear()
-            self._receive_queue.put_nowait(
-                WSMessage(kind="binary", text=None, data=data)
-            )
+            self._message_size = 0
+            return WSMessage(kind="binary", text=None, data=data)
+        return None
 
     async def _read_loop(self) -> None:
         try:
@@ -439,7 +470,9 @@ class WSSession(Generic[TSend, TRecv]):
                 self._connection.receive_data(data)
                 for event in self._connection.events():
                     if isinstance(event, (_TextMessage, _BytesMessage)):
-                        self._message_event(event)
+                        message = self._message_event(event)
+                        if message is not None:
+                            await self._receive_queue.put(message)
                     elif isinstance(event, _Ping):
                         await self._enqueue_raw(
                             self._connection.send(_Pong(payload=event.payload))
@@ -447,12 +480,10 @@ class WSSession(Generic[TSend, TRecv]):
                     elif isinstance(event, _Pong):
                         self._last_pong_at = self._client._clock.monotonic()
                     elif isinstance(event, _CloseConnection):
-                        try:
+                        with contextlib.suppress(HttpClientError):
                             await self._enqueue_raw(
                                 self._connection.send(event.response())
                             )
-                        except HttpClientError:
-                            pass
                         self._fail(
                             WSClosedError(
                                 "WebSocket peer initiated close",
@@ -465,14 +496,19 @@ class WSSession(Generic[TSend, TRecv]):
         except asyncio.CancelledError:
             raise
         except HttpClientError as exc:
-            self._fail(exc)
+            try:
+                await self._hard_close()
+            finally:
+                self._fail(exc)
         except Exception as exc:  # noqa: BLE001 - seal wsproto at API boundary
-            self._fail(
-                ProtocolError(
-                    f"invalid WebSocket frame: {exc}",
-                    **_error_context(self._request),
-                )
+            error = ProtocolError(
+                f"invalid WebSocket frame: {exc}",
+                **_error_context(self._request),
             )
+            try:
+                await self._hard_close()
+            finally:
+                self._fail(error)
 
     async def _write_loop(self) -> None:
         try:
@@ -599,7 +635,8 @@ class WSSession(Generic[TSend, TRecv]):
             raise RuntimeError("typed receive is unavailable on an imperative session")
         message = await self.receive()
         payload = message.text if message.kind == "text" else message.data
-        assert payload is not None
+        if payload is None:
+            raise RuntimeError("WebSocket message is missing its payload")
         try:
             return cast("TRecv", self._recv_adapter.validate_json(payload))
         except ValidationError as exc:
@@ -619,7 +656,8 @@ class WSSession(Generic[TSend, TRecv]):
         while True:
             message = await self.receive()
             payload = message.text if message.kind == "text" else message.data
-            assert payload is not None
+            if payload is None:
+                raise RuntimeError("WebSocket message is missing its payload")
             try:
                 yield adapter.validate_json(payload)
             except ValidationError as exc:
@@ -750,6 +788,8 @@ class _CallableWSModule(ModuleType):
         path: str,
         *,
         heartbeat: Heartbeat | None = None,
+        max_message_size: int = 16_777_216,
+        receive_queue_limit: int = 256,
         send_queue_limit: int = 256,
         send_timeout: float = 10.0,
         subprotocols: Sequence[str] = (),
@@ -759,6 +799,8 @@ class _CallableWSModule(ModuleType):
         return ws(
             path,
             heartbeat=heartbeat,
+            max_message_size=max_message_size,
+            receive_queue_limit=receive_queue_limit,
             send_queue_limit=send_queue_limit,
             send_timeout=send_timeout,
             subprotocols=subprotocols,

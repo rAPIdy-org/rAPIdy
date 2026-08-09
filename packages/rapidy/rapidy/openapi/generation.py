@@ -4,6 +4,7 @@ import inspect
 import re
 from collections.abc import Mapping, Sequence
 from copy import deepcopy
+from enum import Enum
 from http import HTTPStatus
 from typing import Annotated, Any, get_args, get_origin, Literal, TYPE_CHECKING
 
@@ -16,7 +17,7 @@ from rapidy.endpoint_handlers.http.attrs_extractor import get_http_handler_info
 from rapidy.openapi.config import OpenAPIConfig
 from rapidy.routing.http.routers import HandlerParameterRecord
 from rapidy.routing.matcher import RouteRecord
-from rapidy.typedefs import Unset
+from rapidy.typedefs import UNSET
 
 if TYPE_CHECKING:
     from pydantic.fields import FieldInfo
@@ -67,6 +68,24 @@ class OpenAPIGenerationError(ValueError):
     """Raised when registered routes cannot form one unambiguous OpenAPI document."""
 
 
+def _generated_references_are_complete(
+    value: Any,
+    component_names: set[str],
+) -> bool:
+    if isinstance(value, Mapping):
+        reference = value.get('$ref')
+        if (
+            isinstance(reference, str)
+            and reference.startswith('#/components/schemas/')
+            and reference.rsplit('/', 1)[-1] not in component_names
+        ):
+            return False
+        return all(_generated_references_are_complete(item, component_names) for item in value.values())
+    if isinstance(value, Sequence) and not isinstance(value, _NON_ARRAY_TYPES):
+        return all(_generated_references_are_complete(item, component_names) for item in value)
+    return True
+
+
 class _SchemaRegistry:
     def __init__(self) -> None:
         self._adapters: dict[str, tuple[Literal['validation', 'serialization'], TypeAdapter[Any]]] = {}
@@ -102,10 +121,17 @@ class _SchemaRegistry:
             except (TypeError, ValueError):
                 self._build_individually()
             else:
-                self._schemas.update(
-                    {key: deepcopy(schemas[(key, mode)]) for key, (mode, _adapter) in self._adapters.items()}
-                )
-                self._merge_components(root.pop('$defs', {}))
+                generated = {key: deepcopy(schemas[(key, mode)]) for key, (mode, _adapter) in self._adapters.items()}
+                definitions = root.pop('$defs', {})
+                component_names = set(definitions)
+                if all(
+                    _generated_references_are_complete(schema, component_names)
+                    for schema in (*generated.values(), *definitions.values())
+                ):
+                    self._schemas.update(generated)
+                    self._merge_components(definitions)
+                else:
+                    self._build_individually()
         self._schemas.update({key: deepcopy(schema) for key, schema in self._fallbacks.items()})
 
     def _build_individually(self) -> None:
@@ -159,8 +185,8 @@ def _response_key(route_index: int) -> str:
 
 
 def _response_annotation(route: RouteRecord) -> Any:
-    configured = route.route_kwargs.get('response_type', Unset)
-    if configured is not Unset:
+    configured = route.route_kwargs.get('response_type', UNSET)
+    if configured is not UNSET:
         annotation = configured
     else:
         try:
@@ -290,13 +316,11 @@ def _expand_parameter(
 ) -> list[dict[str, Any]]:
     resolved = registry.resolve_object(schema)
     properties = resolved.get('properties')
-    if record.extract_single or not isinstance(properties, Mapping):
+    if record.extract_single:
         name = record.alias or record.name
-        parameter = _single_parameter(record, schema, name=name)
-        if not record.extract_single and record.param_type is HTTPRequestParamType.query:
-            parameter['style'] = 'deepObject'
-            parameter['explode'] = True
-        return [parameter]
+        return [_single_parameter(record, schema, name=name)]
+    if not isinstance(properties, Mapping):
+        return []
 
     required = set(resolved.get('required', ()))
     result: list[dict[str, Any]] = []
@@ -377,14 +401,34 @@ def _request_body(route_index: int, route: RouteRecord, registry: _SchemaRegistr
 def _response_content_type(annotation: Any, configured: Any) -> str:
     if configured is not None:
         return str(configured)
+    inferred = _inferred_response_content_types(annotation)
+    if len(inferred) == 1:
+        return next(iter(inferred))
+    return ContentType.json.value
+
+
+def _inferred_response_content_types(annotation: Any) -> set[str]:
+    if is_union(annotation):
+        return {
+            content_type
+            for member in get_args(annotation)
+            if member is not type(None)
+            for content_type in _inferred_response_content_types(member)
+        }
+    if get_origin(annotation) is Literal:
+        return {
+            content_type
+            for value in get_args(annotation)
+            for content_type in _inferred_response_content_types(type(value))
+        }
     if annotation is bytes:
-        return ContentType.stream.value
+        return {ContentType.stream.value}
     origin = get_origin(annotation)
     if origin in (dict, list, tuple, set, frozenset) or lenient_issubclass(annotation, Mapping):
-        return ContentType.json.value
-    if annotation in (str, int, float, bool):
-        return ContentType.text_plain.value
-    return ContentType.json.value
+        return {ContentType.json.value}
+    if annotation in (str, int, float, bool) or lenient_issubclass(annotation, Enum):
+        return {ContentType.text_plain.value}
+    return {ContentType.json.value}
 
 
 def _status_description(status_code: int) -> str:
@@ -477,8 +521,8 @@ def _callbacks(configured: Any, *, context: str) -> dict[str, dict[str, Any]]:
 
 
 def _operation_callback_section(route: RouteRecord) -> dict[str, Any]:
-    configured = route.route_kwargs.get('callbacks', Unset)
-    if configured is Unset:
+    configured = route.route_kwargs.get('callbacks', UNSET)
+    if configured is UNSET:
         return {}
     callbacks = _callbacks(configured, context=f'{route.method} {route.path}')
     return {'callbacks': callbacks} if callbacks else {}
@@ -524,8 +568,8 @@ def _responses(
                 raise OpenAPIGenerationError(msg)
             result[str(configured_status)] = deepcopy(dict(configured_response))
 
-    configured_links = route.route_kwargs.get('response_links', Unset)
-    if configured_links is not Unset:
+    configured_links = route.route_kwargs.get('response_links', UNSET)
+    if configured_links is not UNSET:
         links = _response_links(
             configured_links,
             context=f'{route.method} {route.path}',
@@ -715,8 +759,8 @@ def _operation(
     if route.route_kwargs.get('deprecated'):
         operation['deprecated'] = True
 
-    configured_security = route.route_kwargs.get('security', Unset)
-    if configured_security is not Unset:
+    configured_security = route.route_kwargs.get('security', UNSET)
+    if configured_security is not UNSET:
         operation['security'] = _security_requirements(
             configured_security,
             security_scheme_names,

@@ -3,9 +3,10 @@ from __future__ import annotations
 from concurrent.futures import Executor
 from functools import wraps
 from http import HTTPStatus
-from typing import Any, cast, TYPE_CHECKING
+from typing import Any, cast
 
-from rapidy_core.enums import HTTPMethod
+from rapidy_core.encoders import CustomEncoder, Exclude, Include  # noqa: TC002 - runtime annotations
+from rapidy_core.enums import Charset, ContentType, HTTPMethod
 
 from rapidy._base_exceptions import RapidyHandlerException
 from rapidy.depends import inject_http
@@ -16,10 +17,6 @@ from rapidy.response import Response
 from rapidy.responses.streaming import StreamResponse
 from rapidy.routing.http.helper_types import HandlerPartial
 from rapidy.typedefs import Handler, JSONEncoder, View
-
-if TYPE_CHECKING:
-    from rapidy_core.encoders import CustomEncoder, Exclude, Include
-    from rapidy_core.enums import Charset, ContentType
 
 __all__ = (
     'METH_ALL',

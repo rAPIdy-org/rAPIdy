@@ -46,6 +46,7 @@ def test_recursive_error_inventory_includes_protocol_subtrees() -> None:
         "StatusError",
         "WSHandshakeError",
         "WSClosedError",
+        "WSMessageTooLargeError",
         "WSQueueFullError",
         "MessageValidationError",
     } <= discovered

@@ -1,3 +1,7 @@
+<!-- RAPIDY_LEGACY_1X -->
+
+> **⚠️ Историческая документация rAPIdy 1.x.** Страница сохранена только для справки и может описывать aiohttp API, которых нет в rAPIdy 2.0. Для нового кода используйте [актуальную документацию 2.0](https://rapidy.dev/).
+
 # Базовый пример-шаблон приложения
 
 Полностью пример можно найти <a href="https://github.com/rAPIdy-org/rAPIdy/tree/main/docs/examples/projects/base" target="blank">здесь</a>

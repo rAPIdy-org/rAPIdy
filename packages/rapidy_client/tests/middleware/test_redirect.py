@@ -9,6 +9,7 @@ from rapidy_client import (
     URL,
     ContentFactory,
     Headers,
+    RedirectBodyNotReplayableError,
     RedirectConfig,
     RedirectNotAllowedError,
     Request,
@@ -276,6 +277,35 @@ async def test_307_308_preserve_method_and_replayable_body(status: int) -> None:
     await RedirectMiddleware(allow_absolute_urls=False)(request, call_next)
     assert calls[1].method == "POST"
     assert calls[1].content is content
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [307, 308])
+async def test_307_308_reject_non_replayable_body_and_close_response(status: int) -> None:
+    calls: list[Request] = []
+    closes = 0
+
+    async def close() -> None:
+        nonlocal closes
+        closes += 1
+
+    async def call_next(request: Request) -> Response:
+        calls.append(request)
+        return _response(request, status, location="/b", on_close=close)
+
+    request = _request(
+        method="POST",
+        content=_body(b"one-shot"),
+        redirects=RedirectConfig(follow=True),
+    )
+    with pytest.raises(RedirectBodyNotReplayableError, match="ContentFactory") as error:
+        await RedirectMiddleware(allow_absolute_urls=False)(request, call_next)
+
+    assert error.value.upstream == "catalog"
+    assert error.value.endpoint == "/a"
+    assert error.value.request_id == "request-1"
+    assert calls == [request]
+    assert closes == 1
 
 
 @pytest.mark.asyncio

@@ -1,16 +1,32 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from enum import StrEnum
 from typing import Any
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 from openapi_spec_validator import validate
-from pydantic import BaseModel, computed_field, Field, Json
+from pydantic import BaseModel, computed_field, ConfigDict, Field, Json
 from rapidy_core.enums import ContentType
 
 from rapidy import Rapidy
-from rapidy.http import Body, controller, Cookie, get, head, Header, PathParam, post, QueryParam, QueryParams
+from rapidy.http import (
+    Body,
+    controller,
+    Cookie,
+    Cookies,
+    FileField,
+    get,
+    head,
+    Header,
+    Headers,
+    PathParam,
+    PathParams,
+    post,
+    QueryParam,
+    QueryParams,
+)
 from rapidy.openapi import (
     create_openapi_schema,
     OpenAPIComponents,
@@ -43,6 +59,17 @@ class RoundTripModel(BaseModel):
     @property
     def total(self) -> int:
         return sum(self.raw)
+
+
+class UploadForm(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    title: str
+    attachment: FileField
+
+
+class OpenAPIState(StrEnum):
+    ready = 'ready'
 
 
 def test_openapi_schema_covers_operations_parameters_body_responses_and_components() -> None:
@@ -125,6 +152,22 @@ def test_openapi_schema_covers_operations_parameters_body_responses_and_componen
     }
 
 
+def test_multipart_file_model_has_complete_binary_component_schema() -> None:
+    @post('/upload')
+    async def upload(form: UploadForm = Body(content_type=ContentType.m_part_form_data)) -> None:
+        pass
+
+    schema = create_openapi_schema(Rapidy(http_route_handlers=[upload]).routes)
+    request_schema = schema['paths']['/upload']['post']['requestBody']['content']['multipart/form-data']['schema']
+    component_name = request_schema['$ref'].rsplit('/', 1)[-1]
+    component = schema['components']['schemas'][component_name]
+
+    file_reference = component['properties']['attachment']['$ref']
+    assert file_reference == '#/components/schemas/FileField'
+    assert schema['components']['schemas']['FileField'] == {'format': 'binary', 'type': 'string'}
+    validate(schema)
+
+
 def test_auto_head_and_hidden_routes_are_omitted_but_explicit_head_is_documented() -> None:
     @get('/visible')
     async def visible() -> str:
@@ -181,12 +224,15 @@ def test_security_schemes_global_security_and_operation_overrides_are_documented
             },
         },
         security=({'bearerAuth': ()},),
+        allow_documentation_only_security=True,
     )
 
-    schema = create_openapi_schema(
-        Rapidy(http_route_handlers=[inherited, public, scoped, optional]).routes,
-        config,
+    app = Rapidy(
+        http_route_handlers=[inherited, public, scoped, optional],
+        openapi_config=config,
     )
+    schema = app.openapi_schema
+    assert schema is not None
 
     assert schema['components']['securitySchemes'] == config.security_schemes
     assert schema['security'] == [{'bearerAuth': []}]
@@ -477,8 +523,10 @@ def test_invalid_security_metadata_is_rejected_during_schema_generation() -> Non
     async def protected() -> str:
         return 'protected'
 
+    documentation_only = OpenAPIConfig(allow_documentation_only_security=True)
+    app = Rapidy(http_route_handlers=[protected], openapi_config=documentation_only)
     with pytest.raises(OpenAPIGenerationError, match="Unknown OpenAPI security scheme 'missing'"):
-        create_openapi_schema(Rapidy(http_route_handlers=[protected]).routes)
+        create_openapi_schema(app.routes)
 
     with pytest.raises(OpenAPIGenerationError, match='requires a non-empty `scheme`'):
         create_openapi_schema(
@@ -498,18 +546,22 @@ def test_controller_security_is_inherited_and_can_be_removed_by_a_child_route() 
         async def public(self) -> str:
             return 'public'
 
-    schema = create_openapi_schema(
-        Rapidy(http_route_handlers=[AdminController]).routes,
-        OpenAPIConfig(
-            security_schemes={
-                'apiKey': {
-                    'type': 'apiKey',
-                    'name': 'X-API-Key',
-                    'in': 'header',
-                },
+    config = OpenAPIConfig(
+        security_schemes={
+            'apiKey': {
+                'type': 'apiKey',
+                'name': 'X-API-Key',
+                'in': 'header',
             },
-        ),
+        },
+        allow_documentation_only_security=True,
     )
+    app = Rapidy(
+        http_route_handlers=[AdminController],
+        openapi_config=config,
+    )
+    schema = app.openapi_schema
+    assert schema is not None
 
     assert schema['paths']['/admin/protected']['get']['security'] == [{'apiKey': []}]
     assert schema['paths']['/admin/public']['get']['security'] == []
@@ -534,6 +586,30 @@ def test_plural_query_model_expands_into_individual_openapi_parameters() -> None
         'title': 'Limit',
         'type': 'integer',
     }
+
+
+def test_non_enumerable_whole_containers_do_not_claim_unsupported_openapi_encoding() -> None:
+    @get('/inspect/{item_id}')
+    async def inspect_containers(
+        path: dict[str, str] = PathParams(),
+        headers: dict[str, str] = Headers(),
+        cookies: dict[str, str] = Cookies(),
+        query: dict[str, str] = QueryParams(),
+    ) -> str:
+        return path['item_id'] + headers.get('x-test', '') + cookies.get('session', '') + query.get('q', '')
+
+    schema = create_openapi_schema(Rapidy(http_route_handlers=[inspect_containers]).routes)
+    parameters = schema['paths']['/inspect/{item_id}']['get']['parameters']
+
+    assert parameters == [
+        {
+            'in': 'path',
+            'name': 'item_id',
+            'required': True,
+            'schema': {'type': 'string'},
+        }
+    ]
+    assert all(parameter.get('style') != 'deepObject' for parameter in parameters)
 
 
 def test_mounted_routes_use_full_paths_in_root_schema() -> None:
@@ -575,6 +651,29 @@ async def test_openapi_json_swagger_and_redoc_routes_are_served_and_not_self_doc
     assert redoc_response.status_code == 200
     assert redoc_response.headers['content-type'].startswith('text/html')
     assert 'spec-url="/schema/openapi.json"' in redoc_response.text
+
+
+@pytest.mark.asyncio
+async def test_openapi_root_path_becomes_a_default_server_without_overriding_explicit_servers() -> None:
+    inferred = Rapidy(openapi_config=OpenAPIConfig(render_plugins=()))
+    explicit = Rapidy(
+        openapi_config=OpenAPIConfig(
+            servers=({'url': 'https://api.example.test'},),
+            render_plugins=(),
+        )
+    )
+
+    inferred_transport = ASGITransport(app=inferred, root_path='/gateway')
+    explicit_transport = ASGITransport(app=explicit, root_path='/gateway')
+    async with (
+        AsyncClient(transport=inferred_transport, base_url='http://testserver') as inferred_client,
+        AsyncClient(transport=explicit_transport, base_url='http://testserver') as explicit_client,
+    ):
+        inferred_response = await inferred_client.get('/gateway/schema/openapi.json')
+        explicit_response = await explicit_client.get('/gateway/schema/openapi.json')
+
+    assert inferred_response.json()['servers'] == [{'url': '/gateway'}]
+    assert explicit_response.json()['servers'] == [{'url': 'https://api.example.test'}]
 
 
 @pytest.mark.asyncio
@@ -739,6 +838,21 @@ def test_body_media_type_and_response_type_override_are_respected() -> None:
         'format': 'binary',
         'type': 'string',
     }
+
+
+def test_inferred_response_media_type_matches_enum_and_optional_runtime_values() -> None:
+    @get('/state')
+    async def state() -> OpenAPIState:
+        return OpenAPIState.ready
+
+    @get('/label')
+    async def label() -> str | None:
+        return 'ready'
+
+    schema = create_openapi_schema(Rapidy(http_route_handlers=[state, label]).routes)
+
+    assert set(schema['paths']['/state']['get']['responses']['200']['content']) == {'text/plain'}
+    assert set(schema['paths']['/label']['get']['responses']['200']['content']) == {'text/plain'}
 
 
 def test_request_and_response_components_use_validation_and_serialization_modes() -> None:

@@ -57,9 +57,9 @@ class QuerySerialization:
 
 @dataclass(slots=True, kw_only=True)
 class CallOptions:
-    timeout: Timeout | float | None | Unset = UNSET
-    retry: RetryConfig | None | Unset = UNSET
-    auth: AuthPolicy | None | Unset = UNSET
+    timeout: Timeout | float | Unset | None = UNSET
+    retry: RetryConfig | Unset | None = UNSET
+    auth: AuthPolicy | Unset | None = UNSET
     headers: Mapping[str, str] | None = None
     deadline: float | Unset = UNSET
     follow_redirects: bool | Unset = UNSET

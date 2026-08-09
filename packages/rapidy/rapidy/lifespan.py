@@ -1,16 +1,13 @@
 from __future__ import annotations
 
 import inspect
+from collections.abc import AsyncIterator
 from contextlib import AbstractAsyncContextManager, asynccontextmanager, AsyncExitStack
-from typing import Any, cast, TYPE_CHECKING
+from typing import Any, cast
 
+from rapidy import application as _application
 from rapidy.exceptions import ASGIProtocolError
 from rapidy.typedefs import LifespanCTX, LifespanHook, Receive, Send
-
-if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
-
-    from rapidy.application import Rapidy
 
 __all__ = ('Lifespan', 'LifespanCTX', 'LifespanHook')
 
@@ -22,7 +19,7 @@ class Lifespan:
 
     def __init__(
         self,
-        app: Rapidy,
+        app: _application.Rapidy,
         *,
         on_startup: list[LifespanHook] | None = None,
         on_shutdown: list[LifespanHook] | None = None,

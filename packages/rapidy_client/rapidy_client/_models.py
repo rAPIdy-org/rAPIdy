@@ -65,6 +65,11 @@ class URL:
     def query_string(self) -> str:
         return self._url.query_string
 
+    @property
+    def is_absolute_reference(self) -> bool:
+        """Return whether a URL reference supplies a scheme or network authority."""
+        return bool(self._url.scheme) or self._url.is_absolute()
+
     def origin(self) -> str:
         return str(self._url.origin())
 
@@ -169,8 +174,8 @@ type QueryValue = (
     | datetime
     | date
     | Enum
-    | None
     | Sequence[QueryValue]
+    | None
 )
 
 
@@ -182,7 +187,7 @@ class RequestExtensions:
     timeout: Timeout
     retry: RetryConfig | None
     idempotent: bool
-    auth_override: AuthPolicy | None | Unset
+    auth_override: AuthPolicy | Unset | None
     deadline: float | None
     redirects: RedirectConfig
     declared_middlewares: tuple[Middleware, ...] = ()

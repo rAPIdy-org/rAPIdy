@@ -4,10 +4,10 @@ version = "0.1.0"
 description = "Internal shared core of the rAPIdy family. API may change while the package is 0.x."
 readme = "README.md"
 requires-python = ">=3.12"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "Daniil Grois", email = "daniil.grois@gmail.com" }]
 classifiers = [
-    "License :: OSI Approved :: MIT License",
     "Intended Audience :: Developers",
     "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3 :: Only",
@@ -28,6 +28,75 @@ build-backend = "uv_build"
 [tool.uv.build-backend]
 module-root = ""
 module-name = "rapidy_core"
+
+[tool.ruff]
+src = ["rapidy_core", "tests"]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "ANN401",  # Dynamic validation and encoding boundaries intentionally accept Any.
+    "COM812",  # Conflicts with the formatter's trailing-comma decisions.
+    "CPY001",  # Copyright is declared once in the repository LICENSE.
+    "D100",    # Package documentation is maintained outside individual modules.
+    "D104",    # Package documentation is maintained outside __init__ modules.
+    "D105",    # Magic methods inherit their protocol contract.
+    "D107",    # Constructor contracts live on their public classes.
+    "E501",    # The formatter cannot split a few generated/type-heavy declarations.
+    "EM101",   # Small public exceptions keep their message next to the raise site.
+    "FA100",   # Runtime annotation behaviour is intentionally explicit per module.
+    "FA102",   # Runtime annotation behaviour is intentionally explicit per module.
+    "FIX001",  # FIXME markers remain searchable engineering debt.
+    "PLR0911", # Branch-heavy validators are clearer with early returns.
+    "PLR0913", # Public compatibility signatures cannot become keyword-only yet.
+    "TC001",   # Runtime introspection requires first-party annotation imports.
+    "TC003",   # Runtime introspection requires selected stdlib annotation imports.
+    "TD001",   # The repository tracks work in roadmap/TODO.md.
+    "TD002",   # The repository tracks ownership in roadmap/TODO.md.
+    "TD003",   # The repository tracks issue links in roadmap/TODO.md.
+    "TD005",   # The repository tracks descriptions in roadmap/TODO.md.
+    "TRY003",  # Internal invariant failures keep their context at the raise site.
+    "UP006",   # Compatibility aliases intentionally preserve their spelling.
+    "UP035",   # Compatibility aliases intentionally preserve their import paths.
+    "UP040",   # Runtime-visible aliases preserve their pre-PEP 695 identity.
+    "UP042",   # Public string enums preserve the rAPIdy 1.x inheritance contract.
+    "UP047",   # Public generics preserve their current mypy/runtime representation.
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 16
+
+[tool.ruff.lint.pylint]
+max-branches = 15
+max-positional-args = 6
+
+[tool.ruff.lint.per-file-ignores]
+"rapidy_core/encoders.py" = ["ARG001"] # Compatibility callback parameter.
+"rapidy_core/exceptions.py" = ["N818"] # Public 1.x exception name.
+"rapidy_core/fields/model_fields.py" = ["ARG002"] # Validator protocol parameters.
+"rapidy_core/mypy/*" = ["TC002"] # Mypy owns these runtime plugin types.
+"rapidy_core/signature.py" = ["FBT001"] # Internal positional compatibility contract.
+"rapidy_core/typedefs.py" = ["N818"] # Public 1.x compatibility wrapper.
+"tests/**" = [
+    "ANN",
+    "ARG",
+    "D",
+    "FBT",
+    "PLR2004",
+    "PT006",
+    "PT007",
+    "PT030",
+    "S101",
+    "SLF001",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
 
 [tool.pytest.ini_options]
 filterwarnings = ["error"]

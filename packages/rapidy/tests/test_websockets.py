@@ -26,6 +26,7 @@ from rapidy.http import (
     websocket,
     WebSocketDisconnect,
 )
+from rapidy.middlewares import TrustedHostMiddleware
 from rapidy.routing.http.base import IncorrectPathError
 from rapidy.routing.http.routers import (
     BodyNotAvailableInWebSocketHandlerError,
@@ -34,6 +35,7 @@ from rapidy.routing.http.routers import (
     WebSocketFieldAlreadyExistsError,
 )
 from rapidy.routing.matcher import DuplicateRouteError, UrlMatcher
+from rapidy.security import SecurityConfig, WebSocketSecurityConfig
 from rapidy.websockets import (
     WebSocketClosedError,
     WebSocketFrameTypeError,
@@ -210,6 +212,51 @@ async def test_close_rejects_without_accept() -> None:
     assert transport.sent == [{'type': 'websocket.close', 'code': 1000, 'reason': ''}]
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    'send_error',
+    [
+        OSError('peer disconnected'),
+        RuntimeError('ASGI flow error: Transport not initialized or closed'),
+    ],
+)
+async def test_send_side_peer_disconnect_maps_to_websocket_disconnect(send_error: Exception) -> None:
+    transport = FakeWSTransport([{'type': 'websocket.connect'}])
+
+    async def send(message: dict[str, Any]) -> None:
+        if message['type'] == 'websocket.send':
+            raise send_error
+        await transport.send(message)
+
+    ws = WebSocket(ws_scope(), transport.receive, send)
+    await ws.accept()
+
+    with pytest.raises(WebSocketDisconnect) as captured:
+        await ws.send_text('payload')
+
+    assert captured.value.code == 1006
+    assert ws.client_state is ws.application_state is WebSocketState.DISCONNECTED
+
+
+@pytest.mark.asyncio
+async def test_send_runtime_error_that_is_not_a_transport_disconnect_propagates() -> None:
+    transport = FakeWSTransport([{'type': 'websocket.connect'}])
+
+    async def send(message: dict[str, Any]) -> None:
+        if message['type'] == 'websocket.send':
+            msg = 'application transport bug'
+            raise RuntimeError(msg)
+        await transport.send(message)
+
+    ws = WebSocket(ws_scope(), transport.receive, send)
+    await ws.accept()
+
+    with pytest.raises(RuntimeError, match='application transport bug'):
+        await ws.send_text('payload')
+
+    assert ws.client_state is ws.application_state is WebSocketState.CONNECTED
+
+
 def test_no_circular_imports_from_websocket_transport() -> None:
     source_path = inspect.getsourcefile(WebSocket)
     assert source_path is not None
@@ -337,6 +384,91 @@ async def test_ws_not_found_and_invalid_params_reject_handshake() -> None:
     assert not_found == [{'type': 'websocket.close', 'code': 1000}]
     assert invalid == [{'type': 'websocket.close', 'code': 1000, 'reason': ''}]
     assert all(message['type'] != 'websocket.accept' for message in [*not_found, *invalid])
+
+
+@pytest.mark.asyncio
+async def test_ws_host_and_origin_policy_rejects_before_handler() -> None:
+    calls = 0
+
+    @websocket('/ws')
+    async def handler(connection: WebSocket) -> None:
+        nonlocal calls
+        calls += 1
+        await connection.accept()
+
+    app = Rapidy(
+        security=SecurityConfig(
+            websocket=WebSocketSecurityConfig(
+                allowed_hosts=('api.example', '*.service.example'),
+                allowed_origins=('https://app.example',),
+            ),
+        ),
+        http_route_handlers=[handler],
+    )
+    allowed = await run_ws(
+        app,
+        '/ws',
+        [{'type': 'websocket.connect'}],
+        headers=[(b'host', b'api.example:8443'), (b'origin', b'https://app.example')],
+    )
+    wildcard_host = await run_ws(
+        app,
+        '/ws',
+        [{'type': 'websocket.connect'}],
+        headers=[(b'host', b'chat.service.example'), (b'origin', b'https://app.example')],
+    )
+    missing_origin = await run_ws(
+        app,
+        '/ws',
+        [{'type': 'websocket.connect'}],
+        headers=[(b'host', b'api.example')],
+    )
+    wrong_origin = await run_ws(
+        app,
+        '/ws',
+        [{'type': 'websocket.connect'}],
+        headers=[(b'host', b'api.example'), (b'origin', b'https://evil.example')],
+    )
+    duplicate_origin = await run_ws(
+        app,
+        '/ws',
+        [{'type': 'websocket.connect'}],
+        headers=[
+            (b'host', b'api.example'),
+            (b'origin', b'https://app.example'),
+            (b'origin', b'https://evil.example'),
+        ],
+    )
+    wrong_host = await run_ws(
+        app,
+        '/ws',
+        [{'type': 'websocket.connect'}],
+        headers=[(b'host', b'evil.example'), (b'origin', b'https://app.example')],
+    )
+
+    assert allowed[0]['type'] == wildcard_host[0]['type'] == 'websocket.accept'
+    assert calls == 2
+    for rejected in (missing_origin, wrong_origin, duplicate_origin, wrong_host):
+        assert rejected == [{'type': 'websocket.close', 'code': 1008, 'reason': 'Forbidden'}]
+
+
+@pytest.mark.asyncio
+async def test_http_trusted_host_middleware_is_not_a_websocket_policy() -> None:
+    @websocket('/ws')
+    async def handler(connection: WebSocket) -> None:
+        await connection.accept()
+
+    app = Rapidy(
+        middlewares=[TrustedHostMiddleware(('api.example',))],
+        http_route_handlers=[handler],
+    )
+    sent = await run_ws(
+        app,
+        '/ws',
+        [{'type': 'websocket.connect'}],
+        headers=[(b'host', b'evil.example'), (b'origin', b'https://evil.example')],
+    )
+    assert sent[0]['type'] == 'websocket.accept'
 
 
 @pytest.mark.asyncio

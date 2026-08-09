@@ -15,6 +15,7 @@ from collections.abc import (
 )
 from dataclasses import dataclass
 from importlib import metadata
+from ipaddress import ip_address
 from typing import TYPE_CHECKING, Final, Literal, TypedDict, cast
 
 import httpcore2
@@ -77,6 +78,57 @@ class _TraceState:
             and self.connection_reused is None
         ):
             self.connection_reused = True
+
+
+def _no_proxy_mounts(proxy: ProxyConfig | None) -> dict[str, None]:
+    if proxy is None or not proxy.no_proxy:
+        return {}
+    values = {value.strip() for value in proxy.no_proxy}
+    if "" in values:
+        raise ValueError("no_proxy entries must be non-empty")
+    if "*" in values:
+        return {"all://": None, "http://": None, "https://": None}
+
+    mounts: dict[str, None] = {}
+    for value in values:
+        if "://" in value:
+            url = httpx2.URL(value)
+            if (
+                url.scheme not in {"all", "http", "https"}
+                or not url.host
+                or url.path not in {"", "/"}
+                or url.query
+            ):
+                raise ValueError(
+                    "no_proxy URL entries must contain only an all/http/https "
+                    "scheme, host, and optional port"
+                )
+            mounts[value] = None
+            continue
+        if "/" in value:
+            raise ValueError("no_proxy CIDR and path entries are not supported")
+        if value.startswith("."):
+            if len(value) == 1:
+                raise ValueError("no_proxy domain suffix must not be empty")
+            mounts[f"all://*{value}"] = None
+            continue
+        if value.startswith("*."):
+            if len(value) == 2:
+                raise ValueError("no_proxy wildcard suffix must not be empty")
+            mounts[f"all://{value}"] = None
+            continue
+        if "*" in value:
+            raise ValueError("no_proxy wildcard is supported only as '*' or '*.domain'")
+
+        address_value = value[1:-1] if value.startswith("[") and value.endswith("]") else value
+        try:
+            address = ip_address(address_value)
+        except ValueError:
+            mounts[f"all://*{value}"] = None
+        else:
+            host = f"[{address}]" if address.version == 6 else str(address)
+            mounts[f"all://{host}"] = None
+    return mounts
 
 
 @dataclass(slots=True)
@@ -294,6 +346,7 @@ class HttpxTransport(BaseTransport):
         self._limits = limits
         self._tls = tls
         self._proxy = proxy
+        self._no_proxy_mounts = _no_proxy_mounts(proxy)
         self._cookies = cookies
         self._observers: tuple[Observer, ...] = tuple(observers)
         self._default_headers = dict(default_headers)
@@ -357,6 +410,7 @@ class HttpxTransport(BaseTransport):
                 verify=self._build_ssl(),
                 cert=self._build_cert(),
                 proxy=self._build_proxy(),
+                mounts=self._no_proxy_mounts or None,
                 trust_env=(self._proxy.trust_env if self._proxy is not None else False),
             )
         return self._client
@@ -589,9 +643,10 @@ class HttpxTransport(BaseTransport):
 
             if self._cookies == "disabled":
                 client.cookies.clear()
-            assert not hasattr(native_response, "_status_raised"), (
-                "status exceptions must never be raised by the transport"
-            )
+            if hasattr(native_response, "_status_raised"):
+                raise RuntimeError(
+                    "status exceptions must never be raised by the transport"
+                )
             response_extensions = ResponseExtensions(
                 elapsed=time.monotonic() - started,
                 attempt=request.extensions.attempt,

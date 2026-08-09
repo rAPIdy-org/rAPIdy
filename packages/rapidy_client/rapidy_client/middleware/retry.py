@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import random
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
 
 from rapidy_client._clock import Clock
@@ -66,7 +66,8 @@ class RetryMiddleware:
             self._notify_listeners(request, outcome)
             if exception is not None:
                 raise exception
-            assert response is not None
+            if response is None:
+                raise RuntimeError("request attempt produced neither response nor exception")
             return response
 
         self._replenish(config)
@@ -99,7 +100,10 @@ class RetryMiddleware:
                     raise exception
                 reason = retry_reason_network(exception)
             else:
-                assert response is not None
+                if response is None:
+                    raise RuntimeError(
+                        "request attempt produced neither response nor exception"
+                    )
                 if response.status not in config.statuses:
                     return response
                 reason = retry_reason_status(response.status)
@@ -143,7 +147,8 @@ class RetryMiddleware:
 
         if last_exception is not None:
             raise last_exception
-        assert last_response is not None
+        if last_response is None:
+            raise RuntimeError("retry loop ended without a response or exception")
         return last_response
 
     def _retryable_method(self, request: Request, config: RetryConfig) -> bool:
@@ -170,8 +175,8 @@ class RetryMiddleware:
         if parsed is None:
             return None
         if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=timezone.utc)
-        delta = parsed.timestamp() - datetime.now(timezone.utc).timestamp()
+            parsed = parsed.replace(tzinfo=UTC)
+        delta = parsed.timestamp() - datetime.now(UTC).timestamp()
         return delta if delta > 0 else None
 
     def _compute_delay(

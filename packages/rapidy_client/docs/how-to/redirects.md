@@ -18,7 +18,10 @@ response = await client.get("/products", follow_redirects=False)
 The client follows `301`, `302`, `303`, `307`, and `308` responses that contain
 `Location`. A `303` changes every method except `HEAD` to `GET`; `301` and `302`
 change `POST` to `GET`; `307` and `308` preserve method and body. Use
-`ContentFactory` when a preserved request body must be replayable.
+`ContentFactory` when a preserved request body must be replayable. A redirect
+that would preserve a one-shot `AsyncIterable` body closes the intermediate
+response and raises `RedirectBodyNotReplayableError`; it never sends a second
+request with a consumed or empty body.
 
 ## Redirect security
 
@@ -34,7 +37,10 @@ config = UpstreamConfig(
 ```
 
 When the origin changes, the client removes `Authorization`, `Cookie`,
-`Proxy-Authorization`, and `Host`. Secret stripping can be disabled with
+`Proxy-Authorization`, and `Host`, including values inherited from
+`UpstreamConfig.default_headers`. Default headers are materialized on the
+framework request before middleware runs, and per-request headers override them
+case-insensitively. Secret stripping can be disabled with
 `strip_auth_on_origin_change=False`, but that should be reserved for trusted
 origins. Exceeding `max_redirects` raises `TooManyRedirectsError`; a blocked
 cross-origin hop raises `RedirectNotAllowedError`. Intermediate responses are
@@ -61,7 +67,7 @@ bytes are retained in `error.response`. The default is 65536 bytes.
 ## Content-Encoding
 
 `gzip` and incoming `deflate` are always supported. Install `rapidy-client[brotli]`
-for `br`; install `rapidy-client[zstd]` on Python 3.13 for `zstd` (Python 3.14+
+for `br`; install `rapidy-client[zstd]` on Python 3.12/3.13 for `zstd` (Python 3.14+
 uses `compression.zstd`). `Accept-Encoding` advertises only codecs available in
 the current runtime. An unsupported encoding raises `DecodeError` with the
 required extra in its message.

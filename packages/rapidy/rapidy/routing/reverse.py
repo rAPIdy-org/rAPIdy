@@ -77,7 +77,10 @@ def render_path_template(template: str, values: Mapping[str, object], *, route_n
         if parameter not in values:
             raise MissingPathParameterError(name=route_name, parameter=parameter)
         safe = '/' if separator and expression in {'.*', '.+'} else ''
-        rendered = quote(str(values[parameter]), safe=safe)
+        raw_value = str(values[parameter])
+        if not safe and '/' in raw_value:
+            raise InvalidPathParameterError(name=route_name)
+        rendered = quote(raw_value, safe=safe)
         if safe and any(part in {'.', '..'} for part in rendered.split('/')):
             raise InvalidPathParameterError(name=route_name)
         chunks.append(rendered)

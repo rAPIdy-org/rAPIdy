@@ -132,6 +132,14 @@ def test_url_origin() -> None:
     assert URL("https://h:8443/p?x=1").origin() == "https://h:8443"
 
 
+def test_url_absolute_reference_detection() -> None:
+    assert URL("https://h/path").is_absolute_reference
+    assert URL("//h/path").is_absolute_reference
+    assert URL("https:path").is_absolute_reference
+    assert not URL("/path").is_absolute_reference
+    assert not URL("path").is_absolute_reference
+
+
 def test_url_no_yarl_leak() -> None:
     url = URL("https://h/p")
     assert type(url.scheme) is str
@@ -370,6 +378,10 @@ def test_auth_policy_is_protocol() -> None:
 def test_facade_reexports_unset() -> None:
     assert rapidy_client.UNSET is rapidy_core.UNSET
     assert rapidy_client.Unset is rapidy_core.Unset
+
+
+def test_facade_root_collision_policy() -> None:
+    assert set(rapidy_client.__all__) & set(rapidy_core.__all__) == {"UNSET", "Unset"}
 
 
 def test_facade_no_markers() -> None:

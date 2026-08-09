@@ -64,7 +64,7 @@ app = Rapidy(
     middlewares=[
         ProxyHeadersMiddleware(['10.0.0.0/8', '192.0.2.10']),
         TrustedHostMiddleware(['api.example.com', '*.internal.example.com']),
-        HTTPSRedirectMiddleware(),
+        HTTPSRedirectMiddleware(['api.example.com', '*.internal.example.com']),
         RequestIDMiddleware(),
         CORSMiddleware(
             allow_origins=['https://console.example.com'],
@@ -81,10 +81,15 @@ app = Rapidy(
 `ProxyHeadersMiddleware` accepts standardized `Forwarded` and `X-Forwarded-*` metadata only when the immediate ASGI
 peer belongs to `trusted_proxies`. It walks the address chain from the trusted edge towards the first untrusted hop.
 Never list a broad network unless every proxy in it overwrites or sanitizes forwarding fields.
+The built-in Uvicorn launcher disables Uvicorn's separate proxy-header rewriting by default, so this middleware owns
+the trust boundary. Passing `proxy_headers=True` to `run_app()` is an explicit alternative and should not be combined
+with an independently configured trust policy by accident.
 
 `TrustedHostMiddleware` accepts exact names and leading `*.` subdomain patterns, rejects missing/duplicate/invalid
-`Host`, and can redirect the bare name to an allowed `www.` name. `HTTPSRedirectMiddleware` preserves the raw path
-and query and uses 307 by default. It must run after trusted proxy normalization when TLS terminates at the edge.
+`Host`, and can redirect the bare name to an allowed `www.` name. `HTTPSRedirectMiddleware` requires its own exact or
+leading-wildcard host allowlist, preserves the raw path and query, and uses 307 by default. This prevents an
+attacker-controlled `Host` from becoming an off-site redirect even if the middleware is accidentally used without
+`TrustedHostMiddleware`. It must run after trusted proxy normalization when TLS terminates at the edge.
 
 `RequestIDMiddleware` accepts one safe `X-Request-ID` or generates a UUID, stores `request_id` and
 `request_context` in `request.state`, adds the response field on success and framework errors, and exposes
@@ -111,8 +116,26 @@ The complete executable configuration is
 
 ## `HTTPRouter` and mounts
 
+Application middleware wraps HTTP dispatch only. WebSocket handshakes use security requirements, guards, and
+`WebSocketSecurityConfig`; CORS and `TrustedHostMiddleware` must not be assumed to protect WebSockets.
+
 `HTTPRouter(prefix, handlers, ...)` creates a nested application. Routers can be nested recursively and have their own
-middleware, `client_max_size`, startup/shutdown/cleanup hooks, and lifespan contexts. Matching uses the longest mount
-prefix. The request's `app` is rebound while the child handles it, while DI remains rooted in the parent container.
+middleware, `client_max_size`, `multipart_limits`, startup/shutdown/cleanup hooks, and lifespan contexts. Matching uses
+the longest mount prefix. The request's `app` is rebound while the child handles it, while DI remains rooted in the
+parent container.
 
 Routes are frozen at startup. Register handlers and mounts before the lifespan begins.
+
+### Custom route regular expressions
+
+`{name}` uses the built-in segment matcher. A template such as `{item_id:\d+}` embeds a Python regular expression
+and is evaluated synchronously in the event loop for every candidate route. rAPIdy validates template structure and
+compiles the expression at registration, but Python's `re` engine does not provide a match timeout or a linear-time
+guarantee. Compilation success therefore does not mean that an expression is resistant to catastrophic
+backtracking.
+
+Treat custom route expressions as trusted application source: never construct them from requests, tenant data, or
+unreviewed runtime configuration. Prefer the built-in matcher or simple anchored character classes and bounded
+quantifiers; avoid nested/ambiguous quantifiers, backreferences, and complex lookarounds. Applications that require
+untrusted or dynamically supplied patterns need a separately sandboxed/linear-time matcher at another boundary;
+rAPIdy's custom route syntax is not such a sandbox.

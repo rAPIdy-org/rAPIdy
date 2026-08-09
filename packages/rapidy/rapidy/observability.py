@@ -208,6 +208,13 @@ def instrument_app(
         return f'{method} {template}', {'http.route': template}
 
     def request_hook(span: Any, scope: ASGIScope) -> None:
+        route = str(scope.get('_rapidy_route_template', _UNMATCHED_ROUTE))
+        # The official ASGI middleware records the concrete target/full URL
+        # before invoking this hook. Replace high-cardinality paths and query
+        # strings with the same route template used by span names and logs.
+        for attribute in ('http.target', 'http.url', 'url.full', 'url.path'):
+            span.set_attribute(attribute, route)
+        span.set_attribute('url.query', '')
         span_context = span.get_span_context()
         trace_id = getattr(span_context, 'trace_id', 0)
         if isinstance(trace_id, int) and trace_id:
@@ -284,7 +291,9 @@ def _trace_id(scope: Mapping[str, Any]) -> str | None:
 
 def _application_path(scope: Mapping[str, Any]) -> str:
     path = str(scope.get('path', '/'))
-    root_path = str(scope.get('root_path', ''))
-    if root_path and path.startswith(root_path):
-        return path[len(root_path) :] or '/'
+    root_path = str(scope.get('root_path', '')).rstrip('/')
+    if root_path and path == root_path:
+        return '/'
+    if root_path and path.startswith(f'{root_path}/'):
+        return path[len(root_path) :]
     return path

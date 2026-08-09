@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import ast
 import functools
 import inspect
 import re
-import textwrap
 import types
 import typing
 from collections.abc import AsyncIterable, Awaitable, Callable, Mapping, Sequence
@@ -19,6 +17,7 @@ from rapidy_core.signature import get_signature_raw_info
 from rapidy_core.typedefs import Required, Undefined
 
 from rapidy_client._content import ContentFactory, FilePart
+from rapidy_client._declaration import declaration_body_is_declarative
 from rapidy_client._models import Middleware, QueryValue, Response, Result, Timeout
 from rapidy_client.errors import SchemaDefinitionError
 
@@ -66,7 +65,7 @@ class _ClientLike(Protocol):
     ) -> AbstractAsyncContextManager[Response]: ...
 
 
-type ErrorModel = type[BaseModel] | Mapping[int, type[BaseModel]] | None | Unset
+type ErrorModel = type[BaseModel] | Mapping[int, type[BaseModel]] | Unset | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,8 +77,8 @@ class _EndpointDeclaration:
     has_self: bool
     path_param_names: frozenset[str]
     signature_param_names: tuple[str, ...]
-    timeout: Timeout | float | None | Unset = UNSET
-    retry: RetryConfig | None | Unset = UNSET
+    timeout: Timeout | float | Unset | None = UNSET
+    retry: RetryConfig | Unset | None = UNSET
     deadline: float | Unset = UNSET
     follow_redirects: bool | Unset = UNSET
     idempotent: bool | Unset = UNSET
@@ -95,8 +94,8 @@ class _EndpointDeclaration:
 class _ControllerDeclaration:
     prefix: str
     cls_qualname: str
-    timeout: Timeout | float | None | Unset = UNSET
-    retry: RetryConfig | None | Unset = UNSET
+    timeout: Timeout | float | Unset | None = UNSET
+    retry: RetryConfig | Unset | None = UNSET
     deadline: float | Unset = UNSET
     follow_redirects: bool | Unset = UNSET
     idempotent: bool | Unset = UNSET
@@ -111,8 +110,8 @@ class _ControllerDeclaration:
 class _EffectiveDeclaration:
     http_method: str
     full_path: str
-    timeout: Timeout | float | None | Unset
-    retry: RetryConfig | None | Unset
+    timeout: Timeout | float | Unset | None
+    retry: RetryConfig | Unset | None
     deadline: float | Unset
     follow_redirects: bool | Unset
     idempotent: bool | Unset
@@ -182,7 +181,7 @@ class _ControllerMethodDescriptor:
         if obj is None:
             return effective
 
-        instance = cast(Any, obj)
+        instance = cast("Any", obj)
         resolved = instance._rapidy_bound[self._name]
         client = instance._rapidy_client
 
@@ -210,49 +209,11 @@ def _check_async(func: Callable[..., Any], qualname: str) -> None:
 
 
 def _check_empty_body(func: Callable[..., Any], qualname: str) -> None:
-    try:
-        tree = ast.parse(textwrap.dedent(inspect.getsource(func)))
-    except (OSError, SyntaxError, TypeError) as exc:
+    if not declaration_body_is_declarative(func):
         raise _schema_error(
-            qualname, f"cannot inspect declaration body: {exc}"
-        ) from exc
-
-    node = next(
-        (
-            item
-            for item in ast.walk(tree)
-            if isinstance(item, ast.AsyncFunctionDef) and item.name == func.__name__
-        ),
-        None,
-    )
-    if node is None:
-        raise _schema_error(qualname, "cannot locate declaration body")
-
-    body = list(node.body)
-    if body and isinstance(body[0], ast.Expr):
-        value = body[0].value
-        if isinstance(value, ast.Constant) and isinstance(value.value, str):
-            body.pop(0)
-    if not body:
-        return
-    if len(body) == 1 and isinstance(body[0], ast.Pass):
-        return
-    if len(body) == 1 and isinstance(body[0], ast.Expr):
-        value = body[0].value
-        if isinstance(value, ast.Constant) and value.value is Ellipsis:
-            return
-    if len(body) == 1 and isinstance(body[0], ast.Raise):
-        raised = body[0].exc
-        if (
-            isinstance(raised, ast.Call)
-            and isinstance(raised.func, ast.Name)
-            and raised.func.id == "NotImplementedError"
-        ) or (isinstance(raised, ast.Name) and raised.id == "NotImplementedError"):
-            return
-    raise _schema_error(
-        qualname,
-        "body must contain only pass, ..., a docstring, or raise NotImplementedError",
-    )
+            qualname,
+            "body must contain only pass, ..., a docstring, or raise NotImplementedError",
+        )
 
 
 def _stage1_signature_scan(
@@ -499,7 +460,7 @@ def _resolve_signature(effective: _EffectiveDeclaration) -> _ResolvedSignature:
     try:
         response_plan = build_response_plan(
             return_annotation=return_annotation,
-            response_validate=cast(bool, options.get("response_validate", True)),
+            response_validate=cast("bool", options.get("response_validate", True)),
             response_type=cast("type[BaseModel] | None", options.get("response_type")),
             statuses=(
                 None
@@ -596,7 +557,7 @@ def _dispatch(
     form_values: dict[str, str] = {}
     file_parts: list[FilePart] = []
     serialization_options = effective.serialization_options
-    aggregate_by_alias = cast(bool, serialization_options.get("request_by_alias", True))
+    aggregate_by_alias = cast("bool", serialization_options.get("request_by_alias", True))
     for data_attr in resolved.data_attrs:
         field_info = data_attr.field_info
         parameter_name = field_info.name
@@ -624,7 +585,7 @@ def _dispatch(
                 )
         elif param_type is HTTPRequestParamType.query:
             if field_info.extract_single:
-                query_values[wire_name] = cast(QueryValue, value)
+                query_values[wire_name] = cast("QueryValue", value)
             elif isinstance(value, BaseModel):
                 query_values.update(
                     cast(
@@ -692,7 +653,7 @@ def _dispatch(
         elif isinstance(previous, list):
             previous.append(value)
         else:
-            query[name] = [cast(str, previous), value]
+            query[name] = [cast("str", previous), value]
 
     header_map = dict(serialize_headers(header_values))
     cookie_header = serialize_cookies(cookie_values)
@@ -720,23 +681,23 @@ def _dispatch(
             request_include_fields=serialization_options.get("request_include_fields"),
             request_exclude_fields=serialization_options.get("request_exclude_fields"),
             request_by_alias=cast(
-                bool, serialization_options.get("request_by_alias", True)
+                "bool", serialization_options.get("request_by_alias", True)
             ),
             request_exclude_unset=cast(
-                bool, serialization_options.get("request_exclude_unset", False)
+                "bool", serialization_options.get("request_exclude_unset", False)
             ),
             request_exclude_defaults=cast(
-                bool, serialization_options.get("request_exclude_defaults", False)
+                "bool", serialization_options.get("request_exclude_defaults", False)
             ),
             request_exclude_none=cast(
-                bool, serialization_options.get("request_exclude_none", False)
+                "bool", serialization_options.get("request_exclude_none", False)
             ),
             request_custom_encoder=serialization_options.get("request_custom_encoder"),
             request_json_encoder=serialization_options.get(
                 "request_json_encoder", DEFAULT_JSON_ENCODER
             ),
             request_charset=cast(
-                str, serialization_options.get("request_charset", "utf-8")
+                "str", serialization_options.get("request_charset", "utf-8")
             ),
         )
         header_map.setdefault("Content-Type", content_type)
@@ -788,8 +749,8 @@ def _build_decorator(
     http_method: str,
     path: str,
     *,
-    timeout: Timeout | float | None | Unset,
-    retry: RetryConfig | None | Unset,
+    timeout: Timeout | float | Unset | None,
+    retry: RetryConfig | Unset | None,
     deadline: float | Unset,
     follow_redirects: bool | Unset,
     idempotent: bool | Unset,
@@ -830,7 +791,7 @@ def _build_decorator(
             serialization_options=dict(serialization_options),
         )
         endpoint = Endpoint(_effective_functional(declaration))
-        return cast(Callable[P, Awaitable[R]], endpoint)
+        return cast("Callable[P, Awaitable[R]]", endpoint)
 
     return decorate
 
@@ -839,8 +800,8 @@ def _method(
     http_method: str,
     path: str,
     *,
-    timeout: Timeout | float | None | Unset = UNSET,
-    retry: RetryConfig | None | Unset = UNSET,
+    timeout: Timeout | float | Unset | None = UNSET,
+    retry: RetryConfig | Unset | None = UNSET,
     deadline: float | Unset = UNSET,
     follow_redirects: bool | Unset = UNSET,
     idempotent: bool | Unset = UNSET,
@@ -876,8 +837,8 @@ def _method(
 def get(
     path: str,
     *,
-    timeout: Timeout | float | None | Unset = UNSET,
-    retry: RetryConfig | None | Unset = UNSET,
+    timeout: Timeout | float | Unset | None = UNSET,
+    retry: RetryConfig | Unset | None = UNSET,
     deadline: float | Unset = UNSET,
     follow_redirects: bool | Unset = UNSET,
     idempotent: bool | Unset = UNSET,
@@ -908,8 +869,8 @@ def get(
 def post(
     path: str,
     *,
-    timeout: Timeout | float | None | Unset = UNSET,
-    retry: RetryConfig | None | Unset = UNSET,
+    timeout: Timeout | float | Unset | None = UNSET,
+    retry: RetryConfig | Unset | None = UNSET,
     deadline: float | Unset = UNSET,
     follow_redirects: bool | Unset = UNSET,
     idempotent: bool | Unset = UNSET,
@@ -940,8 +901,8 @@ def post(
 def put(
     path: str,
     *,
-    timeout: Timeout | float | None | Unset = UNSET,
-    retry: RetryConfig | None | Unset = UNSET,
+    timeout: Timeout | float | Unset | None = UNSET,
+    retry: RetryConfig | Unset | None = UNSET,
     deadline: float | Unset = UNSET,
     follow_redirects: bool | Unset = UNSET,
     idempotent: bool | Unset = UNSET,
@@ -972,8 +933,8 @@ def put(
 def patch(
     path: str,
     *,
-    timeout: Timeout | float | None | Unset = UNSET,
-    retry: RetryConfig | None | Unset = UNSET,
+    timeout: Timeout | float | Unset | None = UNSET,
+    retry: RetryConfig | Unset | None = UNSET,
     deadline: float | Unset = UNSET,
     follow_redirects: bool | Unset = UNSET,
     idempotent: bool | Unset = UNSET,
@@ -1004,8 +965,8 @@ def patch(
 def delete(
     path: str,
     *,
-    timeout: Timeout | float | None | Unset = UNSET,
-    retry: RetryConfig | None | Unset = UNSET,
+    timeout: Timeout | float | Unset | None = UNSET,
+    retry: RetryConfig | Unset | None = UNSET,
     deadline: float | Unset = UNSET,
     follow_redirects: bool | Unset = UNSET,
     idempotent: bool | Unset = UNSET,
@@ -1036,8 +997,8 @@ def delete(
 def head(
     path: str,
     *,
-    timeout: Timeout | float | None | Unset = UNSET,
-    retry: RetryConfig | None | Unset = UNSET,
+    timeout: Timeout | float | Unset | None = UNSET,
+    retry: RetryConfig | Unset | None = UNSET,
     deadline: float | Unset = UNSET,
     follow_redirects: bool | Unset = UNSET,
     idempotent: bool | Unset = UNSET,
@@ -1068,8 +1029,8 @@ def head(
 def options(
     path: str,
     *,
-    timeout: Timeout | float | None | Unset = UNSET,
-    retry: RetryConfig | None | Unset = UNSET,
+    timeout: Timeout | float | Unset | None = UNSET,
+    retry: RetryConfig | Unset | None = UNSET,
     deadline: float | Unset = UNSET,
     follow_redirects: bool | Unset = UNSET,
     idempotent: bool | Unset = UNSET,
@@ -1100,8 +1061,8 @@ def options(
 def controller(
     prefix: str,
     *,
-    timeout: Timeout | float | None | Unset = UNSET,
-    retry: RetryConfig | None | Unset = UNSET,
+    timeout: Timeout | float | Unset | None = UNSET,
+    retry: RetryConfig | Unset | None = UNSET,
     deadline: float | Unset = UNSET,
     follow_redirects: bool | Unset = UNSET,
     idempotent: bool | Unset = UNSET,
@@ -1163,7 +1124,7 @@ def bind(target: Any, client: _ClientLike) -> Any:
             client, target._effective, _resolve_signature(target._effective)
         )
     if isinstance(target, type) and hasattr(target, "__rapidy_endpoints__"):
-        instance = cast(Any, target).__new__(target)
+        instance = cast("Any", target).__new__(target)
         object.__setattr__(instance, "_rapidy_client", client)
         resolved = {
             name: _resolve_signature(effective)

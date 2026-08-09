@@ -7,7 +7,18 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 DENY_HEADERS: frozenset[str] = frozenset(
     {"authorization", "proxy-authorization", "cookie", "set-cookie", "x-api-key"}
 )
-DENY_QUERY: frozenset[str] = frozenset({"token", "api_key", "signature"})
+DENY_QUERY: frozenset[str] = frozenset(
+    {
+        "access_token",
+        "api_key",
+        "client_secret",
+        "id_token",
+        "password",
+        "refresh_token",
+        "signature",
+        "token",
+    }
+)
 REDACTED = "<redacted>"
 MAX_VALUE_LEN = 256
 CROP_SUFFIX = "…(cropped)"
@@ -52,10 +63,14 @@ class Redactor:
 
     def redact_url_str(self, url_str: str) -> str:
         parts = urlsplit(url_str)
+        netloc = parts.netloc
+        if "@" in netloc:
+            _userinfo, authority = netloc.rsplit("@", 1)
+            netloc = f"{REDACTED}@{authority}"
         return urlunsplit(
             (
                 parts.scheme,
-                parts.netloc,
+                netloc,
                 parts.path,
                 self.redact_query_string(parts.query),
                 parts.fragment,
@@ -63,7 +78,11 @@ class Redactor:
         )
 
     def redact_text(self, text: str) -> str:
-        result = text
+        result = re.sub(
+            r"(?i)(\b[a-z][a-z0-9+.-]*://)([^/@\s]+)@",
+            lambda match: f"{match.group(1)}{REDACTED}@",
+            text,
+        )
         for name in self._deny_headers | self._deny_query:
             escaped = re.escape(name)
             result = re.sub(

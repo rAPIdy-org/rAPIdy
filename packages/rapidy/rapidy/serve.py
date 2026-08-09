@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+from pathlib import Path
 from typing import Any
 
 from rapidy_core.exceptions import RapidyException
@@ -20,6 +22,7 @@ def run_app(
     host: str = '0.0.0.0',  # noqa: S104
     port: int = 8080,
     *,
+    app_dir: str | os.PathLike[str] | None = None,
     workers: int = 1,
     timeout_graceful_shutdown: int | None = None,
     **server_kwargs: Any,
@@ -33,6 +36,12 @@ def run_app(
     if not isinstance(app, str) and (workers != 1 or bool(server_kwargs.get('reload'))):
         msg = "Uvicorn reload and multiple workers require an application import string such as 'main:app'"
         raise ValueError(msg)
+
+    if app_dir is not None:
+        server_kwargs['app_dir'] = os.fspath(app_dir)
+    elif isinstance(app, str):
+        server_kwargs['app_dir'] = str(Path.cwd())
+    server_kwargs.setdefault('proxy_headers', False)
 
     uvicorn.run(
         app,

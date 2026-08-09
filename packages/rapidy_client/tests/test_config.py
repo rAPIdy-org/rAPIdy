@@ -192,6 +192,50 @@ def test_http_settings_file_secret(
     )
 
 
+def test_tls_ca_file_env_targets_declared_path_field(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _clear_client_env(monkeypatch)
+    ca_file = tmp_path / "ca.pem"
+    ca_file.write_text("certificate data", encoding="utf-8")
+    monkeypatch.setenv(
+        "RAPIDY_CLIENT__UPSTREAMS__BILLING__BASE_URL",
+        "https://billing.example.com",
+    )
+    monkeypatch.setenv(
+        "RAPIDY_CLIENT__UPSTREAMS__BILLING__TLS__CA_FILE",
+        str(ca_file),
+    )
+
+    settings = HttpSettings()
+
+    assert settings.upstreams["billing"].tls.ca_file == ca_file
+
+
+def test_tls_ca_file_file_is_unambiguous_file_backed_companion(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    _clear_client_env(monkeypatch)
+    ca_file = tmp_path / "ca.pem"
+    ca_file.write_text("certificate data", encoding="utf-8")
+    ca_path_secret = tmp_path / "ca-path"
+    ca_path_secret.write_text(f"{ca_file}\n", encoding="utf-8")
+    monkeypatch.setenv(
+        "RAPIDY_CLIENT__UPSTREAMS__BILLING__BASE_URL",
+        "https://billing.example.com",
+    )
+    monkeypatch.setenv(
+        "RAPIDY_CLIENT__UPSTREAMS__BILLING__TLS__CA_FILE_FILE",
+        str(ca_path_secret),
+    )
+
+    settings = HttpSettings()
+
+    assert settings.upstreams["billing"].tls.ca_file == ca_file
+
+
 def test_http_settings_typo_fails_validation(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

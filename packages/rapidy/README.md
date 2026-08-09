@@ -14,9 +14,15 @@ independent alternatives.
 - Typed package with `py.typed`
 - Preserves the `import rapidy` application API from 1.x
 
-## Install
+## Public imports
 
-After the 2.0 packages are published:
+The root facade is intentionally small and stable: import `Rapidy` and
+`run_app` from `rapidy`; import HTTP handlers and markers from `rapidy.http`,
+and use the owned `rapidy.security`, `rapidy.testing`, `rapidy.openapi`, and
+`rapidy.middlewares` facades for those features. Names from `rapidy_client`
+belong to the outbound-client domain and are not re-exported by the server.
+
+## Install
 
 ```bash
 python -m pip install rapidy
@@ -28,7 +34,7 @@ The base install is server-neutral. For the built-in `rapidy run` and `rapidy de
 python -m pip install "rapidy[uvicorn]"
 ```
 
-From this repository before publication, install core first:
+For editable development from a repository checkout, install the workspace packages:
 
 ```bash
 python -m pip install -e packages/rapidy_core
@@ -117,7 +123,8 @@ if __name__ == '__main__':
     run_app(app, host='127.0.0.1', port=8000, workers=1)
 ```
 
-The complete executable version is in [`examples/quickstart.py`](examples/quickstart.py).
+The complete executable version is in
+[`examples/quickstart.py`](https://github.com/rAPIdy-org/rAPIdy/blob/main/packages/rapidy/examples/quickstart.py).
 
 The built-in CLI adds development reload, route introspection, and configuration diagnostics:
 
@@ -144,7 +151,7 @@ path = app.url_for('user.detail', user_id=42)
 `AccessLogMiddleware` emits redacted records keyed by route template, while `ProblemDetailsRenderer` plugs into the
 application-local `exception_handlers` registry. Install `rapidy[otel]` and call `instrument_app(...)` for HTTP/WS
 spans and metrics through the official OpenTelemetry ASGI instrumentation. See
-[`examples/observability_dx.py`](examples/observability_dx.py).
+[`examples/observability_dx.py`](https://github.com/rAPIdy-org/rAPIdy/blob/main/packages/rapidy/examples/observability_dx.py).
 
 ## Request sources
 
@@ -166,7 +173,8 @@ async def update_user(
     return {'user_id': user_id, 'name': payload.name, 'page': page}
 ```
 
-JSON, text, bytes, urlencoded forms, and multipart uploads are supported. Raw access remains available through
+JSON, text, bytes, urlencoded forms, and multipart uploads are supported. Ordinary and raw request bodies are limited
+to 1 MiB by default; multipart has separate configurable limits. Raw access remains available through
 `Request.read()`, `Request.text()`, `Request.json()`, and `Request.post()`.
 
 ## Testing
@@ -206,7 +214,8 @@ provide in-process WebSocket/SSE sessions plus isolated Dishka provider override
 - `rapidy.testing` provides sync/async HTTPX clients, lifespan, DI overrides, WebSocket, and incremental SSE testing.
 - Type checking uses `plugins = rapidy_core.mypy`; there is no `rapidy.mypy` package in 2.0.
 
-Executable examples live in [`examples/`](examples/), and the full guide is published at
+Executable examples live in
+[`packages/rapidy/examples`](https://github.com/rAPIdy-org/rAPIdy/tree/main/packages/rapidy/examples), and the full guide is published at
 [rapidy.dev](https://rapidy.dev).
 
 ## Deployment
@@ -223,16 +232,17 @@ hypercorn --workers 4 main:app
 ```
 
 Each worker has its own application lifespan and DI container, so application-scoped dependencies are per-process.
-Choose graceful-shutdown timeouts long enough for active streaming responses; rAPIdy closes accepted WebSockets with
-code 1001 during shutdown.
+Choose graceful-shutdown timeouts long enough for active streaming responses. During direct application-lifespan
+shutdown rAPIdy requests code 1001 for still-open WebSockets; a process server may close connections earlier with
+its own restart code. Real-server behavior is therefore covered separately for every supported runtime.
 
 ## Migration and performance
 
 - [1.x → 2.0 migration guide](https://github.com/rAPIdy-org/rAPIdy/blob/main/MIGRATION.md): `import rapidy` stays;
   the transport layer and dropped aiohttp-specific APIs are the breaking changes.
-- [Reproducible benchmark method and results](benchmarks/RESULTS.md): raw JSON, RPS, p50/p95/p99, and CV are checked
+- [Reproducible benchmark method and results](https://github.com/rAPIdy-org/rAPIdy/blob/main/packages/rapidy/benchmarks/RESULTS.md): raw JSON, RPS, p50/p95/p99, and CV are checked
   in. The report explicitly records both wins and losses; it does not make unsupported marketing claims.
 
 ## License
 
-MIT. See [`LICENSE`](LICENSE).
+MIT. See the [license](https://github.com/rAPIdy-org/rAPIdy/blob/main/packages/rapidy/LICENSE).

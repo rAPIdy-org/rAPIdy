@@ -5,7 +5,13 @@ from collections.abc import Awaitable, Callable, Sequence
 from contextvars import copy_context
 from inspect import isawaitable, iscoroutinefunction
 
-__all__ = ('BackgroundTask', 'BackgroundTasks')
+__all__ = (
+    'Background',
+    'BackgroundCallable',
+    'BackgroundRunner',
+    'BackgroundTask',
+    'BackgroundTasks',
+)
 
 
 class BackgroundTask:

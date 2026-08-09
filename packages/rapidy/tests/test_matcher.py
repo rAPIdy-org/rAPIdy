@@ -22,7 +22,7 @@ from rapidy.routing.http.routers import (
     post,
     put,
 )
-from rapidy.routing.matcher import DuplicateRouteError, PathTemplateError, UrlMatcher
+from rapidy.routing.matcher import DuplicateRouteError, MountConflictError, PathTemplateError, UrlMatcher
 
 
 async def first_terminal(_: Request) -> Response:
@@ -145,6 +145,22 @@ class TestUrlMatcherUnit:
 
         # This is the single white-box test allowed for the milestone-08 mount placeholder.
         assert [prefix for prefix, _ in matcher._prefixes] == ['/api/internal', '/api', '/x']
+
+    def test_mount_conflicts_cover_http_websocket_and_duplicate_prefixes(self) -> None:
+        matcher = UrlMatcher()
+        matcher.add_prefix('/api', object())
+
+        with pytest.raises(MountConflictError):
+            add_route(matcher, 'GET', '/api/item')
+        with pytest.raises(MountConflictError):
+            matcher.add_ws_route('/api/ws', first_terminal)
+        with pytest.raises(MountConflictError):
+            matcher.add_prefix('/api', object())
+
+        route_first = UrlMatcher()
+        route_first.add_ws_route('/api/ws', first_terminal)
+        with pytest.raises(MountConflictError):
+            route_first.add_prefix('/api', object())
 
     def test_routes_snapshot_marks_auto_head(self) -> None:
         matcher = UrlMatcher()
@@ -332,3 +348,30 @@ async def test_root_path_is_stripped_before_match() -> None:
 
     assert messages[0]['status'] == 200
     assert messages[1]['body'] == b'pong'
+
+
+@pytest.mark.asyncio
+async def test_root_path_is_stripped_only_at_a_segment_boundary() -> None:
+    @get('/apiary')
+    async def apiary() -> str:
+        return 'kept'
+
+    messages: list[dict[str, Any]] = []
+    scope: dict[str, Any] = {
+        'type': 'http',
+        'method': 'GET',
+        'path': '/apiary',
+        'root_path': '/api',
+        'headers': [],
+    }
+
+    async def receive() -> dict[str, Any]:
+        return {'type': 'http.request', 'body': b'', 'more_body': False}
+
+    async def send(message: dict[str, Any]) -> None:
+        messages.append(message)
+
+    await Rapidy(http_route_handlers=[apiary])(scope, receive, send)
+
+    assert messages[0]['status'] == 200
+    assert messages[1]['body'] == b'kept'

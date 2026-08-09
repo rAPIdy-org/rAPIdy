@@ -65,6 +65,12 @@ Schema errors are raised while decorating or binding, before network I/O.
 Endpoint declaration bodies may contain only `pass`, `...`, a docstring, or
 `raise NotImplementedError`.
 
+Source files are not required at runtime. In bytecode-only and frozen Python
+deployments, the decorator applies a conservative code-object check for the
+same no-op forms; real body logic is still rejected. Keep the compiled Python
+code object available—native callables without either Python source or
+bytecode are not valid declarations.
+
 ## Typed responses and declared statuses
 
 A pydantic return annotation parses a successful JSON response. A status in

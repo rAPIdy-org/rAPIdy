@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import builtins
+from pathlib import Path
 from typing import Any
 from urllib.request import urlopen
 
@@ -73,7 +74,7 @@ async def test_websocket_is_closed_with_1011_before_startup() -> None:
     ]
 
 
-@pytest.mark.parametrize('runtime', ['granian', 'uvicorn', 'rapidy'])
+@pytest.mark.parametrize('runtime', ['granian', 'hypercorn', 'uvicorn', 'rapidy'])
 def test_live_ping(runtime: str) -> None:
     with (
         live_server(runtime, 'tests.apps.ping_app:app') as base_url,
@@ -86,6 +87,15 @@ def test_live_ping(runtime: str) -> None:
 def test_response_serializes_structured_body_types() -> None:
     response = Response({'implemented': True})
     assert response.text == '{"implemented": true}'
+
+
+def test_deprecated_application_arguments_are_accepted_as_no_ops() -> None:
+    with pytest.warns(DeprecationWarning, match='deprecated and ignored') as warnings_info:
+        app = Rapidy(logger=object(), handler_args={'expect_handler': object()})
+
+    assert isinstance(app, Rapidy)
+    assert len(warnings_info) == 2
+    assert all('deprecated and ignored' in str(item.message) for item in warnings_info)
 
 
 def test_run_app_uses_programmatic_uvicorn(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -108,12 +118,18 @@ def test_run_app_uses_programmatic_uvicorn(monkeypatch: pytest.MonkeyPatch) -> N
             'tests.apps.ping_app:app',
             {
                 'host': '127.0.0.1',
+                'app_dir': str(Path.cwd()),
                 'port': 9000,
+                'proxy_headers': False,
                 'workers': 2,
                 'timeout_graceful_shutdown': 7,
             },
         )
     ]
+
+    calls.clear()
+    run_app('tests.apps.ping_app:app', proxy_headers=True)
+    assert calls[0][1]['proxy_headers'] is True
 
     app = Rapidy(http_route_handlers=[ping])
     with pytest.raises(ValueError, match='import string'):

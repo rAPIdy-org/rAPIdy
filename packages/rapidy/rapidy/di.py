@@ -4,7 +4,7 @@ import asyncio
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from dataclasses import dataclass
-from typing import Any, TYPE_CHECKING
+from typing import Any, cast, TYPE_CHECKING
 
 from rapidy.depends import (
     AsyncContainer,
@@ -42,6 +42,13 @@ class DIConfig:
     validation_settings: ValidationSettings
 
 
+@dataclass(slots=True)
+class DIScopeOutcome:
+    """Carry a handled request failure into Dishka scope finalization."""
+
+    exception: BaseException | None = None
+
+
 def create_async_container(config: DIConfig) -> AsyncContainer:
     """Create the framework-owned root container through the core facade."""
     return make_async_container(
@@ -56,6 +63,25 @@ def create_async_container(config: DIConfig) -> AsyncContainer:
     )
 
 
+def ensure_di_container(app: Rapidy) -> AsyncContainer:
+    """Return an active root container, creating a compatibility instance if needed."""
+    root_app = app._root_app or app  # noqa: SLF001
+    existing = root_app.state.get('di_container')
+    if existing is not None and not root_app._di_container_closed:  # noqa: SLF001
+        return cast('AsyncContainer', existing)
+
+    config = root_app._di_config  # noqa: SLF001
+    if config.container is None:
+        container = create_async_container(config)
+        root_app._di_container_owned = True  # noqa: SLF001
+    else:
+        container = config.container
+        root_app._di_container_owned = False  # noqa: SLF001
+    root_app._di_container_closed = False  # noqa: SLF001
+    root_app.state.di_container = container
+    return container
+
+
 @asynccontextmanager
 async def di_lifespan(app: Rapidy) -> AsyncIterator[None]:
     """Bind the root container for one ASGI lifespan and close only owned containers."""
@@ -63,15 +89,7 @@ async def di_lifespan(app: Rapidy) -> AsyncIterator[None]:
         yield
         return
 
-    config = app._di_config  # noqa: SLF001
-    if config.container is None:
-        container = create_async_container(config)
-        app._di_container_owned = True  # noqa: SLF001
-    else:
-        container = config.container
-        app._di_container_owned = False  # noqa: SLF001
-    app._di_container_closed = False  # noqa: SLF001
-    app.state.di_container = container
+    ensure_di_container(app)
     try:
         yield
     finally:
@@ -90,8 +108,37 @@ async def close_owned_di(app: Rapidy) -> None:
 
 
 @asynccontextmanager
-async def request_di_scope(root_container: AsyncContainer, request: Request) -> AsyncIterator[AsyncContainer]:
+async def request_di_scope(
+    root_container: AsyncContainer,
+    request: Request,
+    outcome: DIScopeOutcome,
+) -> AsyncIterator[AsyncContainer]:
     """Enter the HTTP request scope and expose it through request state."""
-    async with root_container(context={Request: request}, scope=Scope.REQUEST) as request_container:
+    async with di_scope(
+        root_container,
+        context={Request: request},
+        scope=Scope.REQUEST,
+        outcome=outcome,
+    ) as request_container:
         request.state.di_container = request_container
         yield request_container
+
+
+@asynccontextmanager
+async def di_scope(
+    root_container: AsyncContainer,
+    *,
+    context: dict[Any, Any],
+    scope: BaseScope,
+    outcome: DIScopeOutcome,
+) -> AsyncIterator[AsyncContainer]:
+    synthetic_exception: BaseException | None = None
+    try:
+        async with root_container(context=context, scope=scope) as scoped_container:
+            yield scoped_container
+            if outcome.exception is not None:
+                synthetic_exception = outcome.exception
+                raise synthetic_exception  # noqa: TRY301
+    except BaseException as exc:
+        if exc is not synthetic_exception:
+            raise

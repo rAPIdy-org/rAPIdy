@@ -27,5 +27,29 @@ app = Rapidy(di_providers=[AppProvider()], http_route_handlers=[context])
 - `Scope.REQUEST` — один объект на HTTP-запрос; финализатор вызывается после отправки/завершения ответа.
 - `Scope.SESSION` — один объект на WebSocket-соединение; финализация выполняется при close, disconnect или ошибке.
 
+Dishka передаёт обработанное исключение запроса обратно в async-generator provider как значение выражения `yield`.
+Используйте этот результат для commit/rollback транзакции; `try/except` вокруг `yield` не эквивалентен этому контракту,
+поскольку исключение не возбуждается внутри генератора:
+
+```python
+from collections.abc import AsyncGenerator
+
+from rapidy.depends import provide, Provider, Scope
+
+
+class DatabaseProvider(Provider):
+    @provide(scope=Scope.REQUEST)
+    async def transaction(self) -> AsyncGenerator[Transaction, BaseException | None]:
+        transaction = await begin_transaction()
+        outcome = yield transaction
+        if outcome is None:
+            await transaction.commit()
+        else:
+            await transaction.rollback()
+```
+
+Outcome охватывает исключения, преобразованные rAPIdy в HTTP error response, и необработанные ошибки handler-а.
+Cancellation продолжает распространяться наружу, а provider получает тот же cancellation outcome при cleanup.
+
 Вложенные `HTTPRouter` используют request scope корневого контейнера. Полный пример:
 [`examples/di.py`](https://github.com/rAPIdy-org/rAPIdy/blob/main/packages/rapidy/examples/di.py).

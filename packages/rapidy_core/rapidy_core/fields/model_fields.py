@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cached_property
 from typing import Annotated, Any, TypeVar
@@ -148,6 +149,31 @@ class RapidyModelField(ABCRapidyModelField):
             return self._type_adapter.validate_python(value, from_attributes=True), None
         except ValidationError as exc:
             return None, regenerate_error_with_loc(errors=exc.errors(), loc=loc)
+
+    def serialize(
+        self,
+        value: Any,
+        *,
+        include: Any = None,
+        exclude: Any = None,
+        by_alias: bool = True,
+        exclude_unset: bool = False,
+        exclude_defaults: bool = False,
+        exclude_none: bool = False,
+        fallback: Callable[[Any], Any] | None = None,
+    ) -> Any:
+        """Serialize through the declared annotation instead of the runtime subtype."""
+        return self._type_adapter.dump_python(
+            value,
+            mode="json",
+            include=include,
+            exclude=exclude,
+            by_alias=by_alias,
+            exclude_unset=exclude_unset,
+            exclude_defaults=exclude_defaults,
+            exclude_none=exclude_none,
+            fallback=fallback,
+        )
 
 
 def create_model_field(

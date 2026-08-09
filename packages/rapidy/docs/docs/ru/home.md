@@ -4,6 +4,11 @@ hide:
   - toc
 ---
 
+<!-- RAPIDY_LEGACY_1X -->
+
+> **⚠️ Историческая документация rAPIdy 1.x.** Страница сохранена только для справки и может описывать aiohttp API, которых нет в rAPIdy 2.0. Для нового кода используйте [актуальную документацию 2.0](https://rapidy.dev/).
+
+
 <p align="center">
   <img src="../assets/logo-teal.png" alt="rAPIdy" width="440">
 </p>

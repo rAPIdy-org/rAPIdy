@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import inspect
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator, AsyncIterator
 from typing import Any
 
 import httpx
@@ -12,7 +12,7 @@ import rapidy_core.di as core_di
 import rapidy.di as server_di
 from rapidy import depends, Rapidy
 from rapidy.depends import FromDI, make_async_container, provide, Provider, RapidyProvider, Scope
-from rapidy.http import get, Request, Response
+from rapidy.http import get, QueryParam, Request, Response
 from rapidy.typedefs import Send
 
 PUBLIC_DEPENDS = [
@@ -49,6 +49,21 @@ class RequestResource:
 class AppResource:
     def __init__(self, number: int) -> None:
         self.number = number
+
+
+class Transaction:
+    pass
+
+
+class TransactionProvider(Provider):
+    def __init__(self, outcomes: list[BaseException | None]) -> None:
+        super().__init__()
+        self.outcomes = outcomes
+
+    @provide(scope=Scope.REQUEST)
+    async def transaction(self) -> AsyncGenerator[Transaction, BaseException | None]:
+        outcome = yield Transaction()
+        self.outcomes.append(outcome)
 
 
 class RequestLifecycleProvider(Provider):
@@ -141,6 +156,28 @@ async def test_request_dependency_resolves_once_and_finalizes_after_response_sen
 
 
 @pytest.mark.asyncio
+async def test_direct_asgi_transport_without_lifespan_still_creates_di_scopes() -> None:
+    events: list[str] = []
+
+    @get('/')
+    async def handler(resource: FromDI[RequestResource], app_resource: FromDI[AppResource]) -> int:
+        assert isinstance(resource, RequestResource)
+        return app_resource.number
+
+    app = Rapidy(
+        di_providers=[RequestLifecycleProvider(events), AppLifecycleProvider(events)],
+        http_route_handlers=[handler],
+    )
+    response = await request(app)
+
+    assert response.status_code == 200
+    assert response.json() == 1
+    assert events == ['request_created', 'app_created', 'request_finalized']
+    await server_di.close_owned_di(app)
+    assert events == ['request_created', 'app_created', 'request_finalized', 'app_finalized']
+
+
+@pytest.mark.asyncio
 async def test_inject_http_preserves_legacy_implicit_request_parameter() -> None:
     events: list[str] = []
 
@@ -156,6 +193,20 @@ async def test_inject_http_preserves_legacy_implicit_request_parameter() -> None
 
     assert response.text == 'ok'
     assert events == ['request_created', 'request_finalized']
+
+
+@pytest.mark.asyncio
+async def test_untyped_first_extractor_is_not_mistaken_for_implicit_request() -> None:
+    @get('/')
+    async def handler(value=QueryParam()) -> str:  # type: ignore[no-untyped-def]
+        return str(value)
+
+    app = Rapidy(http_route_handlers=[handler])
+    async with app.lifespan.ctx_manager():
+        response = await request(app, '/?value=extracted')
+
+    assert response.status_code == 200
+    assert response.text == 'extracted'
 
 
 @pytest.mark.asyncio
@@ -209,6 +260,35 @@ async def test_request_finalizer_runs_for_handler_exception_and_cancellation() -
             await cancellation_app(scope, receive, send)
 
     assert cancellation_events == ['request_created', 'handler', 'request_finalized']
+
+
+@pytest.mark.asyncio
+async def test_request_generator_dependency_receives_handled_handler_outcome() -> None:
+    outcomes: list[BaseException | None] = []
+
+    @get('/success')
+    async def success(transaction: FromDI[Transaction]) -> str:
+        assert isinstance(transaction, Transaction)
+        return 'ok'
+
+    @get('/failure')
+    async def failure(transaction: FromDI[Transaction]) -> None:
+        assert isinstance(transaction, Transaction)
+        raise RuntimeError('rollback')
+
+    app = Rapidy(
+        di_providers=[TransactionProvider(outcomes)],
+        http_route_handlers=[success, failure],
+    )
+    async with app.lifespan.ctx_manager():
+        success_response = await request(app, '/success')
+        failure_response = await request(app, '/failure')
+
+    assert success_response.status_code == 200
+    assert failure_response.status_code == 500
+    assert outcomes[0] is None
+    assert isinstance(outcomes[1], RuntimeError)
+    assert str(outcomes[1]) == 'rollback'
 
 
 @pytest.mark.asyncio

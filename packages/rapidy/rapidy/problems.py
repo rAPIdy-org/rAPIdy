@@ -6,7 +6,7 @@ from http import HTTPStatus
 from types import MappingProxyType
 from typing import Any
 
-from rapidy.exceptions import HTTPException
+from rapidy.exceptions import HTTPException, HTTPValidationFailure
 from rapidy.request import Request
 from rapidy.response import Response
 from rapidy.typedefs import HTTPResponse
@@ -74,13 +74,23 @@ class ProblemDetailsRenderer:
         """Convert an exception into an RFC 9457 response."""
         if isinstance(exception, HTTPException):
             status = exception.status_code
+            if status < HTTPStatus.BAD_REQUEST:
+                return _http_control_response(exception)
             title = exception.reason or _status_title(status)
-            detail = exception.text
+            if isinstance(exception, HTTPValidationFailure):
+                detail = None
+                extensions = {
+                    exception.validation_failure_field_name: [dict(error) for error in exception.validation_errors],
+                }
+            else:
+                detail = exception.text
+                extensions = {}
             headers = exception.headers
         else:
             status = HTTPStatus.INTERNAL_SERVER_ERROR
             title = HTTPStatus.INTERNAL_SERVER_ERROR.phrase
             detail = str(exception) if self._expose_internal_details else None
+            extensions = {}
             headers = None
         problem_type = 'about:blank'
         if self._type_base_url is not None:
@@ -91,6 +101,7 @@ class ProblemDetailsRenderer:
             status=int(status),
             detail=detail,
             instance=str(request.scope.get('path', request.path)),
+            extensions=extensions,
         )
         return Response(
             problem.as_dict(),
@@ -98,6 +109,27 @@ class ProblemDetailsRenderer:
             headers=headers,
             content_type='application/problem+json',
         )
+
+
+def _http_control_response(exception: HTTPException) -> Response:
+    content_type = exception.content_type
+    if content_type is None and exception.text is not None:
+        content_type = 'text/plain'
+    if exception.body is not None:
+        return Response(
+            exception.body,
+            status=exception.status_code,
+            headers=exception.headers,
+            content_type=content_type,
+            reason=exception.reason,
+        )
+    return Response(
+        status=exception.status_code,
+        headers=exception.headers,
+        text=exception.text,
+        content_type=content_type,
+        reason=exception.reason,
+    )
 
 
 def _status_title(status: int) -> str:

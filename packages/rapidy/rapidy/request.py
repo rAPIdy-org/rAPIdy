@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import asyncio
+import codecs
 from collections.abc import Iterator, Mapping, MutableMapping
+from dataclasses import dataclass
 from http.cookies import SimpleCookie
 from tempfile import SpooledTemporaryFile
 from types import MappingProxyType
@@ -13,23 +15,63 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from python_multipart.multipart import parse_options_header
 from rapidy_core.enums import HeaderName, HTTPRequestParamType
 
+import rapidy as _rapidy
 from rapidy.constants import DEFAULT_JSON_DECODER
 from rapidy.exceptions import HTTPBadRequest, HTTPRequestEntityTooLarge
 from rapidy.helpers import parse_mimetype
+from rapidy.routing import reverse as _reverse
 from rapidy.typedefs import ASGIScope, JSONDecoder, Receive, Send
 
 if TYPE_CHECKING:
+    from pydantic import GetJsonSchemaHandler
+    from pydantic.json_schema import JsonSchemaValue
+    from pydantic_core import CoreSchema
     from python_multipart.multipart import MultipartCallbacks
 
     from rapidy.application import Rapidy
-    from rapidy.routing.reverse import URLPath
-    from rapidy.security import AuthCredentials, SecurityIdentity
 
-__all__ = ('BaseRequest', 'FileField', 'Request', 'State')
+__all__ = ('BaseRequest', 'FileField', 'MultipartLimits', 'Request', 'State')
 
 _DEADLINE_HEADER: Final = 'x-rapidy-deadline-ms'
-_FILE_SPOOL_MAX_SIZE: Final = 1024**2
 POST_METHODS: Final = frozenset({'POST', 'PUT', 'PATCH', 'DELETE', 'TRACE', 'PROPFIND', 'PROPPATCH', 'MKCOL'})
+
+
+class _RequestDisconnectedError(ConnectionResetError):
+    """Identify a peer disconnect reported by the request receive channel."""
+
+
+@dataclass(frozen=True, slots=True)
+class MultipartLimits:
+    """Bound multipart resource use independently from ordinary request bodies."""
+
+    max_body_size: int = 16 * 1024**2
+    max_parts: int = 1000
+    max_fields: int = 1000
+    max_files: int = 100
+    max_field_size: int = 1024**2
+    max_file_size: int = 8 * 1024**2
+    spool_threshold: int = 1024**2
+
+    def __post_init__(self) -> None:
+        for name in (
+            'max_body_size',
+            'max_parts',
+            'max_fields',
+            'max_files',
+            'max_field_size',
+            'max_file_size',
+            'spool_threshold',
+        ):
+            value = getattr(self, name)
+            if isinstance(value, bool) or not isinstance(value, int):
+                msg = f'{name} must be an integer'
+                raise TypeError(msg)
+            if value <= 0:
+                msg = f'{name} must be greater than zero'
+                raise ValueError(msg)
+
+
+DEFAULT_MULTIPART_LIMITS: Final = MultipartLimits()
 
 
 class FileField(NamedTuple):
@@ -40,6 +82,15 @@ class FileField(NamedTuple):
     file: SpooledTemporaryFile[bytes]
     content_type: str
     headers: CIMultiDictProxy[str]
+
+    @classmethod
+    def __get_pydantic_json_schema__(
+        cls,
+        _core_schema: CoreSchema,
+        _handler: GetJsonSchemaHandler,
+    ) -> JsonSchemaValue:
+        """Represent an uploaded multipart file with OpenAPI's binary string schema."""
+        return {'type': 'string', 'format': 'binary'}
 
 
 class State(MutableMapping[str, Any]):
@@ -94,11 +145,21 @@ class _MultipartCollector:
         '_name',
         '_opened_files',
         '_out',
+        '_part_size',
+        '_parts',
+        '_fields',
+        '_files',
+        '_limits',
     )
 
-    def __init__(self, out: MultiDict[str | bytes | FileField]) -> None:
+    def __init__(self, out: MultiDict[str | bytes | FileField], limits: MultipartLimits) -> None:
         self._out = out
+        self._limits = limits
         self._opened_files: list[SpooledTemporaryFile[bytes]] = []
+        self._parts = 0
+        self._fields = 0
+        self._files = 0
+        self._part_size = 0
         self._headers: CIMultiDict[str] = CIMultiDict()
         self._header_field = bytearray()
         self._header_value = bytearray()
@@ -121,6 +182,8 @@ class _MultipartCollector:
         }
 
     def on_part_begin(self) -> None:
+        self._parts += 1
+        _check_multipart_limit('part count', self._limits.max_parts, self._parts)
         self._headers = CIMultiDict()
         self._header_field.clear()
         self._header_value.clear()
@@ -128,6 +191,7 @@ class _MultipartCollector:
         self._file = None
         self._name = None
         self._filename = None
+        self._part_size = 0
 
     def on_header_field(self, data: bytes, start: int, end: int) -> None:
         self._header_field.extend(data[start:end])
@@ -153,16 +217,27 @@ class _MultipartCollector:
         self._name = raw_name.decode('utf-8')
         raw_filename = options.get(b'filename')
         if raw_filename is not None:
+            self._files += 1
+            _check_multipart_limit('file count', self._limits.max_files, self._files)
             self._filename = raw_filename.decode('utf-8')
-            uploaded_file = SpooledTemporaryFile(max_size=_FILE_SPOOL_MAX_SIZE, mode='w+b')  # noqa: SIM115
+            uploaded_file = SpooledTemporaryFile(  # noqa: SIM115
+                max_size=self._limits.spool_threshold,
+                mode='w+b',
+            )
             self._file = uploaded_file
             self._opened_files.append(uploaded_file)
+        else:
+            self._fields += 1
+            _check_multipart_limit('field count', self._limits.max_fields, self._fields)
 
     def on_part_data(self, data: bytes, start: int, end: int) -> None:
         chunk = data[start:end]
+        self._part_size += len(chunk)
         if self._file is not None:
+            _check_multipart_limit('file size', self._limits.max_file_size, self._part_size)
             self._file.write(chunk)
         else:
+            _check_multipart_limit('field size', self._limits.max_field_size, self._part_size)
             self._body.extend(chunk)
 
     def on_part_end(self) -> None:
@@ -205,9 +280,11 @@ class Request:
         '_asgi_send',
         '_asgi_receive',
         '_cache',
+        '_body_file',
         '_cookies',
         '_deadline_remaining_ms',
         '_post',
+        '_post_lock',
         '_query',
         '_read_bytes',
         '_read_lock',
@@ -237,8 +314,10 @@ class Request:
         self.app = cast('Rapidy', scope['app'])
         self._cache: dict[HTTPRequestParamType | str, Any] = {}
         self._read_bytes: bytes | None = None
+        self._body_file: SpooledTemporaryFile[bytes] | None = None
         self._post: MultiDictProxy[str | bytes | FileField] | None = None
         self._read_lock = asyncio.Lock()
+        self._post_lock = asyncio.Lock()
         self._query: MultiDictProxy[str] | None = None
         self._cookies: Mapping[str, str] | None = None
         self._deadline_remaining_ms = _parse_deadline_header(self.headers)
@@ -298,11 +377,19 @@ class Request:
         return self.app.client_max_size
 
     @property
-    def identity(self) -> SecurityIdentity:
+    def multipart_limits(self) -> MultipartLimits:
+        """Resolve multipart limits from the currently bound application."""
+        return self.app.multipart_limits
+
+    @property
+    def identity(self) -> _rapidy.security.SecurityIdentity:
         """Return the current typed security identity, anonymous by default."""
         from rapidy.security import ANONYMOUS_IDENTITY  # noqa: PLC0415
 
-        return cast('SecurityIdentity', self.state.get('_rapidy_security_identity', ANONYMOUS_IDENTITY))
+        return cast(
+            '_rapidy.security.SecurityIdentity',
+            self.state.get('_rapidy_security_identity', ANONYMOUS_IDENTITY),
+        )
 
     @property
     def user(self) -> Any:
@@ -310,7 +397,7 @@ class Request:
         return self.identity.user
 
     @property
-    def auth(self) -> AuthCredentials:
+    def auth(self) -> _rapidy.security.AuthCredentials:
         """Return authenticated scheme and scope metadata without raw credential material."""
         return self.identity.auth
 
@@ -319,7 +406,7 @@ class Request:
         """Return the validated deadline budget snapshot without enforcing it."""
         return self._deadline_remaining_ms
 
-    def url_for(self, name: str, **path_params: object) -> URLPath:
+    def url_for(self, name: str, **path_params: object) -> _reverse.URLPath:
         """Build a named route URL including the deployment root path."""
         from rapidy.routing.reverse import URLPath  # noqa: PLC0415
 
@@ -328,7 +415,7 @@ class Request:
         root_path = str(self.scope.get('root_path', '')).rstrip('/')
         return URLPath(f'{root_path}{path}')
 
-    def static_url(self, name: str, path: str) -> URLPath:
+    def static_url(self, name: str, path: str) -> _reverse.URLPath:
         """Build a URL for a named static file tree."""
         return self.url_for(name, path=path)
 
@@ -341,13 +428,24 @@ class Request:
             if self._read_bytes is not None:
                 return self._read_bytes
 
+            if self._body_file is not None:
+                self._body_file.seek(0, 2)
+                body_size = self._body_file.tell()
+                if self.client_max_size > 0 and body_size > self.client_max_size:
+                    raise HTTPRequestEntityTooLarge(self.client_max_size, body_size)
+                self._body_file.seek(0)
+                self._read_bytes = self._body_file.read()
+                self._body_file.close()
+                self._body_file = None
+                return self._read_bytes
+
             buffer = bytearray()
             while True:
                 message = await self._receive()
                 message_type = message.get('type')
                 if message_type == 'http.disconnect':
                     msg = 'Connection lost while reading request body'
-                    raise ConnectionResetError(msg)
+                    raise _RequestDisconnectedError(msg)
                 if message_type != 'http.request':
                     continue
 
@@ -362,55 +460,134 @@ class Request:
 
     async def text(self) -> str:
         """Decode the cached body with the request charset or UTF-8."""
-        return (await self.read()).decode(self.charset or 'utf-8')
+        charset = self.charset or 'utf-8'
+        try:
+            codecs.lookup(charset)
+        except LookupError as exc:
+            raise HTTPBadRequest(text='Unsupported request body charset.') from exc
+        try:
+            return (await self.read()).decode(charset)
+        except UnicodeError as exc:
+            raise HTTPBadRequest(text='Request body does not match the declared charset.') from exc
 
     async def json(self, *, loads: JSONDecoder = DEFAULT_JSON_DECODER) -> Any:
         """Decode the cached body and pass it to a JSON loader."""
         return loads(await self.text())
 
     async def post(self) -> MultiDictProxy[str | bytes | FileField]:
-        """Parse cached form data; multipart currently buffers the limited body before parsing."""
+        """Parse form data with independently bounded, streaming multipart handling."""
         if self._post is not None:
             return self._post
 
-        if self.method not in POST_METHODS or self.content_type not in (
-            '',
-            'application/x-www-form-urlencoded',
-            'multipart/form-data',
-        ):
-            self._post = MultiDictProxy(MultiDict())
+        async with self._post_lock:
+            if self._post is not None:
+                return self._post
+
+            if self.method not in POST_METHODS or self.content_type not in (
+                '',
+                'application/x-www-form-urlencoded',
+                'multipart/form-data',
+            ):
+                self._post = MultiDictProxy(MultiDict())
+                return self._post
+
+            out: MultiDict[str | bytes | FileField] = MultiDict()
+            if self.content_type == 'multipart/form-data':
+                raw_content_type = self.headers.get(HeaderName.content_type, '')
+                boundary = parse_mimetype(raw_content_type).parameters.get('boundary')
+                if boundary is None:
+                    msg = 'boundary missed for Content-Type: multipart/form-data'
+                    raise ValueError(msg)
+                await self._parse_multipart(boundary, out)
+            else:
+                data = await self.read()
+                if data:
+                    charset = self.charset or 'utf-8'
+                    out.extend(
+                        parse_qsl(
+                            data.rstrip().decode(charset),
+                            keep_blank_values=True,
+                            encoding=charset,
+                        )
+                    )
+
+            self._post = MultiDictProxy(out)
             return self._post
 
-        out: MultiDict[str | bytes | FileField] = MultiDict()
-        if self.content_type == 'multipart/form-data':
-            raw_content_type = self.headers.get(HeaderName.content_type, '')
-            boundary = parse_mimetype(raw_content_type).parameters.get('boundary')
-            if boundary is None:
-                msg = 'boundary missed for Content-Type: multipart/form-data'
-                raise ValueError(msg)
-            data = await self.read()
-            collector = _MultipartCollector(out)
-            parser = python_multipart.MultipartParser(boundary, collector.callbacks)
-            try:
-                parser.write(data)
-                parser.finalize()
-            except BaseException:
-                collector.close_files()
-                raise
-        else:
-            data = await self.read()
-            if data:
-                charset = self.charset or 'utf-8'
-                out.extend(
-                    parse_qsl(
-                        data.rstrip().decode(charset),
-                        keep_blank_values=True,
-                        encoding=charset,
-                    )
-                )
+    async def _parse_multipart(
+        self,
+        boundary: str,
+        out: MultiDict[str | bytes | FileField],
+    ) -> None:
+        limits = self.multipart_limits
+        collector = _MultipartCollector(out, limits)
+        parser = python_multipart.MultipartParser(
+            boundary,
+            collector.callbacks,
+            max_size=limits.max_body_size,
+        )
+        try:
+            async with self._read_lock:
+                if self._read_bytes is not None:
+                    _check_multipart_limit('body size', limits.max_body_size, len(self._read_bytes))
+                    parser.write(self._read_bytes)
+                elif self._body_file is not None:
+                    self._body_file.seek(0, 2)
+                    body_size = self._body_file.tell()
+                    _check_multipart_limit('body size', limits.max_body_size, body_size)
+                    self._body_file.seek(0)
+                    while chunk := self._body_file.read(limits.spool_threshold):
+                        parser.write(chunk)
+                    self._body_file.seek(0)
+                else:
+                    await self._stream_multipart(parser, limits)
+            parser.finalize()
+        except BaseException:
+            collector.close_files()
+            raise
 
-        self._post = MultiDictProxy(out)
-        return self._post
+    async def _stream_multipart(
+        self,
+        parser: python_multipart.MultipartParser,
+        limits: MultipartLimits,
+    ) -> None:
+        body_file = SpooledTemporaryFile[bytes](
+            max_size=limits.spool_threshold,
+            mode='w+b',
+        )
+        body_size = 0
+        keep_open = False
+        try:
+            while True:
+                message = await self._receive()
+                message_type = message.get('type')
+                if message_type == 'http.disconnect':
+                    msg = 'Connection lost while reading request body'
+                    raise _RequestDisconnectedError(msg)
+                if message_type != 'http.request':
+                    continue
+
+                chunk = cast('bytes', message.get('body', b''))
+                body_size += len(chunk)
+                _check_multipart_limit('body size', limits.max_body_size, body_size)
+                body_file.write(chunk)
+                parser.write(chunk)
+                if not message.get('more_body', False):
+                    break
+
+            body_file.seek(0)
+            self._body_file = body_file
+            keep_open = True
+        finally:
+            if not keep_open:
+                body_file.close()
+
+
+def _check_multipart_limit(kind: str, maximum: int, actual: int) -> None:
+    if actual <= maximum:
+        return
+    text = f'Maximum multipart {kind} {maximum} exceeded, actual {kind} {actual}'
+    raise HTTPRequestEntityTooLarge(maximum, actual, text=text)
 
 
 def _parse_deadline_header(headers: CIMultiDictProxy[str]) -> int | None:

@@ -2,12 +2,10 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
+from rapidy import request as _request
 from rapidy.openapi.ui import render_redoc, render_swagger_ui
-
-if TYPE_CHECKING:
-    from rapidy.request import Request
 
 __all__ = ('OpenAPIRenderPlugin', 'RedocRenderPlugin', 'SwaggerRenderPlugin')
 
@@ -58,7 +56,7 @@ class OpenAPIRenderPlugin(ABC):
     @abstractmethod
     def render(
         self,
-        request: Request,
+        request: _request.Request,
         openapi_schema: Mapping[str, Any],
         *,
         schema_url: str,
@@ -96,7 +94,7 @@ class SwaggerRenderPlugin(OpenAPIRenderPlugin):
 
     def render(
         self,
-        request: Request,
+        request: _request.Request,
         openapi_schema: Mapping[str, Any],
         *,
         schema_url: str,
@@ -135,7 +133,7 @@ class RedocRenderPlugin(OpenAPIRenderPlugin):
 
     def render(
         self,
-        request: Request,
+        request: _request.Request,
         openapi_schema: Mapping[str, Any],
         *,
         schema_url: str,

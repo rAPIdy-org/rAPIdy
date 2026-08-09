@@ -8,7 +8,7 @@ from pydantic import BaseModel
 from rapidy import Rapidy
 from rapidy.background import BackgroundTask, BackgroundTasks
 from rapidy.depends import FromDI
-from rapidy.http import Body, get, PathParam, post, Response
+from rapidy.http import Body, controller, get, PathParam, post, Response
 from rapidy.middlewares import (
     CompressionMiddleware,
     CORSMiddleware,
@@ -60,6 +60,13 @@ async def create_item(payload: Annotated[Payload, Body()], dependency: FromDI[st
     return payload
 
 
+@controller('/typed-controller')
+class TypedController:
+    @get('/item')
+    async def item(self) -> dict[str, bool]:
+        return {'typed': True}
+
+
 openapi_config = OpenAPIConfig(
     title='Typed API',
     version='1.0.0',
@@ -78,11 +85,11 @@ security_config = SecurityConfig(
     requirements=[{'apiKey': []}],
 )
 app: Rapidy = Rapidy(
-    http_route_handlers=[get_item, create_item],
+    http_route_handlers=[get_item, create_item, TypedController],
     middlewares=[
         ProxyHeadersMiddleware(['127.0.0.1']),
         TrustedHostMiddleware(['example.com']),
-        HTTPSRedirectMiddleware(),
+        HTTPSRedirectMiddleware(['example.com']),
         RequestIDMiddleware(),
         CORSMiddleware(allow_origins=['https://example.com']),
         CompressionMiddleware(algorithms=['gzip']),

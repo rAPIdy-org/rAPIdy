@@ -39,9 +39,15 @@ class DuplicateRouteError(RapidyException):
 
 
 class PathTemplateError(RapidyException):
-    """Raised when a dynamic path template cannot be compiled safely."""
+    """Raised when a dynamic path template cannot be parsed or compiled."""
 
     message = 'Invalid path template `{path}`: {reason}'
+
+
+class MountConflictError(RapidyException):
+    """Raised when a local route would be shadowed by a mounted application."""
+
+    message = 'Route `{path}` conflicts with mounted application prefix `{prefix}`.'
 
 
 @dataclass(slots=True)
@@ -132,6 +138,11 @@ def _compile_path(path: str) -> re.Pattern[str] | None:  # noqa: C901
         raise PathTemplateError(path=path, reason=str(exc)) from exc
 
 
+def _route_overlaps_mount(path: str, prefix: str) -> bool:
+    mount_namespace = f'{prefix}/'
+    return path == prefix or path.startswith(mount_namespace)
+
+
 class UrlMatcher:
     """Static-first matcher with ordered dynamic candidates."""
 
@@ -163,6 +174,12 @@ class UrlMatcher:
 
     def add_prefix(self, prefix: str, subapp: Any) -> None:
         """Store a mount target in longest-prefix-first order."""
+        for existing_prefix, _existing_subapp in self._prefixes:
+            if existing_prefix == prefix:
+                raise MountConflictError(path=prefix, prefix=prefix)
+        for path in self._local_route_paths():
+            if _route_overlaps_mount(path, prefix):
+                raise MountConflictError(path=path, prefix=prefix)
         self._prefixes.append((prefix, subapp))
         self._prefixes.sort(key=lambda item: len(item[0]), reverse=True)
         # Delegation with a stripped path is owned by Rapidy._dispatch_terminal.
@@ -179,6 +196,7 @@ class UrlMatcher:
         parameters: tuple[Any, ...] = (),
     ) -> None:
         """Compile and register one method/template pair."""
+        self._raise_if_route_conflicts_with_mount(path)
         method = method.upper()
         pattern = _compile_path(path)
         methods = self._get_or_create_methods(path, pattern)
@@ -250,6 +268,7 @@ class UrlMatcher:
 
     def add_ws_route(self, path: str, terminal: Handler, route_kwargs: dict[str, Any] | None = None) -> None:
         """Register a ``(WebSocket, Request) -> None`` terminal in the independent WS table."""
+        self._raise_if_route_conflicts_with_mount(path)
         metadata = dict(route_kwargs or {})
         pattern = _compile_path(path)
         if pattern is None:
@@ -297,6 +316,18 @@ class UrlMatcher:
             if http_candidate.pattern.fullmatch(path) is not None:
                 return http_candidate.path
         return None
+
+    def _raise_if_route_conflicts_with_mount(self, path: str) -> None:
+        for prefix, _subapp in self._prefixes:
+            if _route_overlaps_mount(path, prefix):
+                raise MountConflictError(path=path, prefix=prefix)
+
+    def _local_route_paths(self) -> set[str]:
+        return {
+            *(record.path for record in self._records),
+            *self._ws_static,
+            *(candidate.path for candidate in self._ws_dynamic),
+        }
 
     def _get_or_create_methods(
         self,

@@ -19,6 +19,7 @@ from rapidy.depends import FromDI, provide, Provider, Scope
 from rapidy.http import get, HTTPRouter, Response
 from rapidy.middlewares import get_request_id, RequestIDMiddleware
 from rapidy.responses import FileResponse, StreamResponse
+from rapidy.security import SecurityConfig
 from rapidy.staticfiles import StaticFiles
 from rapidy.testing import AsyncTestClient
 from tests.live_server import live_server
@@ -211,6 +212,10 @@ async def test_file_response_get_head_range_and_conditionals(tmp_path: Path) -> 
         suffix = await client.get('/file', headers={'Range': 'bytes=-3'})
         unsatisfied = await client.get('/file', headers={'Range': 'bytes=20-30'})
         multipart = await client.get('/file', headers={'Range': 'bytes=0-1,4-5'})
+        malformed_ranges = [
+            await client.get('/file', headers={'Range': value})
+            for value in ('bytes=+1-2', 'bytes=1_0-', 'bytes= 1-2', 'bytes=1 -2', 'bytes=1- 2', 'bytes =1-2')
+        ]
         not_modified = await client.get('/file', headers={'If-None-Match': response.headers['etag']})
         date_not_modified = await client.get(
             '/file', headers={'If-Modified-Since': response.headers['last-modified']}
@@ -241,6 +246,7 @@ async def test_file_response_get_head_range_and_conditionals(tmp_path: Path) -> 
     assert multipart.status_code == 200
     assert multipart.content == b'0123456789'
     assert 'content-range' not in multipart.headers
+    assert all(response.status_code == 416 for response in malformed_ranges)
     assert not_modified.status_code == 304
     assert not_modified.content == b''
     assert date_not_modified.status_code == 304
@@ -340,6 +346,8 @@ async def test_static_files_index_cache_mount_and_security(tmp_path: Path) -> No
     nested = static_root / 'nested'
     nested.mkdir()
     (nested / 'value.txt').write_text('nested')
+    (static_root / '.env').write_text('API_KEY=hunter2')
+    (nested / '.secret').write_text('nested-secret')
     secret = tmp_path / 'secret.txt'
     secret.write_text('secret')
     (static_root / 'escape.txt').symlink_to(secret)
@@ -352,6 +360,8 @@ async def test_static_files_index_cache_mount_and_security(tmp_path: Path) -> No
         index = await client.get('/v1/assets/')
         asset = await client.get('/v1/assets/app.js')
         nested_asset = await client.get('/v1/assets/nested/value.txt')
+        dotfile = await client.get('/v1/assets/.env')
+        nested_dotfile = await client.get('/v1/assets/nested/.secret')
         symlink = await client.get('/v1/assets/escape.txt')
 
     assert redirect.status_code == 307
@@ -360,6 +370,8 @@ async def test_static_files_index_cache_mount_and_security(tmp_path: Path) -> No
     assert asset.text == 'console.log(20)'
     assert asset.headers['cache-control'] == 'public, max-age=3600'
     assert nested_asset.text == 'nested'
+    assert dotfile.status_code == 404
+    assert nested_dotfile.status_code == 404
     assert symlink.status_code == 404
     static_routes = [route for route in app.routes if '/assets' in route.path]
     assert static_routes
@@ -389,6 +401,87 @@ async def test_static_files_index_cache_mount_and_security(tmp_path: Path) -> No
     assert external_link.status_code == 404
 
 
+
+@pytest.mark.asyncio
+async def test_static_files_inherit_security_and_require_explicit_public_dotfile_opt_in(tmp_path: Path) -> None:
+    static_root = tmp_path / 'static'
+    static_root.mkdir()
+    (static_root / 'app.js').write_text('console.log(20)')
+    (static_root / '.env').write_text('API_KEY=hunter2')
+    app = Rapidy(
+        security=SecurityConfig(guards=[lambda _request: False]),
+        http_route_handlers=[
+            StaticFiles('/protected', directory=static_root),
+            StaticFiles('/public', directory=static_root, public=True),
+            StaticFiles('/dotfiles', directory=static_root, allow_dotfiles=True, public=True),
+        ],
+    )
+    async with AsyncTestClient(app) as client:
+        inherited_security = await client.get('/protected/app.js')
+        explicitly_public = await client.get('/public/app.js')
+        explicitly_allowed_dotfile = await client.get('/dotfiles/.env')
+
+    assert inherited_security.status_code == 403
+    assert explicitly_public.text == 'console.log(20)'
+    assert explicitly_allowed_dotfile.text == 'API_KEY=hunter2'
+
+
+@pytest.mark.asyncio
+async def test_static_file_symlink_swap_cannot_escape_validated_root(tmp_path: Path) -> None:
+    static_root = tmp_path / 'static'
+    static_root.mkdir()
+    asset = static_root / 'asset.txt'
+    asset.write_text('public')
+    secret = tmp_path / 'secret.txt'
+    secret.write_text('secret')
+
+    async def swap_after_resolution(request, call_next) -> Any:
+        response = await call_next(request)
+        asset.unlink()
+        asset.symlink_to(secret)
+        return response
+
+    app = Rapidy(
+        http_route_handlers=[StaticFiles('/assets', directory=static_root)],
+        middlewares=[swap_after_resolution],
+    )
+    async with AsyncTestClient(app) as client:
+        response = await client.get('/assets/asset.txt')
+
+    assert response.status_code == 404
+    assert response.content != b'secret'
+
+
+@pytest.mark.asyncio
+async def test_allowed_internal_symlink_is_pinned_before_a_later_swap(tmp_path: Path) -> None:
+    static_root = tmp_path / 'static'
+    static_root.mkdir()
+    public = static_root / 'public.txt'
+    public.write_text('public')
+    alias = static_root / 'alias.txt'
+    alias.symlink_to(public)
+    secret = tmp_path / 'secret.txt'
+    secret.write_text('secret')
+
+    async def swap_after_resolution(request, call_next) -> Any:
+        response = await call_next(request)
+        alias.unlink()
+        alias.symlink_to(secret)
+        return response
+
+    app = Rapidy(
+        http_route_handlers=[
+            StaticFiles('/assets', directory=static_root, follow_symlinks=True),
+        ],
+        middlewares=[swap_after_resolution],
+    )
+    async with AsyncTestClient(app) as client:
+        response = await client.get('/assets/alias.txt')
+
+    assert response.status_code == 200
+    assert response.text == 'public'
+
+
 def test_file_and_static_configuration_rejects_unsafe_values(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match='control characters'):
         FileResponse(tmp_path / 'file', filename='bad\r\nname')
@@ -396,6 +489,8 @@ def test_file_and_static_configuration_rejects_unsafe_values(tmp_path: Path) -> 
         StaticFiles('/../assets', directory=tmp_path)
     with pytest.raises(ValueError, match='control characters'):
         StaticFiles('/assets', directory=tmp_path, cache_control='public\r\nX-Bad: yes')
+    with pytest.raises(ValueError, match='dotfile index'):
+        StaticFiles('/assets', directory=tmp_path, index_file='.index.html')
 
 
 @pytest.mark.parametrize('runtime', ['granian', 'uvicorn'])

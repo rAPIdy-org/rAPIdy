@@ -21,6 +21,7 @@ from rapidy_client import (
     SchemaDefinitionError,
     UpstreamConfig,
     WSHandshakeError,
+    WSMessageTooLargeError,
     WSQueueFullError,
     WSSocket,
     bind,
@@ -44,11 +45,18 @@ class _EchoStream:
     def __init__(self) -> None:
         self._server = Connection(ConnectionType.SERVER)
         self._incoming: asyncio.Queue[bytes] = asyncio.Queue()
+        self.read_count = 0
         self.closed = False
 
     async def read(self, max_bytes: int = 65536) -> bytes:
         del max_bytes
+        self.read_count += 1
         return await self._incoming.get()
+
+    async def push_text(self, data: str, *, message_finished: bool = True) -> None:
+        await self._incoming.put(
+            self._server.send(TextMessage(data=data, message_finished=message_finished))
+        )
 
     async def write(self, data: bytes) -> None:
         self._server.receive_data(data)
@@ -288,6 +296,68 @@ async def test_send_queue_timeout_and_single_receive_consumer() -> None:
     await client.aclose()
     with pytest.raises(ClientClosedError):
         await receiving
+
+
+@pytest.mark.asyncio
+async def test_receive_queue_backpressures_network_reader() -> None:
+    transport = _WSTransport()
+    connection = _client(transport).ws(
+        "/echo",
+        subprotocols=("json.v1",),
+        receive_queue_limit=1,
+    )
+
+    async with connection as session:
+        stream = transport.streams[0]
+        await stream.push_text("one")
+        await stream.push_text("two")
+        await stream.push_text("three")
+        for _ in range(20):
+            await asyncio.sleep(0)
+            if stream.read_count >= 2:
+                break
+
+        assert session._receive_queue.maxsize == 1
+        assert session._receive_queue.qsize() == 1
+        assert stream.read_count == 2
+        assert (await session.receive()).text == "one"
+
+        for _ in range(20):
+            await asyncio.sleep(0)
+            if stream.read_count >= 3:
+                break
+        assert stream.read_count == 3
+        assert (await session.receive()).text == "two"
+        assert (await session.receive()).text == "three"
+
+
+@pytest.mark.asyncio
+async def test_fragmented_message_size_limit_fails_and_closes_stream() -> None:
+    transport = _WSTransport()
+    connection = _client(transport).ws(
+        "/echo",
+        subprotocols=("json.v1",),
+        max_message_size=5,
+    )
+
+    async with connection as session:
+        stream = transport.streams[0]
+        await stream.push_text("abc", message_finished=False)
+        await stream.push_text("def")
+
+        with pytest.raises(WSMessageTooLargeError, match="max_message_size=5") as error:
+            await session.receive()
+
+        assert error.value.endpoint == "/echo"
+        assert stream.closed
+
+
+def test_websocket_resource_limits_must_be_positive() -> None:
+    client = _client(_WSTransport())
+    with pytest.raises(ValueError, match="max_message_size"):
+        client.ws("/echo", max_message_size=0)
+    with pytest.raises(ValueError, match="receive_queue_limit"):
+        client.ws("/echo", receive_queue_limit=0)
 
 
 @pytest.mark.asyncio

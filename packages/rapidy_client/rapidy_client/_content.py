@@ -98,7 +98,8 @@ async def _multipart_stream(
                 while block := file.read(chunk_size):
                     yield block
         else:
-            assert part.content is not None
+            if part.content is None:
+                raise RuntimeError("multipart part has neither a path nor content")
             yield part.content
         yield _CRLF
 

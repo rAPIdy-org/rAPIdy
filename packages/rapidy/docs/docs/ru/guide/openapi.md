@@ -168,7 +168,9 @@ app = Rapidy(
 и добавляет `security: []`; явное `security=[]` снимает только auth, сохраняя cumulative guards.
 `security=[{'bearerAuth': ['items:write']}]` требует scopes, а `security=[{}]` разрешает анонимную альтернативу.
 Неизвестные runtime-схемы закрывают доступ. Прежние `OpenAPIConfig.security_schemes` и `OpenAPIConfig.security`
-остаются доступны для конфигурации только документации, если `SecurityConfig` не установлен.
+остаются доступны без runtime backend только через явный compatibility switch
+`allow_documentation_only_security=True`. Без него route/document requirements при отсутствии `SecurityConfig`
+останавливают генерацию схемы или startup, а не оставляют endpoint публичным молча.
 
 HTTP/WebSocket-поведение, guards, DI и встроенные схемы описаны в разделе
 [аутентификация и авторизация](security.md).
@@ -204,15 +206,32 @@ config = OpenAPIConfig(
 крупные сторонние JavaScript/CSS bundles, поэтому новая возможность не добавляет runtime-зависимость и не увеличивает
 package. Явный `render_plugins` заменяет legacy UI routes; `render_plugins=()` оставляет только JSON schema.
 
+Default plugins загружают плавающую major-версию с jsDelivr. Это удобный development default, но не supply-chain
+гарантия: rAPIdy не добавляет SRI metadata и не контролирует remote response. Для production и security-sensitive
+документации скачайте проверенный exact release assets в static tree приложения, отдавайте его с того же origin и
+укажите локальные URL, как в примере выше. Exact `version=` уменьшает CDN drift, но не создаёт такую же trust boundary,
+как self-hosting.
+
+Security headers задавайте на уровне приложения или reverse proxy. Стартовый CSP для локальных assets:
+`default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self'; img-src data:; connect-src 'self'`.
+Built-in Swagger host содержит inline initialization script, поэтому удаление `'unsafe-inline'` требует custom
+`OpenAPIRenderPlugin` с nonce или стабильным script hash. Также задайте подходящий `Referrer-Policy`; если interactive
+UI не нужен, используйте `render_plugins=()`.
+
 Другой UI подключается наследованием от `OpenAPIRenderPlugin` и реализацией `render(request, openapi_schema, *,
 schema_url) -> bytes`. Plugin управляет path и media type, а rAPIdy передаёт mount-aware URL схемы.
+
+Schema/UI routes по умолчанию публичны, чтобы клиент мог узнать контракт аутентификации. Для закрытого API задайте
+`OpenAPIConfig(public=False)`: JSON и UI тогда наследуют runtime `SecurityConfig` и guards приложения как обычные
+маршруты.
 
 ## Что выводится автоматически
 
 - `PathParam`, `QueryParam`, `Header` и `Cookie` становятся параметрами с alias, default, constraints, description и
   признаком обязательности.
 - Plural-маркеры моделей, например `QueryParams()`, разворачиваются в отдельные параметры свойств.
-- `Body()` становится `requestBody` и сохраняет настроенный content type.
+- `Body()` становится `requestBody` и сохраняет настроенный content type. Поле `FileField` внутри multipart-модели
+  описывается OpenAPI binary string с полной ссылкой на component.
 - Аннотация результата или `response_type` задаёт схему ответа; status и media type берутся из настроек маршрута.
 - Pydantic-модели и вложенные определения переиспользуются через `components.schemas`.
 - Для валидируемых маршрутов документируется ответ rAPIdy HTTP 422 с полем `errors`.

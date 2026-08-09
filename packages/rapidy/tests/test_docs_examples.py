@@ -12,6 +12,7 @@ from examples import (
     background_files,
     di,
     middleware_mounts,
+    observability_dx,
     openapi,
     parameters,
     production_middlewares,
@@ -67,10 +68,17 @@ async def test_parameters_example() -> None:
 
 
 @pytest.mark.asyncio
-async def test_openapi_example() -> None:
+async def test_openapi_example(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ITEMS_BEARER_TOKEN', 'example-token')
     async with openapi.app.lifespan.ctx_manager():
         schema = await request(openapi.app, 'GET', '/schema/openapi.json')
-        created = await request(openapi.app, 'POST', '/items?notify=true', json={'name': 'Example'})
+        created = await request(
+            openapi.app,
+            'POST',
+            '/items?notify=true',
+            json={'name': 'Example'},
+            headers={'Authorization': 'Bearer example-token'},
+        )
 
     assert schema.status_code == 200
     assert schema.json()['info']['title'] == 'Items API'
@@ -163,6 +171,23 @@ async def test_background_files_example() -> None:
     assert ranged.status_code == 206
     assert ranged.text == 'rAPIdy'
     assert 'Static files are ready' in index.text
+
+
+@pytest.mark.asyncio
+async def test_observability_dx_example() -> None:
+    async with observability_dx.rapidy_app.lifespan.ctx_manager():
+        item = await request(observability_dx.app, 'GET', '/items/7')
+        missing = await request(observability_dx.app, 'GET', '/items/0')
+
+    assert item.json() == {'id': 7, 'self': '/items/7'}
+    assert missing.status_code == 500
+    assert missing.headers['content-type'].startswith('application/problem+json')
+    assert missing.json() == {
+        'type': 'about:blank',
+        'title': 'Internal Server Error',
+        'status': 500,
+        'instance': '/items/0',
+    }
 
 
 @pytest.mark.parametrize('runtime', ['granian', 'uvicorn'])

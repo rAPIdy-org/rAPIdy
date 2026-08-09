@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+from typing import Any, cast
 from urllib.parse import quote
 
 import pytest
@@ -7,7 +9,7 @@ from multidict import CIMultiDictProxy, MultiDictProxy
 
 from rapidy import Rapidy
 from rapidy.exceptions import HTTPRequestEntityTooLarge
-from rapidy.request import FileField
+from rapidy.request import FileField, MultipartLimits
 from tests.request_factory import make_request
 
 
@@ -148,25 +150,169 @@ async def test_multipart_structure_errors() -> None:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    ('content_type', 'body'),
-    [
-        ('application/x-www-form-urlencoded', b'x=1234567890'),
-        (
-            'multipart/form-data; boundary=limit',
-            multipart_body('limit', [([b'Content-Disposition: form-data; name="x"'], b'large')]),
-        ),
-    ],
-)
-async def test_form_total_size_limit(content_type: str, body: bytes) -> None:
+async def test_urlencoded_total_size_uses_client_max_size() -> None:
     request, _ = make_request(
         method='POST',
         app=Rapidy(client_max_size=5),
-        headers=((b'content-type', content_type.encode()),),
-        body_chunks=[body],
+        headers=((b'content-type', b'application/x-www-form-urlencoded'),),
+        body_chunks=[b'x=1234567890'],
     )
     with pytest.raises(HTTPRequestEntityTooLarge):
         await request.post()
+
+
+@pytest.mark.asyncio
+async def test_multipart_total_size_uses_independent_limit() -> None:
+    boundary = 'limit'
+    body = multipart_body(boundary, [([b'Content-Disposition: form-data; name="x"'], b'large')])
+    request, _ = make_request(
+        method='POST',
+        app=Rapidy(
+            client_max_size=5,
+            multipart_limits=replace(MultipartLimits(), max_body_size=len(body) - 1),
+        ),
+        headers=((b'content-type', f'multipart/form-data; boundary={boundary}'.encode()),),
+        body_chunks=[body],
+    )
+    with pytest.raises(HTTPRequestEntityTooLarge) as exc_info:
+        await request.post()
+    assert exc_info.value.max_size == len(body) - 1
+    assert exc_info.value.actual_size == len(body)
+    assert exc_info.value.text is not None
+    assert 'multipart body size' in exc_info.value.text
+
+
+@pytest.mark.asyncio
+async def test_multipart_can_exceed_raw_body_limit_without_disabling_it() -> None:
+    boundary = 'independent-limit'
+    body = multipart_body(boundary, [([b'Content-Disposition: form-data; name="x"'], b'large')])
+    request, receive = make_request(
+        method='POST',
+        app=Rapidy(client_max_size=5),
+        headers=((b'content-type', f'multipart/form-data; boundary={boundary}'.encode()),),
+        body_chunks=[body[:17], body[17:41], body[41:]],
+    )
+
+    assert (await request.post())['x'] == 'large'
+    assert receive.calls == 3
+    assert request._read_bytes is None
+    with pytest.raises(HTTPRequestEntityTooLarge) as exc_info:
+        await request.read()
+    assert exc_info.value.max_size == 5
+    assert exc_info.value.actual_size == len(body)
+
+
+@pytest.mark.asyncio
+async def test_multipart_raw_body_and_files_spool_past_memory_threshold() -> None:
+    boundary = 'disk-spool'
+    body = multipart_body(
+        boundary,
+        [([b'Content-Disposition: form-data; name="file"; filename="f.bin"'], b'0123456789abcdef')],
+    )
+    request, _ = make_request(
+        method='POST',
+        app=Rapidy(multipart_limits=replace(MultipartLimits(), spool_threshold=8)),
+        headers=((b'content-type', f'multipart/form-data; boundary={boundary}'.encode()),),
+        body_chunks=[body[:11], body[11:]],
+    )
+
+    uploaded = (await request.post())['file']
+    assert isinstance(uploaded, FileField)
+    assert request._body_file is not None
+    assert cast('Any', request._body_file)._rolled is True
+    assert cast('Any', uploaded.file)._rolled is True
+    uploaded.file.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ('limits', 'parts', 'message', 'maximum', 'actual'),
+    [
+        (
+            replace(MultipartLimits(), max_parts=1),
+            [
+                ([b'Content-Disposition: form-data; name="one"'], b'1'),
+                ([b'Content-Disposition: form-data; name="two"'], b'2'),
+            ],
+            'part count',
+            1,
+            2,
+        ),
+        (
+            replace(MultipartLimits(), max_fields=1),
+            [
+                ([b'Content-Disposition: form-data; name="one"'], b'1'),
+                ([b'Content-Disposition: form-data; name="two"'], b'2'),
+            ],
+            'field count',
+            1,
+            2,
+        ),
+        (
+            replace(MultipartLimits(), max_files=1),
+            [
+                ([b'Content-Disposition: form-data; name="one"; filename="1.txt"'], b'1'),
+                ([b'Content-Disposition: form-data; name="two"; filename="2.txt"'], b'2'),
+            ],
+            'file count',
+            1,
+            2,
+        ),
+        (
+            replace(MultipartLimits(), max_field_size=3),
+            [([b'Content-Disposition: form-data; name="field"'], b'1234')],
+            'field size',
+            3,
+            4,
+        ),
+        (
+            replace(MultipartLimits(), max_file_size=3),
+            [([b'Content-Disposition: form-data; name="file"; filename="f.txt"'], b'1234')],
+            'file size',
+            3,
+            4,
+        ),
+    ],
+)
+async def test_multipart_resource_limits(
+    limits: MultipartLimits,
+    parts: list[tuple[list[bytes], bytes]],
+    message: str,
+    maximum: int,
+    actual: int,
+) -> None:
+    boundary = 'resource-limit'
+    request, _ = make_request(
+        method='POST',
+        app=Rapidy(multipart_limits=limits),
+        headers=((b'content-type', f'multipart/form-data; boundary={boundary}'.encode()),),
+        body_chunks=[multipart_body(boundary, parts)],
+    )
+
+    with pytest.raises(HTTPRequestEntityTooLarge) as exc_info:
+        await request.post()
+    assert exc_info.value.max_size == maximum
+    assert exc_info.value.actual_size == actual
+    assert exc_info.value.text is not None
+    assert message in exc_info.value.text
+
+
+@pytest.mark.parametrize(
+    ('field', 'value', 'exception'),
+    [
+        ('max_body_size', 0, ValueError),
+        ('max_parts', -1, ValueError),
+        ('max_files', True, TypeError),
+        ('spool_threshold', '1', TypeError),
+    ],
+)
+def test_multipart_limits_validate_positive_integers(
+    field: str,
+    value: object,
+    exception: type[Exception],
+) -> None:
+    with pytest.raises(exception, match=field):
+        replace(MultipartLimits(), **cast('Any', {field: value}))
 
 
 @pytest.mark.asyncio

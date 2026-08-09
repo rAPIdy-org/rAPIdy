@@ -7,12 +7,15 @@ import pytest
 from rapidy_core.exceptions import RapidyException
 from rapidy_core.parameters.http import PathParam, QueryParam
 from rapidy_core.signature import (
+    Attr,
     CannotBeOptionalError,
+    DataAttr,
     DefaultDefineTwiceError,
     DefaultError,
     ParameterCannotUseDefaultError,
     ParameterCannotUseDefaultFactoryError,
     ParameterNotInstanceError,
+    SignatureRawInfo,
     SpecifyBothDefaultAndDefaultFactoryError,
     SpecifyBothDefaultAndOptionalError,
     SpecifyBothDefaultFactoryAndOptionalError,
@@ -75,6 +78,17 @@ def test_plain_parameter_goes_to_attrs() -> None:
     assert len(raw.attrs) == 1
     assert raw.attrs[0].attribute_name == "value"
     assert raw.attrs[0].attribute_annotation is int
+
+
+def test_signature_containers_are_public_core_types() -> None:
+    def endpoint(value: int, query: str = QueryParam()) -> None:
+        pass
+
+    raw = get_signature_raw_info(endpoint)
+
+    assert isinstance(raw, SignatureRawInfo)
+    assert isinstance(raw.attrs[0], Attr)
+    assert isinstance(raw.data_attrs[0], DataAttr)
 
 
 def test_return_annotation_captured() -> None:

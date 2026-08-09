@@ -25,4 +25,14 @@ async def stream_handler() -> StreamResponse:
     return StreamResponse(body=chunks())
 
 
-app = Rapidy(http_route_handlers=[sse_handler, stream_handler])
+@get('/broken-stream')
+async def broken_stream_handler() -> StreamResponse:
+    async def chunks() -> AsyncIterator[bytes]:
+        yield b'partial'
+        msg = 'broken stream'
+        raise RuntimeError(msg)
+
+    return StreamResponse(body=chunks())
+
+
+app = Rapidy(http_route_handlers=[sse_handler, stream_handler, broken_stream_handler])

@@ -211,6 +211,32 @@ async def test_disconnect_cancels_iteration_and_acloses() -> None:
 
 
 @pytest.mark.asyncio
+async def test_external_cancellation_is_not_swallowed_while_stopping_disconnect_listener() -> None:
+    listener_cleanup_started = asyncio.Event()
+    release_listener = asyncio.Event()
+
+    async def receive() -> dict[str, Any]:
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            listener_cleanup_started.set()
+            await release_listener.wait()
+            raise
+
+    async def send(_message: dict[str, Any]) -> None:
+        return None
+
+    request_task = asyncio.create_task(StreamResponse()._send_stream(send, receive))
+    await listener_cleanup_started.wait()
+    request_task.cancel()
+    try:
+        with pytest.raises(asyncio.CancelledError):
+            await request_task
+    finally:
+        release_listener.set()
+
+
+@pytest.mark.asyncio
 async def test_disconnect_calls_custom_aclose_once() -> None:
     class ClosableBody:
         def __init__(self) -> None:
@@ -236,6 +262,31 @@ async def test_disconnect_calls_custom_aclose_once() -> None:
 
 
 @pytest.mark.asyncio
+async def test_non_suspending_infinite_stream_still_observes_disconnect() -> None:
+    finalized = asyncio.Event()
+
+    async def chunks() -> AsyncIterator[bytes]:
+        try:
+            while True:
+                yield b'x' * 16
+        finally:
+            finalized.set()
+
+    transport = FakeHTTPTransport()
+    transport.feed({'type': 'http.disconnect'})
+
+    await asyncio.wait_for(
+        StreamResponse(body=chunks())._send_stream(transport.send, transport.receive),
+        timeout=1,
+    )
+
+    body_frames = [message for message in transport.sent if message.get('type') == 'http.response.body']
+    assert finalized.is_set()
+    assert len(body_frames) < 10
+    assert not any(message.get('more_body') is False for message in body_frames)
+
+
+@pytest.mark.asyncio
 async def test_http_request_messages_do_not_interrupt_stream() -> None:
     async def chunks() -> AsyncIterator[bytes]:
         yield b'a'
@@ -250,19 +301,50 @@ async def test_http_request_messages_do_not_interrupt_stream() -> None:
 
 
 @pytest.mark.asyncio
-async def test_iteration_exception_is_logged_and_not_replayed(caplog: pytest.LogCaptureFixture) -> None:
+async def test_iteration_exception_propagates_without_clean_eof() -> None:
     async def chunks() -> AsyncIterator[bytes]:
         yield b'partial'
         msg = 'broken stream'
         raise RuntimeError(msg)
 
     transport = FakeHTTPTransport()
-    with caplog.at_level('ERROR', logger='rapidy'):
+    with pytest.raises(RuntimeError, match='broken stream'):
         await StreamResponse(body=chunks())._send_stream(transport.send, transport.receive)
 
-    assert transport.sent[-2] == {'type': 'http.response.body', 'body': b'partial', 'more_body': True}
-    assert transport.sent[-1] == {'type': 'http.response.body', 'body': b'', 'more_body': False}
-    assert 'Unhandled error while streaming response body' in caplog.text
+    assert transport.sent[-1] == {'type': 'http.response.body', 'body': b'partial', 'more_body': True}
+    assert not any(message.get('more_body') is False for message in transport.sent)
+
+
+@pytest.mark.asyncio
+async def test_application_propagates_stream_failure_after_response_start() -> None:
+    async def chunks() -> AsyncIterator[bytes]:
+        yield b'partial'
+        msg = 'broken stream'
+        raise RuntimeError(msg)
+
+    @get('/broken')
+    async def broken() -> StreamResponse:
+        return StreamResponse(body=chunks())
+
+    app = Rapidy(http_route_handlers=[broken])
+    transport = FakeHTTPTransport()
+    transport.feed({'type': 'http.request', 'body': b'', 'more_body': False})
+    scope: dict[str, Any] = {
+        'type': 'http',
+        'http_version': '1.1',
+        'method': 'GET',
+        'path': '/broken',
+        'query_string': b'',
+        'headers': [],
+        'state': {},
+    }
+
+    async with app.lifespan.ctx_manager():
+        with pytest.raises(RuntimeError, match='broken stream'):
+            await app(scope, transport.receive, transport.send)
+
+    assert transport.sent[-1] == {'type': 'http.response.body', 'body': b'partial', 'more_body': True}
+    assert not any(message.get('more_body') is False for message in transport.sent)
 
 
 @pytest.mark.asyncio
@@ -290,6 +372,74 @@ async def test_sse_frames_headers_retry_and_user_override() -> None:
     ]
     assert all(message['more_body'] for message in transport.sent[1:-1])
     assert transport.sent[-1]['more_body'] is False
+
+
+@pytest.mark.asyncio
+async def test_sse_data_normalizes_cr_lf_without_creating_fields_or_events() -> None:
+    async def events() -> AsyncIterator[SSEEvent]:
+        yield SSEEvent(
+            data='one\rtwo\r\n\r\nevent: forged\nid: forged',
+            event='changed',
+            id='safe',
+        )
+
+    transport = FakeHTTPTransport()
+    await SSEResponse(events())._send_stream(transport.send, transport.receive)
+
+    assert transport.sent[1]['body'] == (
+        b'id: safe\n'
+        b'event: changed\n'
+        b'data: one\n'
+        b'data: two\n'
+        b'data: \n'
+        b'data: event: forged\n'
+        b'data: id: forged\n\n'
+    )
+    assert transport.sent[-1] == {'type': 'http.response.body', 'body': b'', 'more_body': False}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ('event_name', 'event_id', 'message'),
+    [
+        ('changed\nevent: forged', 'safe', 'SSE event must not contain CR or LF'),
+        ('changed', 'safe\rid: forged', 'SSE id must not contain CR or LF'),
+        ('changed', 'safe\x00forged', 'SSE id must not contain NUL'),
+    ],
+)
+async def test_sse_metadata_rejects_framing_characters(
+    event_name: str,
+    event_id: str,
+    message: str,
+) -> None:
+    async def events() -> AsyncIterator[SSEEvent]:
+        yield SSEEvent(data='safe', event=event_name, id=event_id)
+
+    transport = FakeHTTPTransport()
+    with pytest.raises(ValueError, match=message):
+        await SSEResponse(events())._send_stream(transport.send, transport.receive)
+    assert len(transport.sent) == 1
+    assert transport.sent[0]['type'] == 'http.response.start'
+
+
+@pytest.mark.parametrize(
+    ('retry', 'exception', 'message'),
+    [
+        (-1, ValueError, 'must not be negative'),
+        (True, TypeError, 'must be an integer'),
+        ('1000', TypeError, 'must be an integer'),
+    ],
+)
+def test_sse_retry_rejects_invalid_runtime_values(
+    retry: Any,
+    exception: type[Exception],
+    message: str,
+) -> None:
+    async def events() -> AsyncIterator[str]:
+        yield 'never'
+
+    with pytest.raises(exception, match=message):
+        SSEResponse(events(), retry=retry)
 
 
 @pytest.mark.asyncio
@@ -515,3 +665,24 @@ async def test_stream_live_granian() -> None:
             response = await client.get(f'{base_url}/stream')
     assert response.content == b'chunk-1chunk-2'
     assert 'content-length' not in response.headers
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    'runtime',
+    [
+        pytest.param(
+            'granian',
+            marks=pytest.mark.xfail(
+                strict=True,
+                reason='Granian 2.8.1 does not terminate an incomplete HTTP/1 response after an ASGI exception',
+            ),
+        ),
+        'uvicorn',
+    ],
+)
+async def test_stream_failure_never_completes_live_response(runtime: str) -> None:
+    with live_server(runtime, 'tests.apps.sse_app:app') as base_url:
+        async with httpx.AsyncClient(timeout=1) as client:
+            with pytest.raises(httpx.RemoteProtocolError, match='incomplete'):
+                await client.get(f'{base_url}/broken-stream')

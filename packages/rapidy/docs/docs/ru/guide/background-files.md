@@ -73,19 +73,22 @@ from rapidy.staticfiles import StaticFiles
 
 app = Rapidy(
     http_route_handlers=[
-        StaticFiles('/assets', directory='./public', html=True)
+        StaticFiles('/assets', directory='./public', html=True, public=True)
     ]
 )
 ```
 
 Он создаёт GET и автоматический HEAD, но не попадает в OpenAPI. По умолчанию отклоняются `..`, обратные слеши, NUL,
-выход за configured root и symlink в дочерних компонентах. `follow_symlinks=True` разрешает ссылку только при условии,
-что resolved target остаётся внутри root. `html=True` отдаёт `index.html` для каталогов и перенаправляет URL каталога
-на вариант с завершающим `/`. Default cache header — `public, max-age=3600`. По умолчанию route публичный; используйте
-`public=False`, если файлы должна защищать application security.
+dotfiles, выход за configured root и symlink в дочерних компонентах. `allow_dotfiles=True` — явный opt-in для деревьев
+вроде `/.well-known`; `follow_symlinks=True` разрешает ссылку только при условии, что resolved target остаётся внутри
+root. `html=True` отдаёт `index.html` для каталогов и перенаправляет URL каталога на вариант с завершающим `/`. Default
+cache header — `public, max-age=3600`. По умолчанию static routes наследуют application security (`public=False`).
+Указывайте `public=True` явно только для assets, которые должны обходить authentication и guards приложения.
 
 `StaticFiles` совместим с mount через `HTTPRouter`. Configured root должен содержать доверенные файлы приложения; для
 изменяемого пользователями дерева лучше использовать object storage или reverse proxy.
+Path validation, metadata, ranges и body delivery используют один pinned open file descriptor, поэтому замена уже
+проверенного entry на symlink до отправки ответа не перенаправит response за пределы configured root.
 
 Полный исполняемый пример:
 [`examples/background_files.py`](https://github.com/rAPIdy-org/rAPIdy/blob/main/packages/rapidy/examples/background_files.py).

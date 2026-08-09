@@ -1,10 +1,8 @@
 from __future__ import annotations
 
-import ast
 import functools
 import inspect
 import re
-import textwrap
 import types
 import typing
 from collections.abc import Awaitable, Callable, Sequence
@@ -25,16 +23,18 @@ from typing import (
 
 from pydantic import BaseModel, TypeAdapter
 from rapidy_core import HTTPRequestParamType
-from rapidy_core.fields.field_info import RapidyFieldInfo
 from rapidy_core.signature import get_signature_raw_info
 from rapidy_core.typedefs import Required, Undefined
 
 from rapidy_client._client import HttpClient
+from rapidy_client._declaration import declaration_body_is_declarative
 from rapidy_client._models import QueryValue
 from rapidy_client.errors import SchemaDefinitionError
 from rapidy_client.schema._binding import bind as _bind_schema
 
 if TYPE_CHECKING:
+    from rapidy_core.fields.field_info import RapidyFieldInfo
+
     from rapidy_client.sse import SSEReconnect
     from rapidy_client.ws import Heartbeat
 
@@ -100,7 +100,7 @@ def _bind_operation(
 
     signature = inspect.signature(target.func)
     parameters = tuple(signature.parameters.values())[1:]
-    cast(Any, call).__signature__ = signature.replace(parameters=parameters)
+    cast("Any", call).__signature__ = signature.replace(parameters=parameters)
     return call
 
 
@@ -112,6 +112,8 @@ class _ProtocolDeclaration(Generic[P, R]):
         kind: Literal["ws", "sse"],
         path: str,
         heartbeat: Any = None,
+        max_message_size: int = 16_777_216,
+        receive_queue_limit: int = 256,
         send_queue_limit: int = 256,
         send_timeout: float = 10.0,
         subprotocols: Sequence[str] = (),
@@ -123,6 +125,8 @@ class _ProtocolDeclaration(Generic[P, R]):
         self.kind = kind
         self.path = path
         self.heartbeat = heartbeat
+        self.max_message_size = max_message_size
+        self.receive_queue_limit = receive_queue_limit
         self.send_queue_limit = send_queue_limit
         self.send_timeout = send_timeout
         self.subprotocols = tuple(subprotocols)
@@ -141,47 +145,7 @@ class _ProtocolDeclaration(Generic[P, R]):
 
 def _check_declaration_body(func: Callable[..., Any]) -> None:
     qualname = func.__qualname__
-    try:
-        source = textwrap.dedent(inspect.getsource(func))
-        tree = ast.parse(source)
-    except (OSError, SyntaxError, TypeError) as exc:
-        raise SchemaDefinitionError(
-            f"invalid protocol declaration '{qualname}': cannot inspect body: {exc}"
-        ) from exc
-    node = next(
-        (
-            item
-            for item in ast.walk(tree)
-            if isinstance(item, ast.AsyncFunctionDef) and item.name == func.__name__
-        ),
-        None,
-    )
-    if node is None:
-        raise SchemaDefinitionError(
-            f"invalid protocol declaration '{qualname}': cannot locate body"
-        )
-    body = list(node.body)
-    if body and isinstance(body[0], ast.Expr):
-        value = body[0].value
-        if isinstance(value, ast.Constant) and isinstance(value.value, str):
-            body.pop(0)
-    valid = not body
-    if len(body) == 1:
-        statement = body[0]
-        valid = isinstance(statement, ast.Pass)
-        if isinstance(statement, ast.Expr):
-            value = statement.value
-            valid = isinstance(value, ast.Constant) and value.value is Ellipsis
-        elif isinstance(statement, ast.Raise):
-            raised = statement.exc
-            valid = (
-                isinstance(raised, ast.Name) and raised.id == "NotImplementedError"
-            ) or (
-                isinstance(raised, ast.Call)
-                and isinstance(raised.func, ast.Name)
-                and raised.func.id == "NotImplementedError"
-            )
-    if not valid:
+    if not declaration_body_is_declarative(func):
         raise SchemaDefinitionError(
             f"invalid protocol declaration '{qualname}': body must contain only "
             "pass, ..., a docstring, or raise NotImplementedError"
@@ -208,6 +172,8 @@ def ws(
     path: str,
     *,
     heartbeat: Heartbeat | None = None,
+    max_message_size: int = 16_777_216,
+    receive_queue_limit: int = 256,
     send_queue_limit: int = 256,
     send_timeout: float = 10.0,
     subprotocols: Sequence[str] = (),
@@ -220,6 +186,8 @@ def ws(
             kind="ws",
             path=path,
             heartbeat=heartbeat,
+            max_message_size=max_message_size,
+            receive_queue_limit=receive_queue_limit,
             send_queue_limit=send_queue_limit,
             send_timeout=send_timeout,
             subprotocols=subprotocols,
@@ -296,7 +264,6 @@ def _marker_default(field_info: RapidyFieldInfo) -> object:
 
 
 def _protocol_arguments(
-    declaration: _ProtocolDeclaration[Any, Any],
     data_attrs: tuple[Any, ...],
     bound: inspect.BoundArguments,
 ) -> tuple[
@@ -494,7 +461,6 @@ def _bind_protocol(
         if declaration.kind == "sse" and "last_event_id" in bound.arguments:
             last_id = cast("str | None", bound.arguments.pop("last_event_id"))
         path_params, query, headers = _protocol_arguments(
-            declaration,
             data_attrs,
             bound,
         )
@@ -504,6 +470,8 @@ def _bind_protocol(
                     client,
                     declaration.path,
                     heartbeat=declaration.heartbeat,
+                    max_message_size=declaration.max_message_size,
+                    receive_queue_limit=declaration.receive_queue_limit,
                     send_queue_limit=declaration.send_queue_limit,
                     send_timeout=declaration.send_timeout,
                     subprotocols=declaration.subprotocols,
@@ -518,6 +486,8 @@ def _bind_protocol(
                 client,
                 declaration.path,
                 heartbeat=declaration.heartbeat,
+                max_message_size=declaration.max_message_size,
+                receive_queue_limit=declaration.receive_queue_limit,
                 send_queue_limit=declaration.send_queue_limit,
                 send_timeout=declaration.send_timeout,
                 subprotocols=declaration.subprotocols,
@@ -563,7 +533,7 @@ def bind(target: Any, client: HttpClient) -> Any:
         return _bind_operation(target, client)
     if isinstance(target, _ProtocolDeclaration):
         return _bind_protocol(target, client)
-    return _bind_schema(target, cast(Any, client))
+    return _bind_schema(target, cast("Any", client))
 
 
 __all__ = ("Operation", "bind", "operation", "sse", "ws")

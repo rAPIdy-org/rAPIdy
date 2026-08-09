@@ -63,8 +63,8 @@ This uses the Uvicorn runtime selected by the extra. Granian and Hypercorn remai
 without installing Uvicorn.
 
 ```bash
-curl http://127.0.0.1:8000/
-curl -i -X POST http://127.0.0.1:8000/users \
+curl http://127.0.0.1:8080/
+curl -i -X POST http://127.0.0.1:8080/users \
   -H 'Content-Type: application/json' \
   -d '{"name":"Ada","age":37}'
 ```

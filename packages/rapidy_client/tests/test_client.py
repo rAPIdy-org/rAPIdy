@@ -96,6 +96,23 @@ class _RedirectTransport(_RecordingTransport):
         )
 
 
+class _CrossOriginRedirectTransport(_RecordingTransport):
+    async def handle(self, request: Request) -> Response:
+        self.requests.append(request)
+        first_hop = len(self.requests) == 1
+        return Response(
+            status=302 if first_hop else 200,
+            headers=(
+                Headers({"Location": "//other.example.com/redirected"})
+                if first_hop
+                else Headers()
+            ),
+            request=request,
+            extensions=ResponseExtensions(elapsed=0.0, attempt=1),
+            stream=_body_stream(b"" if first_hop else b"done"),
+        )
+
+
 class _FakeInfinite:
     def __init__(self) -> None:
         self.closed = asyncio.Event()
@@ -348,10 +365,61 @@ async def test_path_params_url_escaped() -> None:
 
 
 @pytest.mark.asyncio
-async def test_absolute_url_blocked() -> None:
-    client, _ = _client()
+@pytest.mark.parametrize(
+    "path",
+    ["https://evil.example.com", "//evil.example.com/path", "https:evil"],
+)
+async def test_absolute_url_references_blocked(path: str) -> None:
+    client, transport = _client(
+        config=_config(default_headers={"Authorization": "Bearer upstream-secret"})
+    )
     with pytest.raises(ValueError, match="absolute"):
-        await client.get("https://evil.example.com")
+        await client.get(path, headers={"Cookie": "session=request-secret"})
+    assert transport.requests == []
+
+
+@pytest.mark.asyncio
+async def test_cross_origin_redirect_strips_default_credentials() -> None:
+    transport = _CrossOriginRedirectTransport()
+    client, _ = _client(
+        transport=transport,
+        config=_config(
+            allow_absolute_urls=True,
+            redirects={"follow": True},
+            default_headers={
+                "Authorization": "Bearer default-secret",
+                "Cookie": "session=default-secret",
+                "Proxy-Authorization": "Basic default-secret",
+                "Host": "api.example.com",
+                "X-Safe": "yes",
+            },
+        ),
+    )
+
+    await client.get("/source")
+
+    first, redirected = transport.requests
+    assert first.headers["authorization"] == "Bearer default-secret"
+    assert first.headers["cookie"] == "session=default-secret"
+    assert first.headers["proxy-authorization"] == "Basic default-secret"
+    assert first.headers["host"] == "api.example.com"
+    assert "authorization" not in redirected.headers
+    assert "cookie" not in redirected.headers
+    assert "proxy-authorization" not in redirected.headers
+    assert "host" not in redirected.headers
+    assert redirected.headers["x-safe"] == "yes"
+
+
+@pytest.mark.asyncio
+async def test_request_headers_override_defaults_case_insensitively() -> None:
+    client, transport = _client(
+        config=_config(default_headers={"Authorization": "Bearer default", "X-Env": "prod"})
+    )
+
+    await client.get("/override", headers={"authorization": "Bearer request"})
+
+    assert transport.last.headers.get_all("authorization") == ["Bearer request"]
+    assert transport.last.headers["x-env"] == "prod"
 
 
 @pytest.mark.asyncio

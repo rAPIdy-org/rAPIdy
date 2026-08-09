@@ -50,6 +50,7 @@ class TLSConfig:
 class ProxyConfig:
     url: str | None = None
     trust_env: bool = False
+    no_proxy: frozenset[str] = frozenset()
 
 
 def _transport(
@@ -58,13 +59,15 @@ def _transport(
     tls: TLSConfig | None = None,
     cookies: str = "disabled",
     default_headers: dict[str, str] | None = None,
+    proxy: ProxyConfig | None = None,
     observers: tuple[BaseObserver, ...] = (),
 ) -> HttpxTransport:
     return HttpxTransport(
         base_url="https://example.test",
         limits=limits or PoolLimits(),  # type: ignore[arg-type]
         tls=tls or TLSConfig(),  # type: ignore[arg-type]
-        cookies=cast(Any, cookies),
+        proxy=proxy,  # type: ignore[arg-type]
+        cookies=cast("Any", cookies),
         default_headers=default_headers or {},
         observers=observers,
     )
@@ -196,6 +199,48 @@ def test_default_accept_encoding_not_overridden_case_insensitively() -> None:
 def test_default_headers_applied() -> None:
     transport = _transport(default_headers={"X-Env": "prod"})
     assert transport._default_headers["X-Env"] == "prod"
+
+
+@pytest.mark.asyncio
+async def test_no_proxy_routes_matching_hosts_to_direct_pool() -> None:
+    transport = _transport(
+        proxy=ProxyConfig(
+            url="http://proxy.example:8080",
+            no_proxy=frozenset({"example.test", ".internal.test", "127.0.0.1", "::1"}),
+        )
+    )
+    client = await transport._get_client()
+    direct = client._transport
+
+    assert client._transport_for_url(httpx2.URL("https://example.test")) is direct
+    assert client._transport_for_url(httpx2.URL("https://api.example.test")) is direct
+    assert client._transport_for_url(httpx2.URL("https://api.internal.test")) is direct
+    assert client._transport_for_url(httpx2.URL("http://127.0.0.1")) is direct
+    assert client._transport_for_url(httpx2.URL("http://[::1]")) is direct
+    assert client._transport_for_url(httpx2.URL("https://internal.test")) is not direct
+    assert client._transport_for_url(httpx2.URL("https://other.test")) is not direct
+    await transport.aclose()
+
+
+@pytest.mark.asyncio
+async def test_no_proxy_wildcard_bypasses_all_proxy_routes() -> None:
+    transport = _transport(
+        proxy=ProxyConfig(
+            url="http://proxy.example:8080",
+            no_proxy=frozenset({"*"}),
+        )
+    )
+    client = await transport._get_client()
+
+    assert client._transport_for_url(httpx2.URL("http://one.test")) is client._transport
+    assert client._transport_for_url(httpx2.URL("https://two.test")) is client._transport
+    await transport.aclose()
+
+
+@pytest.mark.parametrize("entry", ["10.0.0.0/8", "bad*pattern", "https://host.test/path", ""])
+def test_no_proxy_rejects_unsupported_or_ambiguous_entries(entry: str) -> None:
+    with pytest.raises(ValueError, match="no_proxy"):
+        _transport(proxy=ProxyConfig(url="http://proxy.example", no_proxy=frozenset({entry})))
 
 
 @pytest.mark.asyncio
@@ -565,7 +610,7 @@ async def test_ws_network_stream_maps_errors_and_closes_response() -> None:
     )
     native = BrokenNetworkStream()
     stream = WSNetworkStream(
-        cast(Any, native),
+        cast("Any", native),
         response,
         _request(),
     )
@@ -590,7 +635,7 @@ async def test_aclose_idempotent() -> None:
 
     transport = _transport()
     client = Client()
-    transport._client = cast(Any, client)
+    transport._client = cast("Any", client)
     await transport.aclose()
     await transport.aclose()
     assert client.closes == 1

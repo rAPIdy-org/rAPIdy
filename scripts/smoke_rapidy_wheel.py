@@ -131,6 +131,14 @@ def main() -> int:
         ):
             continue
         import_module(module.name)
+    testing = import_module("rapidy.testing")
+    assert "TestClient" in dir(testing)
+    try:
+        testing.TestClient
+    except testing.MissingTestingDependencyError:
+        pass
+    else:
+        raise AssertionError("rapidy.testing must explain its optional test extra")
     try:
         CompressionMiddleware(algorithms=["br"])
     except MissingBrotliDependencyError:

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from typing import Any
 from urllib.error import HTTPError
 from urllib.request import (
@@ -20,7 +21,7 @@ from pydantic import BaseModel
 from rapidy import Rapidy
 from rapidy.endpoint_handlers.http.attrs_extractor import RequestFieldAlreadyExistsError
 from rapidy.http import Body, ContentType, Cookie, get, Header, PathParam, post, QueryParam, Request, Response
-from rapidy.request import FileField
+from rapidy.request import FileField, MultipartLimits
 from tests.live_server import live_server
 
 
@@ -249,14 +250,26 @@ async def test_body_is_read_once_even_when_handler_reads_again() -> None:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
-    ('path', 'kwargs'),
+    ('path', 'kwargs', 'app_kwargs'),
     [
-        ('/raw', {'content': b'123456'}),
-        ('/form', {'content': b'a=123456', 'headers': {'content-type': ContentType.x_www_form}}),
-        ('/multipart', {'files': {'upload': ('f.bin', b'x', 'application/octet-stream')}}),
+        ('/raw', {'content': b'123456'}, {'client_max_size': 5}),
+        (
+            '/form',
+            {'content': b'a=123456', 'headers': {'content-type': ContentType.x_www_form}},
+            {'client_max_size': 5},
+        ),
+        (
+            '/multipart',
+            {'files': {'upload': ('f.bin', b'x', 'application/octet-stream')}},
+            {'multipart_limits': MultipartLimits(max_body_size=5)},
+        ),
     ],
 )
-async def test_client_max_size_survives_extraction(path: str, kwargs: dict[str, Any]) -> None:
+async def test_body_size_limits_survive_extraction(
+    path: str,
+    kwargs: dict[str, Any],
+    app_kwargs: dict[str, Any],
+) -> None:
     @post('/raw')
     async def raw(data: bytes = Body(content_type='*/*')) -> str:
         return data.decode()
@@ -270,12 +283,33 @@ async def test_client_max_size_survives_extraction(path: str, kwargs: dict[str, 
         return str(data)
 
     response = await request(
-        Rapidy(http_route_handlers=[raw, form, multipart], client_max_size=5),
+        Rapidy(http_route_handlers=[raw, form, multipart], **app_kwargs),
         'POST',
         path,
         **kwargs,
     )
     assert response.status_code == 413
+
+
+@pytest.mark.asyncio
+async def test_multipart_upload_does_not_require_raising_raw_body_limit() -> None:
+    @post('/multipart')
+    async def multipart(data: Any = Body(content_type=ContentType.m_part_form_data)) -> str:
+        uploaded = data['upload']
+        assert isinstance(uploaded, FileField)
+        try:
+            return uploaded.file.read().decode()
+        finally:
+            uploaded.file.close()
+
+    response = await request(
+        Rapidy(http_route_handlers=[multipart], client_max_size=5),
+        'POST',
+        '/multipart',
+        files={'upload': ('f.txt', b'accepted', 'text/plain')},
+    )
+    assert response.status_code == 200
+    assert response.text == 'accepted'
 
 
 @pytest.mark.asyncio
@@ -331,6 +365,74 @@ async def test_invalid_json_is_a_validation_failure() -> None:
 
     assert response.status_code == 422
     assert response.json()['errors'][0]['msg'].startswith('Failed to extract body data as Json: ')
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ('body', 'content_type', 'message'),
+    [
+        (b'\xff', 'application/json', 'Request body does not match the declared charset.'),
+        (b'{}', 'application/json; charset=unknown-codec', 'Unsupported request body charset.'),
+    ],
+)
+async def test_invalid_json_encoding_is_a_stable_bad_request(
+    body: bytes,
+    content_type: str,
+    message: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    @post('/json')
+    async def json_body(payload: Payload = Body()) -> str:
+        return str(payload.count)
+
+    caplog.set_level(logging.ERROR, logger='rapidy.application')
+    response = await request(
+        Rapidy(http_route_handlers=[json_body]),
+        'POST',
+        '/json',
+        content=body,
+        headers={'content-type': content_type},
+    )
+
+    assert response.status_code == 400
+    assert response.text == message
+    assert not caplog.records
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ('case', 'message'),
+    [
+        ('huge_integer', 'Invalid JSON value'),
+        ('deep_nesting', 'JSON nesting is too deep'),
+    ],
+)
+async def test_resource_invalid_json_is_a_stable_validation_failure(
+    case: str,
+    message: str,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    @post('/json')
+    async def json_body(payload: Payload = Body()) -> str:
+        return str(payload.count)
+
+    body = (
+        b'{"count": ' + b'9' * 5_000 + b'}'
+        if case == 'huge_integer'
+        else b'[' * 10_000 + b'0' + b']' * 10_000
+    )
+    caplog.set_level(logging.ERROR, logger='rapidy.application')
+    response = await request(
+        Rapidy(http_route_handlers=[json_body]),
+        'POST',
+        '/json',
+        content=body,
+        headers={'content-type': ContentType.json},
+    )
+
+    assert response.status_code == 422
+    assert message in response.json()['errors'][0]['msg']
+    assert not caplog.records
 
 
 def test_live_uvicorn_extraction_pipeline() -> None:

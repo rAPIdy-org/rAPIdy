@@ -13,7 +13,7 @@ from rapidy import Rapidy
 from rapidy.endpoint_handlers.http.controller import controller_factory, HandlerController, ResponseValidationError
 from rapidy.http import controller, get, HTTPRouter, post, Request, Response
 from rapidy.routing.http.routers import HandlerIsNotAsyncFuncTypeError
-from rapidy.typedefs import Unset, View
+from rapidy.typedefs import UNSET, View
 
 
 class Item(BaseModel):
@@ -33,7 +33,7 @@ def make_controller(handler: Any, *, response_validate: bool = True) -> HandlerC
         handler,
         status_code=HTTPStatus.CREATED,
         response_validate=response_validate,
-        response_type=Unset,
+        response_type=UNSET,
         response_content_type=None,
         response_charset=Charset.utf8.value,
         response_zlib_executor=None,

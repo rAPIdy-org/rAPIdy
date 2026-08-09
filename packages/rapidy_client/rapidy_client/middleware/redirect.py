@@ -4,7 +4,11 @@ from typing import ClassVar, TypedDict
 
 from rapidy_client._models import CallNext, Headers, Request, Response
 from rapidy_client.config import RedirectConfig
-from rapidy_client.errors import RedirectNotAllowedError, TooManyRedirectsError
+from rapidy_client.errors import (
+    RedirectBodyNotReplayableError,
+    RedirectNotAllowedError,
+    TooManyRedirectsError,
+)
 
 _REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
 _SECRET_HEADERS = frozenset({"authorization", "cookie", "proxy-authorization"})
@@ -104,6 +108,13 @@ class RedirectMiddleware:
 
             method = _redirect_method(current, response.status)
             method_changed = method != current.method
+            if not method_changed and current.content is not None and not current.is_replayable:
+                await response.aclose()
+                raise RedirectBodyNotReplayableError(
+                    f"cannot follow HTTP {response.status} redirect with a non-replayable "
+                    "request body; use bytes or ContentFactory",
+                    **_error_context(current),
+                )
             headers = _rewrite_headers(
                 current.headers,
                 origin_changed=origin_changed,

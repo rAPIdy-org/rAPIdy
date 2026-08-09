@@ -16,6 +16,8 @@ from rapidy.security.models import AuthCredentials, SecurityIdentity, SimpleUser
 __all__ = (
     'APIKeyAuth',
     'AuthBackend',
+    'AuthResult',
+    'AuthVerifier',
     'AuthenticationError',
     'BasicAuth',
     'BearerAuth',
@@ -88,6 +90,17 @@ async def _call_verifier(verifier: AuthVerifier, *args: str) -> AuthResult:
     return result
 
 
+def _single_wire_value(values: Sequence[str], *, supplied: bool) -> str | None:
+    if len(values) > 1:
+        raise AuthenticationError
+    if not values:
+        return None
+    value = values[0]
+    if supplied and not value:
+        raise AuthenticationError
+    return value
+
+
 def _identity(result: AuthResult, *, scheme: str, scopes: frozenset[str]) -> SecurityIdentity:
     if isinstance(result, SecurityIdentity):
         names = tuple(dict.fromkeys((*result.auth.schemes, scheme)))
@@ -108,7 +121,7 @@ class _BasicBackend:
     user: Any
 
     async def authenticate(self, request: Request) -> SecurityIdentity | None:
-        authorization = request.headers.get('authorization')
+        authorization = _single_wire_value(request.headers.getall('authorization', []), supplied=True)
         if authorization is None:
             return None
         prefix, separator, encoded = authorization.partition(' ')
@@ -181,9 +194,9 @@ class _APIKeyBackend:
 
     async def authenticate(self, request: Request) -> SecurityIdentity | None:
         if self.location == 'header':
-            supplied = request.headers.get(self.parameter_name)
+            supplied = _single_wire_value(request.headers.getall(self.parameter_name, []), supplied=False)
         elif self.location == 'query':
-            supplied = request.query.get(self.parameter_name)
+            supplied = _single_wire_value(request.query.getall(self.parameter_name, []), supplied=False)
         else:
             supplied = request.cookies.get(self.parameter_name)
         if supplied is None:
@@ -251,7 +264,7 @@ class _BearerBackend:
     verify: AuthVerifier
 
     async def authenticate(self, request: Request) -> SecurityIdentity | None:
-        authorization = request.headers.get('authorization')
+        authorization = _single_wire_value(request.headers.getall('authorization', []), supplied=True)
         if authorization is None:
             return None
         prefix, separator, token = authorization.partition(' ')

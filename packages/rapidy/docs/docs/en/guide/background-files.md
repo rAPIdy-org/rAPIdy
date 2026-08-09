@@ -79,19 +79,23 @@ app = Rapidy(
             directory='./public',
             html=True,
             cache_control='public, max-age=3600',
+            public=True,
         )
     ]
 )
 ```
 
 The static router registers GET and automatic HEAD routes but stays out of OpenAPI. It rejects `..`, backslashes,
-NULs, paths outside the configured root, and descendant symlinks by default. `follow_symlinks=True` permits a symlink
-only when its resolved target remains inside that root. `html=True` serves `index.html` for directories and redirects
-the directory URL to a trailing slash. `public=True` is the default; set `public=False` when application security must
-protect the files.
+NULs, dotfiles, paths outside the configured root, and descendant symlinks by default. `allow_dotfiles=True` is an
+explicit opt-in for trees such as `/.well-known`; `follow_symlinks=True` permits a symlink only when its resolved target
+remains inside that root. `html=True` serves `index.html` for directories and redirects the directory URL to a trailing
+slash. Static routes inherit application security by default (`public=False`). Set `public=True` explicitly only for
+assets that must bypass application authentication and guards.
 
 `StaticFiles` also works inside `HTTPRouter` mounts. The configured root should contain application-owned files; use a
 dedicated object store or reverse proxy when users can mutate the served tree.
+Path validation, metadata, ranges, and body delivery use one pinned open file descriptor, so replacing a validated
+entry with a symlink before the response is sent cannot redirect the response outside the configured root.
 
 The complete runnable application is
 [`examples/background_files.py`](https://github.com/rAPIdy-org/rAPIdy/blob/main/packages/rapidy/examples/background_files.py).

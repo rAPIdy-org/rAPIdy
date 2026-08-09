@@ -1,13 +1,11 @@
 from __future__ import annotations
 
 from functools import cached_property
-from typing import TYPE_CHECKING
 
+from rapidy_core.annotation_checkers import is_multi_value_annotation
+from rapidy_core.enums import HTTPRequestParamType  # noqa: TC002 - runtime annotations
 from rapidy_core.fields import create_model_field, RapidyModelField
-
-if TYPE_CHECKING:
-    from rapidy_core.enums import HTTPRequestParamType
-    from rapidy_core.parameters.http import RequestParamFieldInfo
+from rapidy_core.parameters.http import RequestParamFieldInfo  # noqa: TC002 - runtime annotations
 
 __all__ = ('RequestModelField', 'create_request_model_field')
 
@@ -21,6 +19,11 @@ class RequestModelField(RapidyModelField):
     def http_param_type(self) -> HTTPRequestParamType:
         """Return the request source associated with the marker."""
         return self.field_info.param_type
+
+    @cached_property
+    def accepts_multiple_values(self) -> bool:
+        """Return whether repeated wire values form this field's collection input."""
+        return is_multi_value_annotation(self.type_)
 
 
 def create_request_model_field(field_info: RequestParamFieldInfo) -> RequestModelField:

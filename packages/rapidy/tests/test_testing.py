@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import subprocess
+import sys
 from collections.abc import AsyncIterator
+from pathlib import Path
 
 import pytest
 
@@ -10,6 +13,40 @@ from rapidy.depends import FromDI, provide, Provider, Scope
 from rapidy.http import Cookie, get, Header, HTTPFound, SSEResponse, WebSocket, websocket
 from rapidy.responses import SSEEvent
 from rapidy.testing import AsyncTestClient, create_async_test_client, create_test_client, TestClient
+
+
+def test_testing_module_reports_missing_optional_dependencies() -> None:
+    package_root = Path(__file__).resolve().parents[1]
+    code = r"""
+import importlib.abc
+import sys
+
+sys.path.insert(0, sys.argv[1])
+
+class BlockOptional(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        root = fullname.partition('.')[0]
+        if root in {'anyio', 'httpx'}:
+            raise ModuleNotFoundError('blocked optional dependency', name=root)
+        return None
+
+sys.meta_path.insert(0, BlockOptional())
+import rapidy.testing as testing
+assert 'TestClient' in dir(testing)
+try:
+    testing.TestClient
+except testing.MissingTestingDependencyError as exc:
+    assert "pip install rapidy[test]" in str(exc)
+else:
+    raise AssertionError('missing typed optional-dependency error')
+"""
+    result = subprocess.run(  # noqa: S603 - fixed interpreter and inline fixture
+        [sys.executable, '-I', '-c', code, str(package_root)],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0, result.stderr
 
 
 @pytest.mark.asyncio

@@ -7,9 +7,16 @@ import sys
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
+
+
+@dataclass(frozen=True, slots=True)
+class LiveServerProcess:
+    base_url: str
+    process: subprocess.Popen[bytes]
 
 
 def free_port() -> int:
@@ -34,9 +41,9 @@ def wait_for_port(process: subprocess.Popen[bytes], port: int, timeout: float = 
 
 
 @contextmanager
-def live_server(runtime: str, target: str) -> Iterator[str]:
+def live_server_process(runtime: str, target: str) -> Iterator[LiveServerProcess]:
     selected_runtime = os.environ.get('RAPIDY_LIVE_RUNTIME')
-    if selected_runtime and runtime in {'granian', 'uvicorn'} and runtime != selected_runtime:
+    if selected_runtime and runtime in {'granian', 'hypercorn', 'uvicorn'} and runtime != selected_runtime:
         pytest.skip(f'{runtime} live test belongs to the {selected_runtime} CI dimension')
     port = free_port()
     bin_dir = Path(sys.executable).parent
@@ -64,6 +71,15 @@ def live_server(runtime: str, target: str) -> Iterator[str]:
             'warning',
             target,
         ]
+    elif runtime == 'hypercorn':
+        command = [
+            str(bin_dir / 'hypercorn'),
+            target,
+            '--bind',
+            f'127.0.0.1:{port}',
+            '--log-level',
+            'warning',
+        ]
     elif runtime == 'rapidy':
         command = [
             sys.executable,
@@ -86,11 +102,21 @@ def live_server(runtime: str, target: str) -> Iterator[str]:
     )
     try:
         wait_for_port(process, port)
-        yield f'http://127.0.0.1:{port}'
+        yield LiveServerProcess(
+            base_url=f'http://127.0.0.1:{port}',
+            process=process,
+        )
     finally:
-        process.terminate()
+        if process.poll() is None:
+            process.terminate()
         try:
             process.wait(timeout=10)
         except subprocess.TimeoutExpired:
             process.kill()
             process.wait(timeout=5)
+
+
+@contextmanager
+def live_server(runtime: str, target: str) -> Iterator[str]:
+    with live_server_process(runtime, target) as server:
+        yield server.base_url

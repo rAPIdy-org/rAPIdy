@@ -4,6 +4,7 @@ from typing import Final
 
 from mypy.errorcodes import ErrorCode
 from mypy.nodes import Context
+
 from mypy.plugin import CheckerPluginInterface
 
 RAPIDY_NAME: Final[str] = "rAPIdy"
@@ -20,7 +21,7 @@ Error code for invalid parameter defaults in Rapidy.
 def error_default_and_default_factory_specified(
     api: CheckerPluginInterface, context: Context
 ) -> None:
-    """Raises a mypy error if both `default` and `default_factory` are specified for a request parameter.
+    """Raise a mypy error when both request parameter defaults are specified.
 
     This function is adapted from Pydantic's type checker implementation.
 
@@ -30,6 +31,7 @@ def error_default_and_default_factory_specified(
 
     Returns:
         None
+
     """
     api.fail(
         '"default" and "default_factory" cannot be specified together for a requests parameter.',
@@ -41,7 +43,7 @@ def error_default_and_default_factory_specified(
 def error_default_or_default_factory_specified(
     api: CheckerPluginInterface, context: Context, param_name: str
 ) -> None:
-    """Raises a mypy error if either `default` or `default_factory` is specified for a given parameter.
+    """Raise a mypy error when a forbidden parameter default is specified.
 
     Args:
         api (CheckerPluginInterface): The mypy plugin interface for reporting errors.
@@ -50,6 +52,7 @@ def error_default_or_default_factory_specified(
 
     Returns:
         None
+
     """
     api.fail(
         f'"default" or "default_factory" cannot be specified for "{param_name}"',

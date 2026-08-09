@@ -4,9 +4,9 @@ import re
 from collections.abc import Iterable
 from re import Pattern
 from typing import TYPE_CHECKING
-from urllib.parse import urlsplit
 
 from ._utils import add_response_hook, append_vary, response_headers
+from rapidy._request_security import valid_origin as _valid_origin
 from rapidy.response import Response
 
 if TYPE_CHECKING:
@@ -19,8 +19,6 @@ __all__ = ('CORSMiddleware',)
 
 _ALL_METHODS = ('DELETE', 'GET', 'HEAD', 'OPTIONS', 'PATCH', 'POST', 'PUT')
 _FIELD_NAME = re.compile(r"^[!#$%&'*+.^_`|~0-9A-Za-z-]+$")
-_FIRST_CONTROL_CODEPOINT = 32
-_DELETE_CODEPOINT = 127
 
 
 class CORSMiddleware:
@@ -192,29 +190,3 @@ def _validate_field_names(names: Iterable[str], *, option: str, allow_wildcard: 
         if not _FIELD_NAME.fullmatch(name):
             msg = f'{option} contains an invalid HTTP field name: {name!r}'
             raise ValueError(msg)
-
-
-def _valid_origin(origin: str) -> bool:
-    if origin == 'null':
-        return True
-    if not origin or any(
-        character.isspace()
-        or ord(character) < _FIRST_CONTROL_CODEPOINT
-        or ord(character) == _DELETE_CODEPOINT
-        for character in origin
-    ):
-        return False
-    try:
-        parsed = urlsplit(origin)
-        _ = parsed.port
-    except ValueError:
-        return False
-    return bool(
-        parsed.scheme
-        and parsed.hostname
-        and parsed.username is None
-        and parsed.password is None
-        and not parsed.path
-        and not parsed.query
-        and not parsed.fragment
-    )

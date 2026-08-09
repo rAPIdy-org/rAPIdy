@@ -1,15 +1,16 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, TYPE_CHECKING
+from typing import Any, TypeVar
 
 from rapidy_core.client_errors import RequiredFieldIsMissingError
-
-if TYPE_CHECKING:
-    from rapidy_core.fields import RapidyModelField
-    from rapidy_core.typedefs import DictStrAny, LocStr, ValidateReturn
+from rapidy_core.fields import RapidyModelField  # noqa: TC002 - runtime annotations
+from rapidy_core.typedefs import DictStrAny, LocStr, ValidateReturn  # noqa: TC002 - runtime annotations
 
 __all__ = ('Validator', 'validate_data_by_model')
+
+TData = TypeVar('TData')
+
 
 class Validator[TData](ABC):
     """Base interface for async request and result validators."""

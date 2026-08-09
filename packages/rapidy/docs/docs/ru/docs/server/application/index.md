@@ -1,3 +1,7 @@
+<!-- RAPIDY_LEGACY_1X -->
+
+> **⚠️ Историческая документация rAPIdy 1.x.** Страница сохранена только для справки и может описывать aiohttp API, которых нет в rAPIdy 2.0. Для нового кода используйте [актуальную документацию 2.0](https://rapidy.dev/).
+
 # Веб-приложение
 ## Описание
 `Application` — это сердце веб-сервера, отвечающее за обработку всех входящих запросов.
@@ -267,9 +271,17 @@ middlewares: Optional[Iterable[Middleware]] = None
 ---
 
 ##### client_max_size
-Максимальный размер запроса в байтах.
+Максимальный размер обычного или raw-запроса в байтах. Для multipart используются `multipart_limits`.
 ```python
 client_max_size: int = 1024**2
+```
+
+---
+
+##### multipart_limits
+Независимые лимиты multipart-тела, частей, полей, файлов и переноса на диск.
+```python
+multipart_limits: MultipartLimits = MultipartLimits()
 ```
 
 ---

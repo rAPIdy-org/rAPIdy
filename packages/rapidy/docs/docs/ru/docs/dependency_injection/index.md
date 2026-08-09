@@ -1,3 +1,7 @@
+<!-- RAPIDY_LEGACY_1X -->
+
+> **⚠️ Историческая документация rAPIdy 1.x.** Страница сохранена только для справки и может описывать aiohttp API, которых нет в rAPIdy 2.0. Для нового кода используйте [актуальную документацию 2.0](https://rapidy.dev/).
+
 # Dependency Injection
 
 `Rapidy` использует библиотеку [dishka](https://dishka.readthedocs.io/en/stable/) в качестве встроенного механизма внедрения зависимостей (Dependency Injection, DI).

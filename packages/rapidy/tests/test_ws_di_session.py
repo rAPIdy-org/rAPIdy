@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator, AsyncIterator
 from typing import Any
 
 import pytest
@@ -16,6 +16,21 @@ class SessionResource:
 
 class AppResource:
     pass
+
+
+class OutcomeResource:
+    pass
+
+
+class WebSocketOutcomeProvider(Provider):
+    def __init__(self, outcomes: list[BaseException | None]) -> None:
+        super().__init__()
+        self.outcomes = outcomes
+
+    @provide(scope=Scope.SESSION)
+    async def resource(self) -> AsyncGenerator[OutcomeResource, BaseException | None]:
+        outcome = yield OutcomeResource()
+        self.outcomes.append(outcome)
 
 
 class WebSocketResourceProvider(Provider):
@@ -142,6 +157,29 @@ async def test_session_finalizer_once_on_handler_exception() -> None:
 
     assert sent[-1] == {'type': 'websocket.close', 'code': 1011, 'reason': ''}
     assert events == ['session_created', 'handler', 'session_finalized']
+
+
+@pytest.mark.asyncio
+async def test_session_generator_dependency_receives_handled_handler_outcome() -> None:
+    outcomes: list[BaseException | None] = []
+
+    @websocket('/ws')
+    async def handler(ws: WebSocket, resource: FromDI[OutcomeResource]) -> None:
+        assert isinstance(resource, OutcomeResource)
+        await ws.accept()
+        raise RuntimeError('rollback')
+
+    app = Rapidy(
+        di_providers=[WebSocketOutcomeProvider(outcomes)],
+        http_route_handlers=[handler],
+    )
+    async with app.lifespan.ctx_manager():
+        sent = await dispatch(app, '/ws', [{'type': 'websocket.connect'}])
+
+    assert sent[-1] == {'type': 'websocket.close', 'code': 1011, 'reason': ''}
+    assert len(outcomes) == 1
+    assert isinstance(outcomes[0], RuntimeError)
+    assert str(outcomes[0]) == 'rollback'
 
 
 @pytest.mark.asyncio

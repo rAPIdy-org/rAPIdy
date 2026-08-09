@@ -2,18 +2,18 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Mapping
 from enum import Enum
-from typing import Any, cast, TYPE_CHECKING
+from typing import Any, cast
 
 from multidict import CIMultiDict, CIMultiDictProxy
 
 from rapidy._base_exceptions import RapidyException
 from rapidy.constants import DEFAULT_JSON_DECODER, DEFAULT_JSON_ENCODER
+from rapidy.security import AuthCredentials, SecurityIdentity
 from rapidy.typedefs import ASGIScope, JSONDecoder, JSONEncoder, LooseHeaders, Receive, Send
 
-if TYPE_CHECKING:
-    from rapidy.security import AuthCredentials, SecurityIdentity
-
 __all__ = ('WebSocket', 'WebSocketDisconnect')
+
+_GRANIAN_CLOSED_TRANSPORT_ERROR = 'ASGI flow error: Transport not initialized or closed'
 
 
 class WebSocketState(Enum):
@@ -136,7 +136,7 @@ class WebSocket:
             raise WebSocketClosedError(action='accept')
         if self._client_state is WebSocketState.CONNECTING:
             await self._consume_connect()
-        await self._send(
+        await self._send_event(
             {
                 'type': 'websocket.accept',
                 'subprotocol': subprotocol,
@@ -168,12 +168,12 @@ class WebSocket:
     async def send_text(self, data: str) -> None:
         """Send one text frame."""
         self._ensure_connected(action='send')
-        await self._send({'type': 'websocket.send', 'text': data})
+        await self._send_event({'type': 'websocket.send', 'text': data})
 
     async def send_bytes(self, data: bytes) -> None:
         """Send one binary frame."""
         self._ensure_connected(action='send')
-        await self._send({'type': 'websocket.send', 'bytes': data})
+        await self._send_event({'type': 'websocket.send', 'bytes': data})
 
     async def send_json(self, obj: Any, *, dumps: JSONEncoder = DEFAULT_JSON_ENCODER) -> None:
         """Encode and send one JSON text frame."""
@@ -185,8 +185,12 @@ class WebSocket:
             return
         if self._client_state is WebSocketState.CONNECTING:
             await self._consume_connect()
-        await self._send({'type': 'websocket.close', 'code': code, 'reason': reason})
-        self._application_state = WebSocketState.DISCONNECTED
+        sent = await self._send_event(
+            {'type': 'websocket.close', 'code': code, 'reason': reason},
+            suppress_disconnect=True,
+        )
+        if sent:
+            self._application_state = WebSocketState.DISCONNECTED
 
     def __aiter__(self) -> AsyncIterator[str | bytes]:
         return self
@@ -207,6 +211,24 @@ class WebSocket:
             msg = f'Expected `websocket.connect`, received `{message.get("type")}`.'
             raise RuntimeError(msg)
         self._client_state = WebSocketState.CONNECTED
+
+    async def _send_event(
+        self,
+        message: dict[str, Any],
+        *,
+        suppress_disconnect: bool = False,
+    ) -> bool:
+        try:
+            await self._send(message)
+        except Exception as exc:
+            if not _is_send_disconnect(exc):
+                raise
+            self._client_state = WebSocketState.DISCONNECTED
+            self._application_state = WebSocketState.DISCONNECTED
+            if not suppress_disconnect:
+                raise WebSocketDisconnect(code=1006) from exc
+            return False
+        return True
 
     async def _receive_message(self) -> dict[str, Any]:
         self._ensure_connected(action='receive')
@@ -233,6 +255,13 @@ class WebSocket:
 
 def _as_header_bytes(value: str | bytes) -> bytes:
     return value if isinstance(value, bytes) else value.encode('latin-1')
+
+
+def _is_send_disconnect(exception: Exception) -> bool:
+    return isinstance(exception, OSError) or (
+        isinstance(exception, RuntimeError)
+        and str(exception) == _GRANIAN_CLOSED_TRANSPORT_ERROR
+    )
 
 
 def _encode_headers(headers: LooseHeaders | None) -> list[tuple[bytes, bytes]]:

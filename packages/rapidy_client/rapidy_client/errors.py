@@ -133,6 +133,10 @@ class RedirectNotAllowedError(RedirectError):
     pass
 
 
+class RedirectBodyNotReplayableError(RedirectError):
+    pass
+
+
 class StatusError(HttpClientError):
     status: int
     response: Response
@@ -248,6 +252,10 @@ class WSQueueFullError(WSError):
     pass
 
 
+class WSMessageTooLargeError(WSError):
+    pass
+
+
 class MessageValidationError(HttpClientError):
     pass
 
@@ -269,6 +277,7 @@ __all__ = (
     "MessageValidationError",
     "ProtocolError",
     "ProxyError",
+    "RedirectBodyNotReplayableError",
     "RedirectError",
     "RedirectNotAllowedError",
     "ResponseValidationError",
@@ -281,5 +290,6 @@ __all__ = (
     "WSClosedError",
     "WSError",
     "WSHandshakeError",
+    "WSMessageTooLargeError",
     "WSQueueFullError",
 )

@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import inspect
+from collections import deque
+from collections.abc import Collection, Mapping, Sequence
 from types import UnionType
 from typing import Annotated, Any, Union, get_args, get_origin
 
@@ -10,6 +12,7 @@ __all__ = (
     "get_base_annotations",
     "is_annotated",
     "is_empty",
+    "is_multi_value_annotation",
     "is_not_none_and_unset",
     "is_optional",
     "is_union",
@@ -59,6 +62,24 @@ def get_base_annotations(annotation: Any) -> tuple[Any, ...]:
         return (get_args(annotation)[0],)
 
     return (annotation,)
+
+
+def is_multi_value_annotation(annotation: Any) -> bool:
+    """Return whether wire repetitions should be passed to this annotation as a collection."""
+    return any(_is_multi_value_type(item) for item in get_base_annotations(annotation))
+
+
+def _is_multi_value_type(annotation: Any) -> bool:
+    if is_annotated(annotation) or is_union(annotation):
+        return is_multi_value_annotation(annotation)
+    origin = get_origin(annotation)
+    candidate = origin or annotation
+    if candidate in (str, bytes, bytearray):
+        return False
+    return lenient_issubclass(candidate, (Collection, Sequence, deque)) and not lenient_issubclass(
+        candidate,
+        Mapping,
+    )
 
 
 def is_empty(obj: Any) -> bool:

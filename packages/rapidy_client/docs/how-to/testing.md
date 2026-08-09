@@ -6,9 +6,17 @@ Install the testing extra to enable the public pytest plugin:
 pip install "rapidy-client[testing]"
 ```
 
-The plugin registers `mock_transport`, `fake_clock`, `http_client_factory`, and
-`chaos_server` automatically through pytest's `pytest11` entry point. Most unit
-tests only need the first three and perform no network I/O.
+Enable the plugin explicitly in the test suite's top-level `conftest.py`:
+
+```python
+pytest_plugins = ("rapidy_client.testing.plugin",)
+```
+
+The plugin then registers `mock_transport`, `fake_clock`, `http_client_factory`, and
+`chaos_server`. The base distribution deliberately does not register a global
+`pytest11` entry point, so installing `rapidy-client` cannot alter an unrelated
+project's pytest startup. Most unit tests only need the first three fixtures and
+perform no network I/O.
 
 ## Program responses and failures
 

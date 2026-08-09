@@ -4,16 +4,14 @@ import asyncio
 from collections.abc import AsyncIterator, Iterator, Mapping
 from dataclasses import dataclass
 from types import TracebackType
-from typing import Any, Self, TYPE_CHECKING
+from typing import Any, Self
 from urllib.parse import urlsplit
 
 import httpx
+from anyio.from_thread import BlockingPortal  # noqa: TC002 - runtime annotations
 
 from rapidy.constants import DEFAULT_JSON_DECODER
 from rapidy.typedefs import ASGIMessage, ASGIScope, JSONDecoder
-
-if TYPE_CHECKING:
-    from anyio.from_thread import BlockingPortal
 
 __all__ = ('AsyncSSESession', 'SSESession', 'ServerSentEvent')
 

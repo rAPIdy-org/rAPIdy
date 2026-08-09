@@ -18,7 +18,16 @@ def test_deny_lists_exact() -> None:
         "set-cookie",
         "x-api-key",
     }
-    assert DENY_QUERY == {"token", "api_key", "signature"}
+    assert DENY_QUERY == {
+        "access_token",
+        "api_key",
+        "client_secret",
+        "id_token",
+        "password",
+        "refresh_token",
+        "signature",
+        "token",
+    }
 
 
 def test_redact_header_value_masks_denylist() -> None:
@@ -55,18 +64,26 @@ def test_redact_query_string_masks_secret_keys() -> None:
 
 
 def test_redact_url_str_reassembles_nonsecret() -> None:
-    result = DEFAULT_REDACTOR.redact_url_str("https://h/p?token=x&a=1")
+    result = DEFAULT_REDACTOR.redact_url_str(
+        "https://alice:hunter2@h/p?token=x&access_token=y&password=z&a=1"
+    )
     assert "x" not in result
-    assert result.startswith("https://h/p?")
+    assert "alice" not in result
+    assert "hunter2" not in result
+    assert "access_token=y" not in result
+    assert "password=z" not in result
+    assert result.startswith(f"https://{REDACTED}@h/p?")
     assert "a=1" in result
 
 
 def test_redact_text_scrubs_header_and_query() -> None:
     result = DEFAULT_REDACTOR.redact_text(
-        "failed Authorization: Bearer S; url ?token=T"
+        "failed Authorization: Bearer S; url https://alice:hunter2@h/p?token=T"
     )
     assert "Bearer S" not in result
     assert "token=T" not in result
+    assert "alice" not in result
+    assert "hunter2" not in result
     assert REDACTED in result
 
 

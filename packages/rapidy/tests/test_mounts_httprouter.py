@@ -11,6 +11,7 @@ from rapidy import Rapidy
 from rapidy.depends import AsyncContainer, FromDI, provide, Provider, Scope
 from rapidy.http import get, post, Request, Response
 from rapidy.routing.http.routers import HTTPRouter
+from rapidy.routing.matcher import MountConflictError
 from rapidy.typedefs import CallNext, Middleware, Send
 
 
@@ -285,6 +286,41 @@ def test_root_routes_include_subapp() -> None:
 
     app = Rapidy(http_route_handlers=[HTTPRouter('/v1', [HTTPRouter('/admin', [handler])])])
     assert {record.path for record in app.routes} == {'/v1/admin/item'}
+
+
+def test_mount_rejects_shadowed_local_routes_in_either_registration_order() -> None:
+    @get('/api/status')
+    async def status() -> str:
+        return 'ok'
+
+    route_first = Rapidy(http_route_handlers=[status])
+    with pytest.raises(MountConflictError, match='/api/status'):
+        route_first.add_subapp('/api', Rapidy())
+
+    mount_first = Rapidy()
+    mount_first.add_subapp('/api', Rapidy())
+    with pytest.raises(MountConflictError, match='/api/status'):
+        mount_first.add_http_router(status)
+
+
+def test_mount_rejects_owned_dynamic_namespace_but_not_partial_or_similar_prefix() -> None:
+    @get('/api/{resource}')
+    async def api_resource(resource: str) -> str:
+        return resource
+
+    with pytest.raises(MountConflictError, match=r'/api/\{resource\}'):
+        Rapidy(http_route_handlers=[api_resource]).add_subapp('/api', Rapidy())
+
+    @get('/{tenant}/status')
+    async def tenant_status(tenant: str) -> str:
+        return tenant
+
+    @get('/apiary/status')
+    async def apiary_status() -> str:
+        return 'ok'
+
+    app = Rapidy(http_route_handlers=[tenant_status, apiary_status])
+    app.add_subapp('/api', Rapidy())
 
 
 @pytest.mark.asyncio

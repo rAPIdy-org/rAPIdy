@@ -5,30 +5,31 @@ from collections.abc import Callable
 from concurrent.futures import Executor
 from functools import wraps
 from http import HTTPStatus
-from typing import Any, cast, overload, TYPE_CHECKING, TypeVar
+from typing import Any, cast, overload, TypeVar
+from urllib.parse import quote, quote_from_bytes
 
 from rapidy_core.constants import DEFAULT_JSON_ENCODER
+from rapidy_core.encoders import CustomEncoder, Exclude, Include  # noqa: TC002 - runtime annotations
 from rapidy_core.enums import Charset, ContentType
 
-from .compression import CompressionMiddleware, GZipMiddleware, MissingBrotliDependencyError
+from .compression import CompressionAlgorithm, CompressionMiddleware, GZipMiddleware, MissingBrotliDependencyError
 from .cors import CORSMiddleware
 from .hosts import HTTPSRedirectMiddleware, TrustedHostMiddleware
-from .proxy_headers import ProxyHeadersMiddleware
+from .proxy_headers import ProxyHeaderMode, ProxyHeadersMiddleware
 from .request_id import get_request_context, get_request_id, RequestContext, RequestIDMiddleware
 from rapidy.exceptions import HTTPNotFound, HTTPPermanentRedirect
 from rapidy.middlewares.runner import MiddlewareAttrData
 from rapidy.request import Request
-from rapidy.typedefs import CallNext, JSONEncoder, Middleware, Unset, UnsetType
-
-if TYPE_CHECKING:
-    from rapidy_core.encoders import CustomEncoder, Exclude, Include
+from rapidy.typedefs import CallNext, JSONEncoder, Middleware, UNSET, UnsetType
 
 __all__ = (
     'CORSMiddleware',
+    'CompressionAlgorithm',
     'CompressionMiddleware',
     'GZipMiddleware',
     'HTTPSRedirectMiddleware',
     'MissingBrotliDependencyError',
+    'ProxyHeaderMode',
     'ProxyHeadersMiddleware',
     'RequestContext',
     'RequestIDMiddleware',
@@ -51,7 +52,7 @@ def middleware(
     *,
     status_code: int | HTTPStatus = HTTPStatus.OK,
     response_validate: bool = True,
-    response_type: type[Any] | UnsetType | None = Unset,
+    response_type: type[Any] | UnsetType | None = UNSET,
     response_content_type: str | ContentType | None = None,
     response_charset: str | Charset = Charset.utf8,
     response_zlib_executor: Executor | None = None,
@@ -72,7 +73,7 @@ def middleware(  # noqa: UP047
     *,
     status_code: int | HTTPStatus = HTTPStatus.OK,
     response_validate: bool = True,
-    response_type: type[Any] | UnsetType | None = Unset,
+    response_type: type[Any] | UnsetType | None = UNSET,
     response_content_type: str | ContentType | None = None,
     response_charset: str | Charset = Charset.utf8,
     response_zlib_executor: Executor | None = None,
@@ -168,11 +169,20 @@ def normalize_path_middleware(  # noqa: C901
                 paths_to_check.append(re.sub('/+', '/', path)[:-1])
 
             for candidate in dict.fromkeys(paths_to_check):
-                if candidate != path and request.app._can_resolve(request.method, candidate):  # noqa: SLF001
+                if (
+                    candidate != path
+                    and candidate.startswith('/')
+                    and not candidate.startswith('//')
+                    and request.app._can_resolve(request.method, candidate)  # noqa: SLF001
+                ):
                     prefix = str(request.scope.get('_rapidy_mount_prefix', ''))
-                    query_string = cast('bytes', request.scope.get('query_string', b'')).decode('latin-1')
+                    query_string = quote_from_bytes(
+                        cast('bytes', request.scope.get('query_string', b'')),
+                        safe="!$&'()*+,-./:;=?@_~%",
+                    )
                     query_suffix = f'?{query_string}' if query_string else ''
-                    location = f'{prefix}{candidate}{query_suffix}'
+                    encoded_candidate = quote(candidate, safe="/%:@!$&'()*+,;=-._~")
+                    location = f'{prefix}{encoded_candidate}{query_suffix}'
                     raise HTTPPermanentRedirect(location) from None
             raise
 

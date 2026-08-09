@@ -36,6 +36,7 @@ class RequestParamFieldInfo(RapidyFieldInfo, ABC):  # type: ignore[misc]
     Attributes:
         param_type (HTTPRequestParamType): The type of the request parameter.
         extract_single (bool): Whether to extract a single value from the request parameter.
+
     """
 
     param_type: HTTPRequestParamType
@@ -51,6 +52,7 @@ class PathBase(RequestParamFieldInfo, ABC):  # type: ignore[misc]
     Attributes:
         param_type (HTTPRequestParamType): Always set to HTTPRequestParamType.path.
         can_default (bool): Whether the path parameter can have a default value.
+
     """
 
     param_type = HTTPRequestParamType.path
@@ -64,6 +66,7 @@ class HeaderBase(RequestParamFieldInfo, ABC):  # type: ignore[misc]
 
     Attributes:
         param_type (HTTPRequestParamType): Always set to HTTPRequestParamType.header.
+
     """
 
     param_type = HTTPRequestParamType.header
@@ -76,6 +79,7 @@ class CookieBase(RequestParamFieldInfo, ABC):  # type: ignore[misc]
 
     Attributes:
         param_type (HTTPRequestParamType): Always set to HTTPRequestParamType.cookie.
+
     """
 
     param_type = HTTPRequestParamType.cookie
@@ -88,6 +92,7 @@ class QueryBase(RequestParamFieldInfo, ABC):  # type: ignore[misc]
 
     Attributes:
         param_type (HTTPRequestParamType): Always set to HTTPRequestParamType.query.
+
     """
 
     param_type = HTTPRequestParamType.query
@@ -127,6 +132,7 @@ class PathParam(PathBase):  # type: ignore[misc]
         examples (Union[list[Any], None], optional): Example values for the field.
         json_schema_extra (Union[dict[str, Any], None], optional): Additional JSON schema information.
         validate (bool, optional): Whether to validate the field. Defaults to True.
+
     """
 
     extract_single = True
@@ -135,29 +141,29 @@ class PathParam(PathBase):  # type: ignore[misc]
         self,
         default: Any = Undefined,
         *,
-        default_factory: NoArgAnyCallable | None | Unset = UNSET,
-        alias: str | None | Unset = UNSET,
-        alias_priority: int | None | Unset = UNSET,
-        validation_alias: str | None | Unset = UNSET,
-        serialization_alias: str | None | Unset = UNSET,
-        title: str | None | Unset = UNSET,
-        description: str | None | Unset = UNSET,
-        gt: float | None | Unset = UNSET,
-        ge: float | None | Unset = UNSET,
-        lt: float | None | Unset = UNSET,
-        le: float | None | Unset = UNSET,
-        min_length: int | None | Unset = UNSET,
-        max_length: int | None | Unset = UNSET,
-        pattern: str | None | Unset = UNSET,
-        discriminator: str | None | Unset = UNSET,
-        strict: bool | None | Unset = UNSET,
-        multiple_of: float | None | Unset = UNSET,
-        allow_inf_nan: bool | None | Unset = UNSET,
-        max_digits: int | None | Unset = UNSET,
-        decimal_places: int | None | Unset = UNSET,
-        deprecated: Deprecated | str | bool | None | Unset = UNSET,
-        examples: list[Any] | None | Unset = UNSET,
-        json_schema_extra: dict[str, Any] | None | Unset = UNSET,
+        default_factory: NoArgAnyCallable | Unset | None = UNSET,
+        alias: str | Unset | None = UNSET,
+        alias_priority: int | Unset | None = UNSET,
+        validation_alias: str | Unset | None = UNSET,
+        serialization_alias: str | Unset | None = UNSET,
+        title: str | Unset | None = UNSET,
+        description: str | Unset | None = UNSET,
+        gt: float | Unset | None = UNSET,
+        ge: float | Unset | None = UNSET,
+        lt: float | Unset | None = UNSET,
+        le: float | Unset | None = UNSET,
+        min_length: int | Unset | None = UNSET,
+        max_length: int | Unset | None = UNSET,
+        pattern: str | Unset | None = UNSET,
+        discriminator: str | Unset | None = UNSET,
+        strict: bool | Unset | None = UNSET,
+        multiple_of: float | Unset | None = UNSET,
+        allow_inf_nan: bool | Unset | None = UNSET,
+        max_digits: int | Unset | None = UNSET,
+        decimal_places: int | Unset | None = UNSET,
+        deprecated: Deprecated | str | bool | Unset | None = UNSET,
+        examples: list[Any] | Unset | None = UNSET,
+        json_schema_extra: dict[str, Any] | Unset | None = UNSET,
         validate: bool = True,
         **extra: Any,
     ) -> None:
@@ -224,6 +230,7 @@ class PathParams(PathBase):  # type: ignore[misc]
         examples (Union[list[Any], None], optional): Example values for the field.
         json_schema_extra (Union[dict[str, Any], None], optional): Additional JSON schema information.
         validate (bool, optional): Whether to validate the field. Defaults to True.
+
     """
 
     extract_single = False
@@ -232,29 +239,29 @@ class PathParams(PathBase):  # type: ignore[misc]
         self,
         default: Any = Undefined,
         *,
-        default_factory: NoArgAnyCallable | None | Unset = UNSET,
-        alias: str | None | Unset = UNSET,
-        alias_priority: int | None | Unset = UNSET,
-        validation_alias: str | None | Unset = UNSET,
-        serialization_alias: str | None | Unset = UNSET,
-        title: str | None | Unset = UNSET,
-        description: str | None | Unset = UNSET,
-        gt: float | None | Unset = UNSET,
-        ge: float | None | Unset = UNSET,
-        lt: float | None | Unset = UNSET,
-        le: float | None | Unset = UNSET,
-        min_length: int | None | Unset = UNSET,
-        max_length: int | None | Unset = UNSET,
-        pattern: str | None | Unset = UNSET,
-        discriminator: str | None | Unset = UNSET,
-        strict: bool | None | Unset = UNSET,
-        multiple_of: float | None | Unset = UNSET,
-        allow_inf_nan: bool | None | Unset = UNSET,
-        max_digits: int | None | Unset = UNSET,
-        decimal_places: int | None | Unset = UNSET,
-        deprecated: Deprecated | str | bool | None | Unset = UNSET,
-        examples: list[Any] | None | Unset = UNSET,
-        json_schema_extra: dict[str, Any] | None | Unset = UNSET,
+        default_factory: NoArgAnyCallable | Unset | None = UNSET,
+        alias: str | Unset | None = UNSET,
+        alias_priority: int | Unset | None = UNSET,
+        validation_alias: str | Unset | None = UNSET,
+        serialization_alias: str | Unset | None = UNSET,
+        title: str | Unset | None = UNSET,
+        description: str | Unset | None = UNSET,
+        gt: float | Unset | None = UNSET,
+        ge: float | Unset | None = UNSET,
+        lt: float | Unset | None = UNSET,
+        le: float | Unset | None = UNSET,
+        min_length: int | Unset | None = UNSET,
+        max_length: int | Unset | None = UNSET,
+        pattern: str | Unset | None = UNSET,
+        discriminator: str | Unset | None = UNSET,
+        strict: bool | Unset | None = UNSET,
+        multiple_of: float | Unset | None = UNSET,
+        allow_inf_nan: bool | Unset | None = UNSET,
+        max_digits: int | Unset | None = UNSET,
+        decimal_places: int | Unset | None = UNSET,
+        deprecated: Deprecated | str | bool | Unset | None = UNSET,
+        examples: list[Any] | Unset | None = UNSET,
+        json_schema_extra: dict[str, Any] | Unset | None = UNSET,
         validate: bool = True,
         **extra: Any,
     ) -> None:
@@ -324,6 +331,7 @@ class Header(HeaderBase):  # type: ignore[misc]
         examples (Union[list[Any], None], optional): Example values for the field.
         json_schema_extra (Union[dict[str, Any], None], optional): Additional JSON schema information.
         validate (bool, optional): Whether to validate the field. Defaults to True.
+
     """
 
     extract_single = True
@@ -332,29 +340,29 @@ class Header(HeaderBase):  # type: ignore[misc]
         self,
         default: Any = Undefined,
         *,
-        default_factory: NoArgAnyCallable | None | Unset = UNSET,
-        alias: str | None | Unset = UNSET,
-        alias_priority: int | None | Unset = UNSET,
-        validation_alias: str | None | Unset = UNSET,
-        serialization_alias: str | None | Unset = UNSET,
-        title: str | None | Unset = UNSET,
-        description: str | None | Unset = UNSET,
-        gt: float | None | Unset = UNSET,
-        ge: float | None | Unset = UNSET,
-        lt: float | None | Unset = UNSET,
-        le: float | None | Unset = UNSET,
-        min_length: int | None | Unset = UNSET,
-        max_length: int | None | Unset = UNSET,
-        pattern: str | None | Unset = UNSET,
-        discriminator: str | None | Unset = UNSET,
-        strict: bool | None | Unset = UNSET,
-        multiple_of: float | None | Unset = UNSET,
-        allow_inf_nan: bool | None | Unset = UNSET,
-        max_digits: int | None | Unset = UNSET,
-        decimal_places: int | None | Unset = UNSET,
-        deprecated: Deprecated | str | bool | None | Unset = UNSET,
-        examples: list[Any] | None | Unset = UNSET,
-        json_schema_extra: dict[str, Any] | None | Unset = UNSET,
+        default_factory: NoArgAnyCallable | Unset | None = UNSET,
+        alias: str | Unset | None = UNSET,
+        alias_priority: int | Unset | None = UNSET,
+        validation_alias: str | Unset | None = UNSET,
+        serialization_alias: str | Unset | None = UNSET,
+        title: str | Unset | None = UNSET,
+        description: str | Unset | None = UNSET,
+        gt: float | Unset | None = UNSET,
+        ge: float | Unset | None = UNSET,
+        lt: float | Unset | None = UNSET,
+        le: float | Unset | None = UNSET,
+        min_length: int | Unset | None = UNSET,
+        max_length: int | Unset | None = UNSET,
+        pattern: str | Unset | None = UNSET,
+        discriminator: str | Unset | None = UNSET,
+        strict: bool | Unset | None = UNSET,
+        multiple_of: float | Unset | None = UNSET,
+        allow_inf_nan: bool | Unset | None = UNSET,
+        max_digits: int | Unset | None = UNSET,
+        decimal_places: int | Unset | None = UNSET,
+        deprecated: Deprecated | str | bool | Unset | None = UNSET,
+        examples: list[Any] | Unset | None = UNSET,
+        json_schema_extra: dict[str, Any] | Unset | None = UNSET,
         validate: bool = True,
         **extra: Any,
     ) -> None:
@@ -426,35 +434,36 @@ class Headers(HeaderBase):  # type: ignore[misc]
         examples (Union[list[Any], None], optional): Example values for the field.
         json_schema_extra (Union[dict[str, Any], None], optional): Additional JSON schema information.
         validate (bool, optional): Whether to validate the field. Defaults to True.
+
     """
 
     def __init__(
         self,
         default: Any = Undefined,
         *,
-        default_factory: NoArgAnyCallable | None | Unset = UNSET,
-        alias: str | None | Unset = UNSET,
-        alias_priority: int | None | Unset = UNSET,
-        validation_alias: str | None | Unset = UNSET,
-        serialization_alias: str | None | Unset = UNSET,
-        title: str | None | Unset = UNSET,
-        description: str | None | Unset = UNSET,
-        gt: float | None | Unset = UNSET,
-        ge: float | None | Unset = UNSET,
-        lt: float | None | Unset = UNSET,
-        le: float | None | Unset = UNSET,
-        min_length: int | None | Unset = UNSET,
-        max_length: int | None | Unset = UNSET,
-        pattern: str | None | Unset = UNSET,
-        discriminator: str | None | Unset = UNSET,
-        strict: bool | None | Unset = UNSET,
-        multiple_of: float | None | Unset = UNSET,
-        allow_inf_nan: bool | None | Unset = UNSET,
-        max_digits: int | None | Unset = UNSET,
-        decimal_places: int | None | Unset = UNSET,
-        deprecated: Deprecated | str | bool | None | Unset = UNSET,
-        examples: list[Any] | None | Unset = UNSET,
-        json_schema_extra: dict[str, Any] | None | Unset = UNSET,
+        default_factory: NoArgAnyCallable | Unset | None = UNSET,
+        alias: str | Unset | None = UNSET,
+        alias_priority: int | Unset | None = UNSET,
+        validation_alias: str | Unset | None = UNSET,
+        serialization_alias: str | Unset | None = UNSET,
+        title: str | Unset | None = UNSET,
+        description: str | Unset | None = UNSET,
+        gt: float | Unset | None = UNSET,
+        ge: float | Unset | None = UNSET,
+        lt: float | Unset | None = UNSET,
+        le: float | Unset | None = UNSET,
+        min_length: int | Unset | None = UNSET,
+        max_length: int | Unset | None = UNSET,
+        pattern: str | Unset | None = UNSET,
+        discriminator: str | Unset | None = UNSET,
+        strict: bool | Unset | None = UNSET,
+        multiple_of: float | Unset | None = UNSET,
+        allow_inf_nan: bool | Unset | None = UNSET,
+        max_digits: int | Unset | None = UNSET,
+        decimal_places: int | Unset | None = UNSET,
+        deprecated: Deprecated | str | bool | Unset | None = UNSET,
+        examples: list[Any] | Unset | None = UNSET,
+        json_schema_extra: dict[str, Any] | Unset | None = UNSET,
         validate: bool = True,
         **extra: Any,
     ) -> None:
@@ -525,6 +534,7 @@ class Cookie(CookieBase):  # type: ignore[misc]
         examples (Union[list[Any], None], optional): Example values for the field.
         json_schema_extra (Union[dict[str, Any], None], optional): Additional JSON schema information.
         validate (bool, optional): Whether to validate the field. Defaults to True.
+
     """
 
     extract_single = True
@@ -533,29 +543,29 @@ class Cookie(CookieBase):  # type: ignore[misc]
         self,
         default: Any = Undefined,
         *,
-        default_factory: NoArgAnyCallable | None | Unset = UNSET,
-        alias: str | None | Unset = UNSET,
-        alias_priority: int | None | Unset = UNSET,
-        validation_alias: str | None | Unset = UNSET,
-        serialization_alias: str | None | Unset = UNSET,
-        title: str | None | Unset = UNSET,
-        description: str | None | Unset = UNSET,
-        gt: float | None | Unset = UNSET,
-        ge: float | None | Unset = UNSET,
-        lt: float | None | Unset = UNSET,
-        le: float | None | Unset = UNSET,
-        min_length: int | None | Unset = UNSET,
-        max_length: int | None | Unset = UNSET,
-        pattern: str | None | Unset = UNSET,
-        discriminator: str | None | Unset = UNSET,
-        strict: bool | None | Unset = UNSET,
-        multiple_of: float | None | Unset = UNSET,
-        allow_inf_nan: bool | None | Unset = UNSET,
-        max_digits: int | None | Unset = UNSET,
-        decimal_places: int | None | Unset = UNSET,
-        deprecated: Deprecated | str | bool | None | Unset = UNSET,
-        examples: list[Any] | None | Unset = UNSET,
-        json_schema_extra: dict[str, Any] | None | Unset = UNSET,
+        default_factory: NoArgAnyCallable | Unset | None = UNSET,
+        alias: str | Unset | None = UNSET,
+        alias_priority: int | Unset | None = UNSET,
+        validation_alias: str | Unset | None = UNSET,
+        serialization_alias: str | Unset | None = UNSET,
+        title: str | Unset | None = UNSET,
+        description: str | Unset | None = UNSET,
+        gt: float | Unset | None = UNSET,
+        ge: float | Unset | None = UNSET,
+        lt: float | Unset | None = UNSET,
+        le: float | Unset | None = UNSET,
+        min_length: int | Unset | None = UNSET,
+        max_length: int | Unset | None = UNSET,
+        pattern: str | Unset | None = UNSET,
+        discriminator: str | Unset | None = UNSET,
+        strict: bool | Unset | None = UNSET,
+        multiple_of: float | Unset | None = UNSET,
+        allow_inf_nan: bool | Unset | None = UNSET,
+        max_digits: int | Unset | None = UNSET,
+        decimal_places: int | Unset | None = UNSET,
+        deprecated: Deprecated | str | bool | Unset | None = UNSET,
+        examples: list[Any] | Unset | None = UNSET,
+        json_schema_extra: dict[str, Any] | Unset | None = UNSET,
         validate: bool = True,
         **extra: Any,
     ) -> None:
@@ -627,31 +637,32 @@ class Cookies(CookieBase):  # type: ignore[misc]
         examples (Union[list[Any], None], optional): Example values for the field.
         json_schema_extra (Union[dict[str, Any], None], optional): Additional JSON schema information.
         validate (bool, optional): Whether to validate the field. Defaults to True.
+
     """
 
     def __init__(
         self,
         default: Any = Undefined,
         *,
-        default_factory: NoArgAnyCallable | None | Unset = UNSET,
-        title: str | None | Unset = UNSET,
-        description: str | None | Unset = UNSET,
-        gt: float | None | Unset = UNSET,
-        ge: float | None | Unset = UNSET,
-        lt: float | None | Unset = UNSET,
-        le: float | None | Unset = UNSET,
-        min_length: int | None | Unset = UNSET,
-        max_length: int | None | Unset = UNSET,
-        pattern: str | None | Unset = UNSET,
-        discriminator: str | None | Unset = UNSET,
-        strict: bool | None | Unset = UNSET,
-        multiple_of: float | None | Unset = UNSET,
-        allow_inf_nan: bool | None | Unset = UNSET,
-        max_digits: int | None | Unset = UNSET,
-        decimal_places: int | None | Unset = UNSET,
-        deprecated: Deprecated | str | bool | None | Unset = UNSET,
-        examples: list[Any] | None | Unset = UNSET,
-        json_schema_extra: dict[str, Any] | None | Unset = UNSET,
+        default_factory: NoArgAnyCallable | Unset | None = UNSET,
+        title: str | Unset | None = UNSET,
+        description: str | Unset | None = UNSET,
+        gt: float | Unset | None = UNSET,
+        ge: float | Unset | None = UNSET,
+        lt: float | Unset | None = UNSET,
+        le: float | Unset | None = UNSET,
+        min_length: int | Unset | None = UNSET,
+        max_length: int | Unset | None = UNSET,
+        pattern: str | Unset | None = UNSET,
+        discriminator: str | Unset | None = UNSET,
+        strict: bool | Unset | None = UNSET,
+        multiple_of: float | Unset | None = UNSET,
+        allow_inf_nan: bool | Unset | None = UNSET,
+        max_digits: int | Unset | None = UNSET,
+        decimal_places: int | Unset | None = UNSET,
+        deprecated: Deprecated | str | bool | Unset | None = UNSET,
+        examples: list[Any] | Unset | None = UNSET,
+        json_schema_extra: dict[str, Any] | Unset | None = UNSET,
         validate: bool = True,
         **extra: Any,
     ) -> None:
@@ -718,6 +729,7 @@ class QueryParam(QueryBase):  # type: ignore[misc]
         examples (Union[list[Any], None], optional): Example values for the field.
         json_schema_extra (Union[dict[str, Any], None], optional): Additional JSON schema information.
         validate (bool, optional): Whether to validate the field. Defaults to True.
+
     """
 
     extract_single = True
@@ -726,29 +738,29 @@ class QueryParam(QueryBase):  # type: ignore[misc]
         self,
         default: Any = Undefined,
         *,
-        default_factory: NoArgAnyCallable | None | Unset = UNSET,
-        alias: str | None | Unset = UNSET,
-        alias_priority: int | None | Unset = UNSET,
-        validation_alias: str | None | Unset = UNSET,
-        serialization_alias: str | None | Unset = UNSET,
-        title: str | None | Unset = UNSET,
-        description: str | None | Unset = UNSET,
-        gt: float | None | Unset = UNSET,
-        ge: float | None | Unset = UNSET,
-        lt: float | None | Unset = UNSET,
-        le: float | None | Unset = UNSET,
-        min_length: int | None | Unset = UNSET,
-        max_length: int | None | Unset = UNSET,
-        pattern: str | None | Unset = UNSET,
-        discriminator: str | None | Unset = UNSET,
-        strict: bool | None | Unset = UNSET,
-        multiple_of: float | None | Unset = UNSET,
-        allow_inf_nan: bool | None | Unset = UNSET,
-        max_digits: int | None | Unset = UNSET,
-        decimal_places: int | None | Unset = UNSET,
-        deprecated: Deprecated | str | bool | None | Unset = UNSET,
-        examples: list[Any] | None | Unset = UNSET,
-        json_schema_extra: dict[str, Any] | None | Unset = UNSET,
+        default_factory: NoArgAnyCallable | Unset | None = UNSET,
+        alias: str | Unset | None = UNSET,
+        alias_priority: int | Unset | None = UNSET,
+        validation_alias: str | Unset | None = UNSET,
+        serialization_alias: str | Unset | None = UNSET,
+        title: str | Unset | None = UNSET,
+        description: str | Unset | None = UNSET,
+        gt: float | Unset | None = UNSET,
+        ge: float | Unset | None = UNSET,
+        lt: float | Unset | None = UNSET,
+        le: float | Unset | None = UNSET,
+        min_length: int | Unset | None = UNSET,
+        max_length: int | Unset | None = UNSET,
+        pattern: str | Unset | None = UNSET,
+        discriminator: str | Unset | None = UNSET,
+        strict: bool | Unset | None = UNSET,
+        multiple_of: float | Unset | None = UNSET,
+        allow_inf_nan: bool | Unset | None = UNSET,
+        max_digits: int | Unset | None = UNSET,
+        decimal_places: int | Unset | None = UNSET,
+        deprecated: Deprecated | str | bool | Unset | None = UNSET,
+        examples: list[Any] | Unset | None = UNSET,
+        json_schema_extra: dict[str, Any] | Unset | None = UNSET,
         validate: bool = True,
         **extra: Any,
     ) -> None:
@@ -820,31 +832,32 @@ class QueryParams(QueryBase):  # type: ignore[misc]
         examples (Union[list[Any], None], optional): Example values for the field.
         json_schema_extra (Union[dict[str, Any], None], optional): Additional JSON schema information.
         validate (bool, optional): Whether to validate the field. Defaults to True.
+
     """
 
     def __init__(
         self,
         default: Any = Undefined,
         *,
-        default_factory: NoArgAnyCallable | None | Unset = UNSET,
-        title: str | None | Unset = UNSET,
-        description: str | None | Unset = UNSET,
-        gt: float | None | Unset = UNSET,
-        ge: float | None | Unset = UNSET,
-        lt: float | None | Unset = UNSET,
-        le: float | None | Unset = UNSET,
-        min_length: int | None | Unset = UNSET,
-        max_length: int | None | Unset = UNSET,
-        pattern: str | None | Unset = UNSET,
-        discriminator: str | None | Unset = UNSET,
-        strict: bool | None | Unset = UNSET,
-        multiple_of: float | None | Unset = UNSET,
-        allow_inf_nan: bool | None | Unset = UNSET,
-        max_digits: int | None | Unset = UNSET,
-        decimal_places: int | None | Unset = UNSET,
-        deprecated: Deprecated | str | bool | None | Unset = UNSET,
-        examples: list[Any] | None | Unset = UNSET,
-        json_schema_extra: dict[str, Any] | None | Unset = UNSET,
+        default_factory: NoArgAnyCallable | Unset | None = UNSET,
+        title: str | Unset | None = UNSET,
+        description: str | Unset | None = UNSET,
+        gt: float | Unset | None = UNSET,
+        ge: float | Unset | None = UNSET,
+        lt: float | Unset | None = UNSET,
+        le: float | Unset | None = UNSET,
+        min_length: int | Unset | None = UNSET,
+        max_length: int | Unset | None = UNSET,
+        pattern: str | Unset | None = UNSET,
+        discriminator: str | Unset | None = UNSET,
+        strict: bool | Unset | None = UNSET,
+        multiple_of: float | Unset | None = UNSET,
+        allow_inf_nan: bool | Unset | None = UNSET,
+        max_digits: int | Unset | None = UNSET,
+        decimal_places: int | Unset | None = UNSET,
+        deprecated: Deprecated | str | bool | Unset | None = UNSET,
+        examples: list[Any] | Unset | None = UNSET,
+        json_schema_extra: dict[str, Any] | Unset | None = UNSET,
         validate: bool = True,
         **extra: Any,
     ) -> None:
@@ -910,6 +923,7 @@ class Body(RequestParamFieldInfo):  # type: ignore[misc]
         examples (Union[list[Any], None], optional): Example values for the field.
         json_schema_extra (Union[dict[str, Any], None], optional): Additional JSON schema information.
         validate (bool, optional): Whether to validate the field. Defaults to True.
+
     """
 
     param_type = HTTPRequestParamType.body
@@ -918,25 +932,25 @@ class Body(RequestParamFieldInfo):  # type: ignore[misc]
         self,
         default: Any = Undefined,
         *,
-        default_factory: NoArgAnyCallable | None | Unset = UNSET,
-        title: str | None | Unset = UNSET,
-        description: str | None | Unset = UNSET,
-        gt: float | None | Unset = UNSET,
-        ge: float | None | Unset = UNSET,
-        lt: float | None | Unset = UNSET,
-        le: float | None | Unset = UNSET,
-        min_length: int | None | Unset = UNSET,
-        max_length: int | None | Unset = UNSET,
-        pattern: str | None | Unset = UNSET,
-        discriminator: str | None | Unset = UNSET,
-        strict: bool | None | Unset = UNSET,
-        multiple_of: float | None | Unset = UNSET,
-        allow_inf_nan: bool | None | Unset = UNSET,
-        max_digits: int | None | Unset = UNSET,
-        decimal_places: int | None | Unset = UNSET,
-        deprecated: Deprecated | str | bool | None | Unset = UNSET,
-        examples: list[Any] | None | Unset = UNSET,
-        json_schema_extra: dict[str, Any] | None | Unset = UNSET,
+        default_factory: NoArgAnyCallable | Unset | None = UNSET,
+        title: str | Unset | None = UNSET,
+        description: str | Unset | None = UNSET,
+        gt: float | Unset | None = UNSET,
+        ge: float | Unset | None = UNSET,
+        lt: float | Unset | None = UNSET,
+        le: float | Unset | None = UNSET,
+        min_length: int | Unset | None = UNSET,
+        max_length: int | Unset | None = UNSET,
+        pattern: str | Unset | None = UNSET,
+        discriminator: str | Unset | None = UNSET,
+        strict: bool | Unset | None = UNSET,
+        multiple_of: float | Unset | None = UNSET,
+        allow_inf_nan: bool | Unset | None = UNSET,
+        max_digits: int | Unset | None = UNSET,
+        decimal_places: int | Unset | None = UNSET,
+        deprecated: Deprecated | str | bool | Unset | None = UNSET,
+        examples: list[Any] | Unset | None = UNSET,
+        json_schema_extra: dict[str, Any] | Unset | None = UNSET,
         validate: bool = True,
         content_type: str | ContentType = ContentType.json,
         check_content_type: bool = True,

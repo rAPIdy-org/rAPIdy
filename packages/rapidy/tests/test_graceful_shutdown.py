@@ -5,11 +5,15 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
 
+import websockets
+
 import pytest
+from websockets.exceptions import ConnectionClosed
 
 from rapidy import Rapidy
 from rapidy.depends import FromDI, provide, Provider, Scope
 from rapidy.http import get, HTTPRouter, StreamResponse, WebSocket, websocket
+from tests.live_server import live_server_process
 
 
 class QueueTransport:
@@ -303,3 +307,55 @@ async def test_lifespan_without_websockets_preserves_order() -> None:
     events.append('work')
     await driver.shutdown()
     assert events == ['ctx_enter', 'startup', 'work', 'shutdown', 'cleanup', 'ctx_exit']
+
+
+def _read_process_output(process) -> str:
+    assert process.stdout is not None
+    return process.stdout.read().decode(errors='replace')
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    'runtime',
+    [
+        pytest.param(
+            'granian',
+            marks=pytest.mark.xfail(
+                strict=True,
+                reason='Granian 2.8.1 drops accepted WebSockets without a close frame on SIGTERM',
+            ),
+        ),
+        'uvicorn',
+    ],
+)
+async def test_live_server_shutdown_closes_an_accepted_websocket(runtime: str) -> None:
+    with live_server_process(runtime, 'examples.realtime:app') as server:
+        uri = server.base_url.replace('http://', 'ws://') + '/ws'
+        async with websockets.connect(uri) as client:
+            await client.send('accepted')
+            assert await client.recv() == 'accepted'
+            server.process.terminate()
+            with pytest.raises(ConnectionClosed):
+                await asyncio.wait_for(client.recv(), timeout=10)
+            close_code = client.close_code
+        await asyncio.to_thread(server.process.wait, 10)
+        output = await asyncio.to_thread(_read_process_output, server.process)
+
+    assert close_code in {1001, 1012}, output
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('runtime', ['granian', 'uvicorn'])
+async def test_live_peer_abort_during_send_has_no_framework_traceback(runtime: str) -> None:
+    with live_server_process(runtime, 'tests.apps.ws_lifecycle_app:app') as server:
+        uri = server.base_url.replace('http://', 'ws://') + '/push'
+        client = await websockets.connect(uri, max_size=None)
+        await client.send('start')
+        assert await client.recv() == b'x' * (256 * 1024)
+        client.transport.abort()
+        await asyncio.sleep(0.5)
+        server.process.terminate()
+        await asyncio.to_thread(server.process.wait, 10)
+        output = await asyncio.to_thread(_read_process_output, server.process)
+
+    assert 'Unhandled exception during WebSocket processing' not in output

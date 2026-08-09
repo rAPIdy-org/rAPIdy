@@ -2,12 +2,10 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
+from rapidy.openapi.plugins import OpenAPIRenderPlugin
 from rapidy.version import __version__
-
-if TYPE_CHECKING:
-    from rapidy.openapi.plugins import OpenAPIRenderPlugin
 
 __all__ = ('OpenAPIComponents', 'OpenAPIConfig')
 
@@ -39,6 +37,12 @@ def _default_component_objects() -> Mapping[str, Any]:
 def _validate_components(components: Any) -> None:
     if not isinstance(components, OpenAPIComponents):
         msg = 'OpenAPI components must be an OpenAPIComponents instance'
+        raise TypeError(msg)
+
+
+def _validate_bool(name: str, value: object) -> None:
+    if not isinstance(value, bool):
+        msg = f'OpenAPI {name} must be a boolean'
         raise TypeError(msg)
 
 
@@ -79,6 +83,8 @@ class OpenAPIConfig:
     swagger_path: str | None = '/schema'
     redoc_path: str | None = '/schema/redoc'
     render_plugins: Sequence[OpenAPIRenderPlugin] | None = None
+    public: bool = True
+    allow_documentation_only_security: bool = False
 
     @classmethod
     def docs(cls, **config: Any) -> OpenAPIConfig:
@@ -113,6 +119,8 @@ class OpenAPIConfig:
             msg = 'OpenAPI version must not be empty'
             raise ValueError(msg)
         _validate_components(self.components)
+        _validate_bool('public', self.public)
+        _validate_bool('allow_documentation_only_security', self.allow_documentation_only_security)
         if self.render_plugins is not None and (
             not isinstance(self.render_plugins, Sequence) or isinstance(self.render_plugins, (str, bytes, bytearray))
         ):

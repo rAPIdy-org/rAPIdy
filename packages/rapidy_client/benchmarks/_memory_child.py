@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
+from typing import TYPE_CHECKING
 
 from rapidy_client import (
     Headers,
@@ -9,8 +10,10 @@ from rapidy_client import (
     ResponseExtensions,
     UpstreamConfig,
 )
-from rapidy_client._models import Request
 from rapidy_client.testing import MockTransport
+
+if TYPE_CHECKING:
+    from rapidy_client._models import Request
 
 _CHUNK_SIZE = 65536
 _CHUNK = b"\0" * _CHUNK_SIZE

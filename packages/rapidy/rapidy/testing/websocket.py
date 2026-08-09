@@ -4,15 +4,14 @@ import asyncio
 from collections.abc import Mapping, Sequence
 from functools import partial
 from types import TracebackType
-from typing import Any, cast, Self, TYPE_CHECKING
+from typing import Any, cast, Self
 from urllib.parse import urlsplit
+
+from anyio.from_thread import BlockingPortal  # noqa: TC002 - runtime annotations
 
 from rapidy.constants import DEFAULT_JSON_DECODER, DEFAULT_JSON_ENCODER
 from rapidy.typedefs import ASGIMessage, ASGIScope, JSONDecoder, JSONEncoder
 from rapidy.websockets import WebSocketDisconnect
-
-if TYPE_CHECKING:
-    from anyio.from_thread import BlockingPortal
 
 __all__ = ('AsyncWebSocketSession', 'WebSocketSession')
 

@@ -6,6 +6,7 @@ import os
 import subprocess
 import sys
 from collections.abc import AsyncIterator
+from http import HTTPStatus
 from pathlib import Path
 from typing import Any
 
@@ -19,11 +20,11 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanE
 
 from rapidy import Rapidy
 from rapidy.__main__ import main
-from rapidy.exceptions import HTTPException, HTTPNotFound
+from rapidy.exceptions import HTTPException, HTTPFound, HTTPNotFound, HTTPOk, HTTPValidationFailure
 from rapidy.http import get, PathParam, post, Request, Response, WebSocket, websocket
 from rapidy.middlewares.request_id import RequestIDMiddleware
 from rapidy.observability import AccessLogMiddleware, AccessLogRecord, instrument_app, JSONAccessFormatter
-from rapidy.openapi import OpenAPIConfig
+from rapidy.openapi import OpenAPIConfig, OpenAPIGenerationError
 from rapidy.problems import ProblemDetails, ProblemDetailsRenderer
 from rapidy.responses.streaming import StreamResponse
 from rapidy.routing import (
@@ -62,6 +63,12 @@ async def test_named_reverse_urls_mounts_regex_and_request_root_path(tmp_path: P
     assert app.route_template('/v1/users/42') == '/v1/users/{user_id:\\d+}'
     assert app.route_template('/v1/users/private') is None
 
+    @get('/documents/{filename}', name='document.detail')
+    async def document(filename: str = PathParam()) -> str:
+        return filename
+
+    app.add_http_router(document)
+
     async with AsyncTestClient(app, root_path='/api') as client:
         response = await client.get('/v1/users/42')
     assert response.json()['self'] == '/api/v1/users/42'
@@ -72,6 +79,9 @@ async def test_named_reverse_urls_mounts_regex_and_request_root_path(tmp_path: P
         app.url_for('user.detail', user_id=42, extra=True)
     with pytest.raises(InvalidPathParameterError):
         app.url_for('user.detail', user_id='nope')
+
+    with pytest.raises(InvalidPathParameterError):
+        app.url_for('document.detail', filename='folder/file.txt')
     with pytest.raises(ValueError, match='non-empty string'):
         StaticFiles('/invalid', directory=assets, name='')
 
@@ -181,6 +191,49 @@ def test_problem_details_validation() -> None:
 
 
 @pytest.mark.asyncio
+async def test_problem_renderer_preserves_success_redirects_and_structures_validation_errors() -> None:
+    @get('/ok')
+    async def ok() -> None:
+        raise HTTPOk(text='ready')
+
+    @get('/redirect')
+    async def redirect() -> None:
+        raise HTTPFound('/target')
+
+    @get('/validation')
+    async def validation() -> None:
+        raise HTTPValidationFailure(
+            [{'loc': ('query', 'page'), 'msg': 'Input should be an integer', 'type': 'int_parsing'}]
+        )
+
+    app = Rapidy(
+        http_route_handlers=[ok, redirect, validation],
+        exception_handlers={HTTPException: ProblemDetailsRenderer()},
+    )
+    async with AsyncTestClient(app, follow_redirects=False) as client:
+        ok_response = await client.get('/ok')
+        redirect_response = await client.get('/redirect')
+        validation_response = await client.get('/validation')
+
+    assert ok_response.status_code == 200
+    assert ok_response.text == 'ready'
+    assert ok_response.headers['content-type'].startswith('text/plain')
+    assert redirect_response.status_code == 302
+    assert redirect_response.headers['location'] == '/target'
+    assert not redirect_response.headers['content-type'].startswith('application/problem+json')
+    assert validation_response.status_code == 422
+    assert validation_response.json() == {
+        'type': 'about:blank',
+        'title': HTTPStatus.UNPROCESSABLE_ENTITY.phrase,
+        'status': 422,
+        'instance': '/validation',
+        'errors': [
+            {'loc': ['query', 'page'], 'msg': 'Input should be an integer', 'type': 'int_parsing'},
+        ],
+    }
+
+
+@pytest.mark.asyncio
 async def test_handler_is_not_called_after_stream_response_started() -> None:
     called = False
 
@@ -264,8 +317,16 @@ async def test_official_otel_instrumentation_uses_http_and_websocket_templates()
     server_spans = [span for span in span_exporter.get_finished_spans() if span.kind.name == 'SERVER']
     assert {span.name for span in server_spans} >= {'GET /users/{user_id}', 'WS /socket/{room}'}
     assert {span.attributes.get('http.route') for span in server_spans} >= {'/users/{user_id}', '/socket/{room}'}
-    assert 'private-user' not in repr(server_spans)
-    assert 'private-room' not in repr(server_spans)
+    span_attributes = [dict(span.attributes or {}) for span in server_spans]
+    serialized_attributes = json.dumps(span_attributes, sort_keys=True)
+    assert 'private-user' not in serialized_attributes
+    assert 'private-room' not in serialized_attributes
+    assert 'secret' not in serialized_attributes
+    assert {attributes['http.target'] for attributes in span_attributes} >= {
+        '/users/{user_id}',
+        '/socket/{room}',
+    }
+    assert all(attributes['url.query'] == '' for attributes in span_attributes)
     metrics = metric_reader.get_metrics_data().resource_metrics
     assert metrics
     assert records[0].route == '/users/{user_id}'
@@ -298,6 +359,7 @@ def test_cli_routes_check_dev_and_subprocess(
             'tests.apps.observability_dx:app',
             {
                 'host': '127.0.0.1',
+                'app_dir': str(Path.cwd()),
                 'port': 9001,
                 'workers': 1,
                 'timeout_graceful_shutdown': None,
@@ -329,3 +391,45 @@ def test_cli_routes_check_dev_and_subprocess(
     monkeypatch.setattr('rapidy.__main__.run_app', missing_uvicorn)
     with pytest.raises(SystemExit, match=r"install 'rapidy\[uvicorn\]'"):
         main(['run', 'tests.apps.observability_dx:app'])
+
+    @get('/first', operation_id='duplicate')
+    async def first() -> str:
+        return 'first'
+
+    @get('/second', operation_id='duplicate')
+    async def second() -> str:
+        return 'second'
+
+    invalid_openapi_app = Rapidy(
+        http_route_handlers=[first, second],
+        openapi_config=OpenAPIConfig(),
+    )
+    monkeypatch.setattr('rapidy.__main__.load_app', lambda _target: invalid_openapi_app)
+    with pytest.raises(SystemExit, match='OpenAPI schema validation failed') as error:
+        main(['check', 'invalid:app'])
+    assert isinstance(error.value.__cause__, OpenAPIGenerationError)
+
+
+def test_cli_imports_application_from_external_working_directory(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    (tmp_path / 'main.py').write_text(
+        'from rapidy import Rapidy\n'
+        'from rapidy.http import get\n'
+        '\n'
+        "@get('/ping')\n"
+        'async def ping():\n'
+        "    return 'pong'\n"
+        '\n'
+        'app = Rapidy(http_route_handlers=[ping])\n',
+        encoding='utf-8',
+    )
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, 'path', [entry for entry in sys.path if entry not in {'', str(tmp_path)}])
+
+    main(['routes', 'main:app', '--json'])
+
+    routes = json.loads(capsys.readouterr().out)
+    assert any(route['path'] == '/ping' for route in routes)

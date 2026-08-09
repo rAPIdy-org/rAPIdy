@@ -25,24 +25,30 @@ repos:
       args: [ --pytest-test-first ]
       exclude: ^packages/rapidy/tests/app_checkers.py|^packages/rapidy/tests/test_mypy/cases|^.*base.py|^.*helpers.py|^.*constants.py
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.14.0
+  - repo: local
     hooks:
       - id: mypy
+        name: mypy (workspace strict contracts)
+        entry: >-
+          uv run --python 3.13 mypy --strict
+          packages/rapidy_core/rapidy_core
+          packages/rapidy/rapidy
+          packages/rapidy/tests/typecheck
+          packages/rapidy_client/rapidy_client
+          packages/rapidy_client/tests/typecheck
+        language: system
+        pass_filenames: false
         types_or:
           - python
           - pyi
         require_serial: true
-        args: [--config-file=packages/rapidy/pyproject.toml]
         exclude: packages/rapidy/docs/examples/.*|^packages/rapidy/tests/mypy/cases/
-        additional_dependencies: ["attrs==24.2.0"]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.4
+    rev: v0.16.2
     hooks:
       - id: ruff
-        args: [ --fix, --config=packages/rapidy/pyproject.toml ]
+        args: [ --fix ]
         exclude: packages/rapidy/docs/examples/.*
       - id: ruff-format
-        args: [ --config=packages/rapidy/pyproject.toml ]
         exclude: packages/rapidy/docs/examples/.*

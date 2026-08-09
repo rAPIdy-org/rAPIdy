@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+from typing import cast
 from urllib.error import HTTPError
 from urllib.request import (
     Request as URLRequest,
@@ -12,6 +13,8 @@ from httpx import ASGITransport, AsyncClient
 
 from rapidy import Rapidy
 from rapidy.exceptions import HTTPRequestEntityTooLarge
+from rapidy.http import HTTPRouter
+from rapidy.request import MultipartLimits
 from tests.apps.echo_body import app as echo_app
 from tests.live_server import live_server
 from tests.request_factory import make_request
@@ -57,10 +60,23 @@ def test_defaults_and_body_exists_by_http_version() -> None:
 
 
 def test_client_max_size_follows_rebound_app() -> None:
-    request, _ = make_request(app=Rapidy(client_max_size=7))
+    first_limits = MultipartLimits(max_body_size=17)
+    second_limits = MultipartLimits(max_body_size=19)
+    request, _ = make_request(app=Rapidy(client_max_size=7, multipart_limits=first_limits))
     assert request.client_max_size == 7
-    request.app = Rapidy(client_max_size=11)
+    assert request.multipart_limits is first_limits
+    request.app = Rapidy(client_max_size=11, multipart_limits=second_limits)
     assert request.client_max_size == 11
+    assert request.multipart_limits is second_limits
+
+
+def test_multipart_limits_are_validated_and_propagate_to_nested_apps() -> None:
+    limits = MultipartLimits(max_body_size=1234)
+    router = HTTPRouter('/uploads', multipart_limits=limits)
+    assert router.application.multipart_limits is limits
+
+    with pytest.raises(TypeError, match='multipart_limits'):
+        Rapidy(multipart_limits=cast('MultipartLimits', object()))
 
 
 @pytest.mark.asyncio

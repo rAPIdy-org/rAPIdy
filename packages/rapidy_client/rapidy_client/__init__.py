@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from rapidy_core import UNSET, Unset
 
 from rapidy_client._content import ContentFactory, FilePart
+from rapidy_client._core_compat import ensure_core_compatibility
 from rapidy_client._models import (
     URL,
     AttemptListener,
@@ -36,6 +37,7 @@ from rapidy_client.errors import (
     MessageValidationError,
     ProtocolError,
     ProxyError,
+    RedirectBodyNotReplayableError,
     RedirectError,
     RedirectNotAllowedError,
     ResponseValidationError,
@@ -48,8 +50,11 @@ from rapidy_client.errors import (
     WSClosedError,
     WSError,
     WSHandshakeError,
+    WSMessageTooLargeError,
     WSQueueFullError,
 )
+
+ensure_core_compatibility()
 
 if TYPE_CHECKING:
     from rapidy_client._client import HttpClient
@@ -128,6 +133,7 @@ __all__ = (
     "ProxyError",
     "QueryValue",
     "RateLimitConfig",
+    "RedirectBodyNotReplayableError",
     "RedirectConfig",
     "RedirectError",
     "RedirectNotAllowedError",
@@ -157,6 +163,7 @@ __all__ = (
     "WSError",
     "WSHandshakeError",
     "WSMessage",
+    "WSMessageTooLargeError",
     "WSQueueFullError",
     "WSSession",
     "WSSocket",

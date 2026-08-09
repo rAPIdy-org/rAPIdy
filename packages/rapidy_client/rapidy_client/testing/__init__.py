@@ -264,7 +264,8 @@ class MockTransport(BaseTransport):
         if step.exc is not None:
             self.calls.append(RecordedCall(request=request, exception=step.exc))
             raise step.exc
-        assert step.handler is not None
+        if step.handler is None:
+            raise RuntimeError("mock route step has neither a handler nor an exception")
         response = await step.handler(request)
         self.calls.append(RecordedCall(request=request, response=response))
         return response

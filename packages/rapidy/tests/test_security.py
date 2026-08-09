@@ -7,7 +7,8 @@ import pytest
 
 from rapidy import Rapidy
 from rapidy.depends import FromDI
-from rapidy.http import controller, get, HTTPRouter, Request, WebSocket, websocket
+from rapidy.http import controller, get, HTTPRouter, Request, Response, WebSocket, websocket
+from rapidy.middlewares import middleware
 from rapidy.openapi import OpenAPIConfig
 from rapidy.security import (
     APIKeyAuth,
@@ -20,8 +21,10 @@ from rapidy.security import (
     SecurityIdentity,
     SecurityScheme,
     SimpleUser,
+    WebSocketSecurityConfig,
 )
 from rapidy.testing import AsyncTestClient, TestClient
+from rapidy.typedefs import CallNext
 from rapidy.websockets import WebSocketDisconnect
 
 _BASIC_SECRET = 'hidden-password'
@@ -69,6 +72,38 @@ def test_api_key_runtime_openapi_identity_and_typed_di_share_one_config() -> Non
     schema = schema_response.json()
     assert schema['components']['securitySchemes']['apiKey'] == scheme.openapi_schema
     assert schema['security'] == [{'apiKey': ['items:read']}]
+
+
+def test_middleware_di_lookup_does_not_cache_anonymous_identity_for_handler() -> None:
+    observed: list[SecurityIdentity] = []
+
+    @middleware
+    async def inspect_identity(
+        request: Request,
+        call_next: CallNext,
+        identity: FromDI[SecurityIdentity],
+    ) -> Response:
+        observed.append(identity)
+        return await call_next(request)
+
+    @get('/items')
+    async def items(request: Request, identity: FromDI[SecurityIdentity]) -> bool:
+        return identity is request.identity and identity.is_authenticated
+
+    app = Rapidy(
+        security=SecurityConfig(
+            schemes=[APIKeyAuth(key='secret')],
+            requirements=[{'apiKey': []}],
+        ),
+        middlewares=[inspect_identity],
+        http_route_handlers=[items],
+    )
+    with TestClient(app) as client:
+        response = client.get('/items', headers={'X-API-Key': 'secret'})
+
+    assert response.json() is True
+    assert len(observed) == 1
+    assert not observed[0].is_authenticated
 
 
 def test_scopes_return_403_and_route_requirements_support_or_and_and() -> None:
@@ -151,7 +186,7 @@ def test_controller_guards_are_cumulative_and_public_clears_inherited_policy() -
         events.append('route')
         return True
 
-    @controller('/admin', security=[{'apiKey': []}], guards=[controller_guard])  # type: ignore[arg-type]
+    @controller('/admin', security=[{'apiKey': []}], guards=[controller_guard])
     class AdminController:
         @get('/private', guards=[route_guard])
         async def private(self) -> str:
@@ -257,6 +292,59 @@ async def test_websocket_uses_same_security_identity_and_rejects_with_policy_cod
     assert payload == {'user': 'ws-user', 'scopes': ['chat']}
 
 
+@pytest.mark.asyncio
+async def test_cookie_authenticated_websocket_requires_strict_origin_policy() -> None:
+    cookie_scheme = APIKeyAuth(
+        name='sessionCookie',
+        parameter_name='session',
+        location='cookie',
+        key='cookie-secret',
+        user=SimpleUser('cookie-user'),
+    )
+
+    @websocket('/ws', security=[{'sessionCookie': []}])
+    async def cookie_socket(socket: WebSocket) -> None:
+        await socket.accept()
+        await socket.send_text(socket.user.username)
+
+    unprotected = Rapidy(
+        security=SecurityConfig(schemes=[cookie_scheme]),
+        http_route_handlers=[cookie_socket],
+    )
+    protected = Rapidy(
+        security=SecurityConfig(
+            schemes=[cookie_scheme],
+            websocket=WebSocketSecurityConfig(allowed_origins=('https://app.example',)),
+        ),
+        http_route_handlers=[cookie_socket],
+    )
+
+    async with AsyncTestClient(unprotected) as client:
+        with pytest.raises(WebSocketDisconnect) as no_policy:
+            async with client.websocket_connect('/ws', headers={'Cookie': 'session=cookie-secret'}):
+                pass
+
+    async with AsyncTestClient(protected) as client:
+        with pytest.raises(WebSocketDisconnect) as missing_origin:
+            async with client.websocket_connect('/ws', headers={'Cookie': 'session=cookie-secret'}):
+                pass
+        with pytest.raises(WebSocketDisconnect) as wrong_origin:
+            async with client.websocket_connect(
+                '/ws',
+                headers={'Cookie': 'session=cookie-secret', 'Origin': 'https://evil.example'},
+            ):
+                pass
+        async with client.websocket_connect(
+            '/ws',
+            headers={'Cookie': 'session=cookie-secret', 'Origin': 'https://app.example'},
+        ) as session:
+            username = await session.receive_text()
+
+    assert no_policy.value.code == missing_origin.value.code == wrong_origin.value.code == 1008
+    assert no_policy.value.reason == missing_origin.value.reason == wrong_origin.value.reason == 'Forbidden'
+    assert username == 'cookie-user'
+
+
 def test_security_config_rejects_unknown_and_conflicting_openapi_contracts() -> None:
     with pytest.raises(ValueError, match='Unknown security schemes'):
         SecurityConfig(requirements=[{'missing': []}])
@@ -278,6 +366,49 @@ def test_security_config_rejects_unknown_and_conflicting_openapi_contracts() -> 
                 security_schemes={'apiKey': {'type': 'apiKey', 'name': 'Other', 'in': 'header'}},
             ),
         )
+
+
+def test_openapi_routes_can_inherit_runtime_security() -> None:
+    scheme = APIKeyAuth(key='docs-secret')
+    app = Rapidy(
+        security=SecurityConfig(schemes=[scheme], requirements=[{'apiKey': []}]),
+        openapi_config=OpenAPIConfig(public=False),
+    )
+
+    with TestClient(app) as client:
+        denied_schema = client.get('/schema/openapi.json')
+        denied_ui = client.get('/schema')
+        allowed_schema = client.get('/schema/openapi.json', headers={'X-API-Key': 'docs-secret'})
+        allowed_ui = client.get('/schema', headers={'X-API-Key': 'docs-secret'})
+
+    assert denied_schema.status_code == denied_ui.status_code == 401
+    assert allowed_schema.status_code == allowed_ui.status_code == 200
+
+
+def test_route_security_without_runtime_config_fails_closed() -> None:
+    @get('/protected', security=[{'apiKey': []}])
+    async def protected() -> str:
+        return 'secret'
+
+    app = Rapidy(http_route_handlers=[protected], openapi_config=OpenAPIConfig())
+    with pytest.raises(ValueError, match='need a runtime SecurityConfig'):
+        _ = app.openapi_schema
+    with pytest.raises(RuntimeError, match='need a runtime SecurityConfig'), TestClient(app):
+        pass
+
+    documentation_only_app = Rapidy(
+        http_route_handlers=[protected],
+        openapi_config=OpenAPIConfig(
+            allow_documentation_only_security=True,
+            security_schemes={
+                'apiKey': {'type': 'apiKey', 'name': 'X-API-Key', 'in': 'header'},
+            },
+        ),
+    )
+    with TestClient(documentation_only_app) as client:
+        response = client.get('/protected')
+
+    assert response.status_code == 200
 
 
 def test_custom_backend_api_key_locations_and_guard_false() -> None:
@@ -333,6 +464,52 @@ def test_custom_backend_api_key_locations_and_guard_false() -> None:
     assert invalid.status_code == 401
 
 
+def test_builtin_authentication_rejects_duplicate_credential_values() -> None:
+    header = APIKeyAuth(key='header-secret')
+    query = APIKeyAuth(
+        name='queryKey',
+        parameter_name='access_key',
+        location='query',
+        key='query-secret',
+    )
+    bearer = BearerAuth(lambda token: SimpleUser('bearer') if token == 'bearer-secret' else None)
+
+    @get('/header', security=[{'apiKey': []}])
+    async def header_route() -> str:
+        return 'header'
+
+    @get('/query', security=[{'queryKey': []}])
+    async def query_route() -> str:
+        return 'query'
+
+    @get('/bearer', security=[{'bearerAuth': []}])
+    async def bearer_route() -> str:
+        return 'bearer'
+
+    app = Rapidy(
+        security=SecurityConfig(schemes=[header, query, bearer]),
+        http_route_handlers=[header_route, query_route, bearer_route],
+    )
+    with TestClient(app) as client:
+        duplicate_header = client.get(
+            '/header',
+            headers=[('X-API-Key', 'header-secret'), ('X-API-Key', 'wrong')],
+        )
+        duplicate_query = client.get(
+            '/query',
+            params=[('access_key', 'query-secret'), ('access_key', 'wrong')],
+        )
+        duplicate_bearer = client.get(
+            '/bearer',
+            headers=[
+                ('Authorization', 'Bearer bearer-secret'),
+                ('Authorization', 'Bearer wrong'),
+            ],
+        )
+
+    assert duplicate_header.status_code == duplicate_query.status_code == duplicate_bearer.status_code == 401
+
+
 def test_security_primitives_validate_configuration_and_compare_bytes() -> None:
     assert constant_time_compare('same', b'same')
     assert not constant_time_compare('left', 'right')
@@ -355,3 +532,22 @@ def test_security_primitives_validate_configuration_and_compare_bytes() -> None:
         SecurityScheme('bad name', APIKeyAuth(key='nested'), {'type': 'http', 'scheme': 'bearer'})
     with pytest.raises(TypeError, match='guards'):
         SecurityConfig(guards=[None])  # type: ignore[list-item]
+    with pytest.raises(ValueError, match='requires allowed_origins or allowed_hosts'):
+        WebSocketSecurityConfig()
+    with pytest.raises(ValueError, match='invalid serialized origin'):
+        WebSocketSecurityConfig(allowed_origins=('https://example.com/path',))
+    with pytest.raises(ValueError, match='cannot be combined'):
+        WebSocketSecurityConfig(allowed_origins=('*', 'https://app.example'))
+    with pytest.raises(ValueError, match='Wildcard host patterns'):
+        WebSocketSecurityConfig(allowed_hosts=('api.*.example',))
+    with pytest.raises(ValueError, match='allow_missing_origin requires'):
+        WebSocketSecurityConfig(allowed_hosts=('api.example',), allow_missing_origin=True)
+
+    assert WebSocketSecurityConfig(
+        allowed_origins=('https://app.example',),
+    ).protects_ambient_credentials
+    assert not WebSocketSecurityConfig(allowed_origins=('*',)).protects_ambient_credentials
+    assert not WebSocketSecurityConfig(
+        allowed_origins=('https://app.example',),
+        allow_missing_origin=True,
+    ).protects_ambient_credentials

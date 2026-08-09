@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from importlib.metadata import entry_points
 from typing import TYPE_CHECKING
 
 import pytest
@@ -22,12 +21,6 @@ def test_fixtures_importable() -> None:
 
     assert all(callable(fixture) for fixture in fixtures)
     assert all(hasattr(fixture, "_fixture_function_marker") for fixture in fixtures)
-
-
-def test_entry_point_registered() -> None:
-    plugin = entry_points(group="pytest11")["rapidy_client"]
-
-    assert plugin.value == "rapidy_client.testing.plugin"
 
 
 def test_mock_transport_fixture_type(mock_transport: MockTransport) -> None:

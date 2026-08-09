@@ -86,6 +86,8 @@ test = [
     "pytest-cov>=5.0,<7.0",
     "httpx>=0.28,<1",
     "granian>=2.7,<3",
+    "hypercorn>=0.17,<1",
+    "mypy>=1.14,<2",
     "uvicorn>=0.34,<1",
     "websockets>=15.0,<16",
 ]
@@ -233,7 +235,7 @@ log_cli = true
 testpaths = ["tests"]
 pythonpath = ["."]
 filterwarnings = [
-    "ignore::DeprecationWarning:",
+    "default::DeprecationWarning",
 ]
 
 [tool.coverage.run]

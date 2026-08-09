@@ -5,7 +5,15 @@ family. It supports imperative and declarative HTTP calls, streaming,
 WebSockets, SSE, retries, deadlines, observability, and component-qualified
 dependency injection.
 
-The package targets Python 3.13 and 3.14 and ships a `py.typed` marker.
+The package targets Python 3.12, 3.13, and 3.14 and ships a `py.typed` marker.
+
+## Public imports
+
+The `rapidy_client` root is the ergonomic facade for common client operations,
+configuration, models, and errors. Import parameter markers and serialization
+controls from `rapidy_client.schema`; similarly named objects in server modules
+describe a different domain and are not identity-compatible. The shared
+`UNSET` and `Unset` objects retain their `rapidy_core` identity.
 
 ## Installation
 
@@ -115,10 +123,12 @@ async def use_components() -> None:
 
 ## Documentation
 
-Task-focused guides live in [`docs/how-to`](docs/how-to), including
+Task-focused guides live in
+[`docs/how-to`](https://github.com/rAPIdy-org/rAPIdy/tree/main/packages/rapidy_client/docs/how-to), including
 configuration, middleware, retry/deadline behavior, testing, DI, files,
 WebSockets, and SSE.
 
 The accepted architecture is recorded in
-[`docs/adr/http-client-redesign.md`](docs/adr/http-client-redesign.md), and
-release notes are in [`CHANGELOG.md`](CHANGELOG.md).
+[`docs/adr/http-client-redesign.md`](https://github.com/rAPIdy-org/rAPIdy/blob/main/packages/rapidy_client/docs/adr/http-client-redesign.md), and
+release notes are in the
+[`CHANGELOG.md`](https://github.com/rAPIdy-org/rAPIdy/blob/main/packages/rapidy_client/CHANGELOG.md).

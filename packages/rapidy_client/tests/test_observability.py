@@ -245,7 +245,10 @@ async def test_logging_observer_headers_redacts_defaults_and_extras(
                 "X-Tenant": "TENANT_SECRET",
             }
         ),
-        url="https://example.test/x?api_key=QUERY_SECRET&tenant=QUERY_EXTRA",
+        url=(
+            "https://USER_SECRET:PASS_SECRET@example.test/x?api_key=QUERY_SECRET"
+            "&access_token=ACCESS_SECRET&password=PASSWORD_SECRET&tenant=QUERY_EXTRA"
+        ),
     )
     response = _response(request=request)
     observer = LoggingObserver(
@@ -262,6 +265,10 @@ async def test_logging_observer_headers_redacts_defaults_and_extras(
     assert "HEADER_SECRET" not in rendered
     assert "TENANT_SECRET" not in rendered
     assert "QUERY_SECRET" not in rendered
+    assert "USER_SECRET" not in rendered
+    assert "PASS_SECRET" not in rendered
+    assert "ACCESS_SECRET" not in rendered
+    assert "PASSWORD_SECRET" not in rendered
     assert "QUERY_EXTRA" not in rendered
 
 

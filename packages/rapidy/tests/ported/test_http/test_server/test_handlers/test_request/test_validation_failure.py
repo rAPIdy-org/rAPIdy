@@ -142,11 +142,6 @@ def pydantic_v2_err_check(resp_json: dict[str, Any]) -> None:
                 'type': 'greater_than_equal',
             },
             {
-                'loc': ['header', 'attr3'],
-                'msg': 'Input should be a valid list',
-                'type': 'list_type',
-            },
-            {
                 'loc': ['header', 'attr4'],
                 'msg': 'Field required',
                 'type': 'missing',
@@ -184,11 +179,6 @@ def pydantic_v2_err_check(resp_json: dict[str, Any]) -> None:
                 'loc': ['query', 'attr2'],
                 'msg': 'Input should be greater than or equal to 1',
                 'type': 'greater_than_equal',
-            },
-            {
-                'loc': ['query', 'attr3'],
-                'msg': 'Input should be a valid list',
-                'type': 'list_type',
             },
             {
                 'loc': ['query', 'attr4'],

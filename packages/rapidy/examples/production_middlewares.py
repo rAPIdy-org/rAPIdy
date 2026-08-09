@@ -26,7 +26,7 @@ app = Rapidy(
         # The edge proxy must overwrite/sanitize forwarded fields before appending them.
         ProxyHeadersMiddleware(['127.0.0.1', '10.0.0.0/8']),
         TrustedHostMiddleware(['api.example.com', 'testserver']),
-        HTTPSRedirectMiddleware(),
+        HTTPSRedirectMiddleware(['api.example.com', 'testserver']),
         RequestIDMiddleware(),
         CORSMiddleware(
             allow_origins=['https://console.example.com'],

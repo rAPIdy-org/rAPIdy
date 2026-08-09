@@ -167,7 +167,9 @@ An operation without `security` inherits the application requirement. `public=Tr
 and guards and emits `security: []`; an explicit `security=[]` removes auth while retaining cumulative guards.
 `security=[{'bearerAuth': ['items:write']}]` requires scopes, while `security=[{}]` allows an anonymous alternative.
 Unknown runtime schemes fail closed. The older `OpenAPIConfig.security_schemes` and `OpenAPIConfig.security` fields
-remain available for documentation-only configurations when no `SecurityConfig` is installed.
+remain available without a runtime backend only through the explicit
+`allow_documentation_only_security=True` compatibility switch. Otherwise route or document security requirements
+without a `SecurityConfig` fail during schema generation/startup instead of silently leaving the endpoint public.
 
 See [authentication and authorization](security.md) for HTTP/WebSocket behavior, guards, DI, and built-in schemes.
 
@@ -202,15 +204,32 @@ Local URLs may be served by application routes, an upstream static server, or a 
 the large third-party JavaScript and CSS bundles, so this adds no runtime dependency or package-size cost. Explicit
 `render_plugins` replace the legacy UI routes; use `render_plugins=()` for JSON-only schema serving.
 
+The default plugins load a floating major release from jsDelivr. This is a convenient development default, not a
+supply-chain guarantee: rAPIdy does not attach SRI metadata or control the remote response. For production or
+security-sensitive documentation, download a reviewed, exact asset release into an application-owned static tree,
+serve it from the same origin, and use the explicit local URLs above. An exact `version=` narrows CDN drift but does
+not provide the same trust boundary as self-hosting.
+
+Apply response security headers at the application or reverse-proxy boundary. A starting CSP for locally hosted
+assets is `default-src 'none'; script-src 'self' 'unsafe-inline'; style-src 'self'; img-src data:; connect-src 'self'`.
+The built-in Swagger host page contains an inline initialization script, so removing `'unsafe-inline'` requires a
+custom `OpenAPIRenderPlugin` that supplies a nonce or a stable script hash. Also set an appropriate
+`Referrer-Policy`; use `render_plugins=()` when an interactive UI is unnecessary.
+
 To integrate another UI, subclass `OpenAPIRenderPlugin` and implement `render(request, openapi_schema, *,
 schema_url) -> bytes`. The plugin controls its path and media type, while rAPIdy supplies the mount-aware schema URL.
+
+Schema and UI routes are public by default so clients can discover the authentication contract. For a private API,
+set `OpenAPIConfig(public=False)`; all JSON/UI routes then inherit the application's runtime `SecurityConfig` and
+guards just like ordinary routes.
 
 ## What is inferred
 
 - `PathParam`, `QueryParam`, `Header`, and `Cookie` become OpenAPI parameters with aliases, defaults, constraints,
   descriptions, and required flags.
 - Plural model markers such as `QueryParams()` expand model properties into individual parameters.
-- `Body()` becomes `requestBody` and preserves its configured content type.
+- `Body()` becomes `requestBody` and preserves its configured content type. A multipart model field annotated as
+  `FileField` is emitted as an OpenAPI binary string with a complete component reference.
 - Return annotations or `response_type` become response schemas. Status and media type come from the route's
   response settings.
 - Pydantic models and nested definitions are shared through `components.schemas`.

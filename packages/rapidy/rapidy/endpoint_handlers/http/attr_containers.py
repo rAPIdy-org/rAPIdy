@@ -1,14 +1,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
+from rapidy_core.enums import HTTPRequestParamType  # noqa: TC002 - runtime annotations
 from rapidy_core.parameters.http import RequestParamFieldInfo
 
 from rapidy.endpoint_handlers.attr_containers import DataAttr
-
-if TYPE_CHECKING:
-    from rapidy_core.enums import HTTPRequestParamType
 
 __all__ = ('HTTPRequestAttr',)
 

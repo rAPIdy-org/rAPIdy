@@ -275,6 +275,7 @@ def jsonify(
 
     Note:
         This code and doc is taken almost unchanged from the https://fastapi.tiangolo.com/ project.
+
     """
     result = _prepare_to_json(
         obj,
@@ -304,7 +305,7 @@ def _prepare_to_json(
     custom_encoder: CustomEncoder | None,
     byte_preparation_charset: str,
 ) -> Any:
-    custom_encoder = custom_encoder or {}  # TODO: tests
+    custom_encoder = custom_encoder or {}
     if custom_encoder:
         if type(obj) in custom_encoder:
             return custom_encoder[type(obj)](obj)

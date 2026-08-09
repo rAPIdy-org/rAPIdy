@@ -30,5 +30,7 @@ hypercorn --bind 0.0.0.0:8000 --workers 4 main:app
 ```
 
 Каждый worker — отдельный процесс со своим lifespan и DI-контейнером, поэтому APP-singleton является per-process.
-Таймаут graceful shutdown должен позволять активным stream-ответам завершиться. aiohttp Gunicorn worker из 1.x в
-2.0 не поддерживается.
+При прямом application-lifespan shutdown rAPIdy запрашивает code 1001 для ещё открытых accepted WebSockets до
+пользовательских shutdown hooks. Server может закрыть connections раньше и тогда сам определяет wire code: Uvicorn
+делает orderly restart close, а Granian 2.8.1 пока имеет strict-xfail из-за abnormal 1006. Таймаут graceful shutdown
+должен позволять активным stream-ответам завершиться. aiohttp Gunicorn worker из 1.x в 2.0 не поддерживается.

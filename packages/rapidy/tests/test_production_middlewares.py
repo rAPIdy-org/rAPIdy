@@ -211,7 +211,7 @@ async def test_trusted_host_and_https_redirect() -> None:
         http_route_handlers=[handler],
     )
     redirect_app = Rapidy(
-        middlewares=[TrustedHostMiddleware(('www.example.com',)), HTTPSRedirectMiddleware()],
+        middlewares=[TrustedHostMiddleware(('www.example.com',)), HTTPSRedirectMiddleware(('www.example.com',))],
         http_route_handlers=[handler],
     )
     async with app.lifespan.ctx_manager(), redirect_app.lifespan.ctx_manager():
@@ -226,11 +226,17 @@ async def test_trusted_host_and_https_redirect() -> None:
             scheme='https',
             headers=[(b'host', b'www.example.com')],
         )
+        poisoned = await request_app(
+            redirect_app,
+            '/items',
+            headers=[(b'host', b'evil.example')],
+        )
     assert allowed.status == wildcard.status == 200
     assert rejected.status == duplicate.status == 400
     assert www.status == 307
     assert www.headers['location'] == 'http://www.example.com:8080/items?a=1'
     assert https.status == 200
+    assert poisoned.status == 400
 
 
 def test_trusted_host_configuration_is_validated() -> None:
@@ -240,6 +246,10 @@ def test_trusted_host_configuration_is_validated() -> None:
         TrustedHostMiddleware(('api.*.example',))
     with pytest.raises(ValueError, match='cannot be combined'):
         TrustedHostMiddleware(('*', 'example.com'))
+    with pytest.raises(ValueError, match='at least one'):
+        HTTPSRedirectMiddleware(())
+    with pytest.raises(ValueError, match='cannot trust the wildcard'):
+        HTTPSRedirectMiddleware(('*',))
 
 
 @pytest.mark.asyncio

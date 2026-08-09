@@ -6,12 +6,28 @@ Middleware образуют onion в порядке регистрации: пе
 Декоратор `@middleware` принимает те же `response_*` настройки, что и HTTP-хендлер: status/content type,
 валидацию, aliases, include/exclude, headers и cookies.
 
-`HTTPRouter('/api', handlers, ...)` создаёт вложенное приложение со своими middleware, `client_max_size`, lifecycle-
-хуками и lifespan. Роутеры можно вкладывать рекурсивно; DI-контейнер остаётся корневым. Регистрацию следует закончить
-до startup, после него таблица роутов заморожена.
+`HTTPRouter('/api', handlers, ...)` создаёт вложенное приложение со своими middleware, `client_max_size`,
+`multipart_limits`, lifecycle-хуками и lifespan. Роутеры можно вкладывать рекурсивно; DI-контейнер остаётся корневым.
+Регистрацию следует закончить до startup, после него таблица роутов заморожена.
+
+### Custom route regular expressions
+
+`{name}` использует встроенный segment matcher. Шаблон вида `{item_id:\d+}` встраивает Python regular expression,
+который синхронно исполняется в event loop для каждого route candidate. rAPIdy проверяет структуру template и
+компилирует expression при регистрации, но Python `re` не даёт match timeout или linear-time guarantee. Успешная
+компиляция не означает защиту от catastrophic backtracking.
+
+Считайте custom route expressions доверенным application source: не собирайте их из request, tenant data или
+непроверенной runtime configuration. Предпочитайте встроенный matcher либо простые character classes и bounded
+quantifiers; избегайте nested/ambiguous quantifiers, backreferences и сложных lookarounds. Для недоверенных или
+динамических patterns нужен отдельный sandboxed/linear-time matcher на другой границе; custom route syntax rAPIdy
+таким sandbox не является.
 
 Рабочий пример middleware + mount:
 [`examples/middleware_mounts.py`](https://github.com/rAPIdy-org/rAPIdy/blob/main/packages/rapidy/examples/middleware_mounts.py).
+
+Application middleware оборачивают только HTTP dispatch. Для WebSocket handshake используются security requirements,
+guards и `WebSocketSecurityConfig`; считать CORS или `TrustedHostMiddleware` защитой WebSocket нельзя.
 
 ## Production middleware
 
@@ -34,7 +50,7 @@ app = Rapidy(
     middlewares=[
         ProxyHeadersMiddleware(['10.0.0.0/8', '192.0.2.10']),
         TrustedHostMiddleware(['api.example.com', '*.internal.example.com']),
-        HTTPSRedirectMiddleware(),
+        HTTPSRedirectMiddleware(['api.example.com', '*.internal.example.com']),
         RequestIDMiddleware(),
         CORSMiddleware(
             allow_origins=['https://console.example.com'],
@@ -51,9 +67,14 @@ app = Rapidy(
 `trusted_proxies`, и идёт по цепочке адресов до первого недоверенного hop. Добавляйте сеть только тогда, когда каждый
 proxy в ней перезаписывает или очищает forwarding headers. Нормализация proxy должна стоять раньше Trusted Host и
 HTTPS redirect.
+Встроенный Uvicorn launcher по умолчанию отключает отдельную обработку proxy headers самим Uvicorn, поэтому границей
+доверия владеет этот middleware. `proxy_headers=True` в `run_app()` — явная альтернатива; её не следует случайно
+сочетать с независимо настроенной trust policy.
 
 `TrustedHostMiddleware` принимает точные host names и шаблоны `*.example.com`, отклоняет отсутствующий, дублированный
-или некорректный `Host`. `HTTPSRedirectMiddleware` сохраняет raw path/query и по умолчанию отвечает 307.
+или некорректный `Host`. `HTTPSRedirectMiddleware` требует собственный allowlist из exact/`*.example.com` host,
+сохраняет raw path/query и по умолчанию отвечает 307. Поэтому недоверенный `Host` не превращается во внешний
+redirect даже при случайном использовании middleware без `TrustedHostMiddleware`.
 
 `RequestIDMiddleware` принимает один безопасный `X-Request-ID` или генерирует UUID, сохраняет `request_id` и
 `request_context` в `request.state`, добавляет header и на framework errors и предоставляет `get_request_id()` /

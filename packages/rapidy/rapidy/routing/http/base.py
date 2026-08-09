@@ -1,12 +1,11 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, TYPE_CHECKING
+from typing import Any
 
 from rapidy_core.exceptions import RapidyException
 
-if TYPE_CHECKING:
-    from rapidy import Rapidy
+from rapidy import application as _application
 
 __all__ = ('BaseHTTPRouter', 'IncorrectPathError', 'RouterTypeError', 'raise_if_not_base_http_router')
 
@@ -42,7 +41,7 @@ class BaseHTTPRouter(ABC):
         self.path = path
 
     @abstractmethod
-    def route_register(self, application: Rapidy) -> None:
+    def route_register(self, application: _application.Rapidy) -> None:
         """Register this object in an application."""
         raise NotImplementedError
 

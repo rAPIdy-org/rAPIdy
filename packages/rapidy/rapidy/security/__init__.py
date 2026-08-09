@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from rapidy.security.config import Guard, SecurityConfig, SecurityRequirements
+from rapidy.security.config import Guard, SecurityConfig, SecurityRequirements, WebSocketSecurityConfig
 from rapidy.security.models import (
     ANONYMOUS_AUTH,
     ANONYMOUS_IDENTITY,
@@ -14,6 +14,8 @@ from rapidy.security.schemes import (
     APIKeyAuth,
     AuthBackend,
     AuthenticationError,
+    AuthResult,
+    AuthVerifier,
     BasicAuth,
     BearerAuth,
     constant_time_compare,
@@ -28,6 +30,8 @@ __all__ = (
     'AnonymousUser',
     'AuthBackend',
     'AuthCredentials',
+    'AuthResult',
+    'AuthVerifier',
     'AuthenticationError',
     'BasicAuth',
     'BearerAuth',
@@ -37,5 +41,6 @@ __all__ = (
     'SecurityRequirements',
     'SecurityScheme',
     'SimpleUser',
+    'WebSocketSecurityConfig',
     'constant_time_compare',
 )

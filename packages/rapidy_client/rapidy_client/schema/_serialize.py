@@ -5,7 +5,7 @@ import types
 import typing
 from collections.abc import AsyncIterable, Mapping, Sequence
 from dataclasses import dataclass, field
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
@@ -13,7 +13,6 @@ from uuid import UUID
 from pydantic import BaseModel, ValidationError
 from rapidy_core.constants import DEFAULT_JSON_ENCODER
 from rapidy_core.encoders import CustomEncoder, Exclude, Include, jsonify
-from rapidy_core.typedefs import JSONEncoder
 
 from rapidy_client._content import ContentFactory
 from rapidy_client._models import QueryValue, Response, Result
@@ -25,6 +24,8 @@ from rapidy_client.errors import (
 )
 
 if TYPE_CHECKING:
+    from rapidy_core.typedefs import JSONEncoder
+
     from rapidy_client.schema import ListStyle
 
 
@@ -33,7 +34,7 @@ def _scalar_to_str(value: object) -> str:
         return "true" if value else "false"
     if isinstance(value, datetime):
         normalized = (
-            value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
+            value if value.tzinfo is not None else value.replace(tzinfo=UTC)
         )
         return normalized.isoformat()
     if isinstance(value, date):
@@ -66,7 +67,7 @@ def serialize_query(
         if value is None:
             continue
         if _is_scalar_sequence(value):
-            sequence = typing.cast(Sequence[QueryValue], value)
+            sequence = typing.cast("Sequence[QueryValue]", value)
             parts = [_scalar_to_str(item) for item in sequence if item is not None]
             if not parts:
                 continue
@@ -197,11 +198,11 @@ def _is_stream_annotation(annotation: object) -> bool:
 
 def _extract_model(annotation: object) -> type[BaseModel] | None:
     if _is_model_type(annotation):
-        return typing.cast(type[BaseModel], annotation)
+        return typing.cast("type[BaseModel]", annotation)
     if typing.get_origin(annotation) in (typing.Union, types.UnionType):
         for argument in typing.get_args(annotation):
             if _is_model_type(argument):
-                return typing.cast(type[BaseModel], argument)
+                return typing.cast("type[BaseModel]", argument)
     return None
 
 
@@ -369,7 +370,8 @@ async def parse_response(
         if plan.kind is ResponseKind.NONE:
             await _read_and_close(response)
             return finish(None)
-        assert plan.model is not None
+        if plan.model is None:
+            raise RuntimeError("response plan is missing its success model")
         return finish(
             await _parse_model(response, plan.model, validate=plan.response_validate)
         )

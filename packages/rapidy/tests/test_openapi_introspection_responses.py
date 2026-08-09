@@ -7,7 +7,7 @@ from rapidy_core.enums import Charset, ContentType
 from rapidy import Rapidy
 from rapidy.endpoint_handlers.http.attrs_extractor import get_http_handler_info
 from rapidy.http import controller, get
-from rapidy.typedefs import Unset
+from rapidy.typedefs import UNSET
 
 
 class Item(BaseModel):
@@ -52,7 +52,7 @@ def test_route_response_metadata_is_public_and_complete() -> None:
     assert route.route_kwargs.keys() >= RESPONSE_KEYS
     assert route.route_kwargs['status_code'] == 201
     assert route.route_kwargs['response_validate'] is True
-    assert route.route_kwargs['response_type'] is Unset
+    assert route.route_kwargs['response_type'] is UNSET
     assert route.route_kwargs['response_content_type'] is ContentType.json
     assert route.route_kwargs['response_charset'] is Charset.utf8
     assert route.route_kwargs['response_exclude_none'] is True

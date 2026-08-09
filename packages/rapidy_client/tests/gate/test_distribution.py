@@ -127,9 +127,22 @@ def test_distribution_metadata_dependencies(distributions: tuple[Path, Path]) ->
         metadata = email.message_from_bytes(archive.read(metadata_name))
 
     dependencies = metadata.get_all("Requires-Dist", [])
-    assert metadata["Requires-Python"] == ">=3.13"
+    assert metadata["Requires-Python"] == ">=3.12"
     assert any(value.startswith("rapidy-core>=0.1,<0.2") for value in dependencies)
     assert any(value.startswith("pydantic>=2.9,<3") for value in dependencies)
     assert any(value.startswith("httpx2>=2.5") for value in dependencies)
     assert any(value.startswith("wsproto>=1.3") for value in dependencies)
     assert not any("dishka" in value.casefold() for value in dependencies)
+
+
+def test_wheel_does_not_auto_load_pytest_plugin(distributions: tuple[Path, Path]) -> None:
+    wheel, _ = distributions
+    with zipfile.ZipFile(wheel) as archive:
+        entry_points_name = next(
+            (name for name in archive.namelist() if name.endswith(".dist-info/entry_points.txt")),
+            None,
+        )
+        entry_points_content = "" if entry_points_name is None else archive.read(entry_points_name).decode()
+
+    assert "pytest11" not in entry_points_content
+    assert "rapidy_client.testing.plugin" not in entry_points_content

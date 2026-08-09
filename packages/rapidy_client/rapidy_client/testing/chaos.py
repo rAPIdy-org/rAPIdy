@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import socket
 import struct
 from types import TracebackType
@@ -240,14 +241,12 @@ class ChaosServer:
     def _abort(self, writer: asyncio.StreamWriter) -> None:
         raw_socket = writer.get_extra_info("socket")
         if raw_socket is not None:
-            try:
+            with contextlib.suppress(OSError):
                 raw_socket.setsockopt(
                     socket.SOL_SOCKET,
                     socket.SO_LINGER,
                     struct.pack("ii", 1, 0),
                 )
-            except OSError:
-                pass
         writer.transport.abort()
 
     async def _handle_conn(
@@ -311,10 +310,8 @@ class ChaosServer:
             if task is not None:
                 self._tasks.discard(task)
             writer.close()
-            try:
+            with contextlib.suppress(ConnectionError, OSError):
                 await writer.wait_closed()
-            except (ConnectionError, OSError):
-                pass
 
 
 __all__ = ("ChaosServer",)

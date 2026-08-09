@@ -6,23 +6,19 @@ from concurrent.futures import Executor
 from decimal import Decimal
 from enum import Enum
 from http.cookies import SimpleCookie
-from typing import Any, Counter, DefaultDict, TYPE_CHECKING
+from typing import Any, Counter, DefaultDict
 
 from multidict import CIMultiDict
 from pydantic import BaseModel
 from rapidy_core.constants import DEFAULT_JSON_ENCODER
-from rapidy_core.encoders import jsonify
+from rapidy_core.encoders import CustomEncoder, Exclude, Include, jsonify
 from rapidy_core.enums import Charset, ContentType
+from rapidy_core.typedefs import JSONEncoder  # noqa: TC002 - runtime annotations
 
 from rapidy._base_exceptions import RapidyException
+from rapidy.background import Background, BackgroundCallable, BackgroundRunner
 from rapidy.helpers import parse_mimetype
 from rapidy.typedefs import LooseHeaders, Send
-
-if TYPE_CHECKING:
-    from rapidy_core.encoders import CustomEncoder, Exclude, Include
-    from rapidy_core.typedefs import JSONEncoder
-
-    from rapidy.background import Background, BackgroundCallable, BackgroundRunner
 
 __all__ = ('StreamResponse', 'Response')
 
@@ -54,12 +50,6 @@ class ResponseEncodeError(RapidyException):
     message = 'Encoding errors: \n {errors}'
 
 
-class StreamResponse:
-    """Placeholder for the streaming implementation introduced in milestone 12."""
-
-    __slots__ = ()
-
-
 def _as_header_text(value: str | bytes) -> str:
     return value.decode('latin-1') if isinstance(value, bytes) else value
 
@@ -76,7 +66,7 @@ def _enum_value(value: str | Enum | None) -> str | None:
     return str(value.value) if isinstance(value, Enum) else value
 
 
-class Response(StreamResponse):
+class Response:
     """Mutable response value object with rAPIdy-compatible serialization."""
 
     __slots__ = (
@@ -226,6 +216,16 @@ class Response(StreamResponse):
             return
         self._set_body(body)
 
+    def _set_pre_serialized_body(self, body: Any) -> None:
+        """Encode a declared-contract value without applying field filters twice."""
+        field_filters = self._include_fields, self._exclude_fields
+        self._include_fields = None
+        self._exclude_fields = None
+        try:
+            self.body = body
+        finally:
+            self._include_fields, self._exclude_fields = field_filters
+
     @property
     def text(self) -> str | None:
         """Decode the body with the effective charset."""
@@ -311,11 +311,14 @@ class Response(StreamResponse):
         domain: str | None = None,
         max_age: int | None = None,
         path: str = '/',
-        secure: bool | None = None,
-        httponly: bool | None = None,
-        samesite: str | None = None,
+        secure: bool = False,
+        httponly: bool = False,
+        samesite: str | None = 'lax',
     ) -> None:
         """Set one response cookie."""
+        if samesite is not None and samesite.lower() not in {'lax', 'strict', 'none'}:
+            msg = 'samesite must be `lax`, `strict`, `none`, or None'
+            raise ValueError(msg)
         self._cookies[name] = value
         morsel = self._cookies[name]
         if expires is not None:
@@ -326,12 +329,12 @@ class Response(StreamResponse):
             morsel['max-age'] = str(max_age)
         if path is not None:
             morsel['path'] = path
-        if secure is not None:
+        if secure:
             morsel['secure'] = secure
-        if httponly is not None:
+        if httponly:
             morsel['httponly'] = httponly
         if samesite is not None:
-            morsel['samesite'] = samesite
+            morsel['samesite'] = samesite.capitalize()
 
     def del_cookie(self, name: str, *, domain: str | None = None, path: str = '/') -> None:
         """Expire one response cookie immediately."""
@@ -381,3 +384,8 @@ class Response(StreamResponse):
                 'more_body': False,
             }
         )
+
+
+# Imported after Response is defined because rapidy.responses also exports FileResponse,
+# whose exception imports refer back to this module during package initialization.
+from rapidy.responses.streaming import StreamResponse  # noqa: E402

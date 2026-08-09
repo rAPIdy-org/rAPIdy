@@ -14,11 +14,27 @@ async with client.ws(
     print(session.subprotocol, message.text)
 ```
 
-The session serializes concurrent sends through a bounded queue. The defaults
-are 256 queued frames and a 10-second wait for capacity. `Heartbeat()` sends a
-ping every 20 seconds and treats a missing pong for 20 seconds as a half-open
-connection. `client.aclose()` immediately closes live sessions and wakes a
-pending receive with `ClientClosedError`.
+Both directions are bounded. The send side defaults to 256 queued frames and a
+10-second wait for capacity. The receive side defaults to 256 complete messages;
+when it is full, the reader stops reading the network stream until the consumer
+makes room. A text or binary message may contain at most 16 MiB across all of
+its fragments; exceeding `max_message_size` closes the stream and raises
+`WSMessageTooLargeError`. Configure these bounds explicitly when the protocol
+needs a different envelope:
+
+```python
+async with client.ws(
+    "/events",
+    max_message_size=2 * 1024 * 1024,
+    receive_queue_limit=32,
+    send_queue_limit=64,
+) as session:
+    ...
+```
+
+`Heartbeat()` sends a ping every 20 seconds and treats a missing pong for 20
+seconds as a half-open connection. `client.aclose()` immediately closes live
+sessions and wakes a pending receive with `ClientClosedError`.
 
 Use `reconnect()` when connection setup must be repeated explicitly. Network
 failures and 5xx upgrade responses are retried with capped exponential

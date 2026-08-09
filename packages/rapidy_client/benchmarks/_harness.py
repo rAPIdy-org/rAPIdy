@@ -34,7 +34,7 @@ from rapidy_core.di import Component
 HEADROOM_PATH = Path(__file__).parent / "headroom.json"
 BASELINE_PATH = Path(__file__).parent / "baseline.json"
 VARIANTS = ("bare_httpx2", "+logging", "+correlation", "+redirect")
-LAYER_VARIANTS = VARIANTS + ("+deadline", "+retry", "full")
+LAYER_VARIANTS = (*VARIANTS, "+deadline", "+retry", "full")
 FULL_STACK_VARIANTS = ("no-di", "+di")
 DI_INCREMENTAL_METRIC = "di-incremental"
 FULL_STACK_METRICS = (*FULL_STACK_VARIANTS, DI_INCREMENTAL_METRIC)
@@ -189,7 +189,7 @@ async def _measure_bound_endpoint(
 
                 async def call() -> None:
                     endpoint = cast(
-                        Callable[[], Awaitable[Response]],
+                        "Callable[[], Awaitable[Response]]",
                         await app.container.get(BenchmarkEndpoint),
                     )
                     response = await endpoint()

@@ -268,3 +268,27 @@ async def test_normalize_path_append_slash() -> None:
 
     with pytest.raises(ValueError, match='Cannot both remove and append slash'):
         normalize_path_middleware(append_slash=True, remove_slash=True)
+
+
+@pytest.mark.asyncio
+async def test_normalize_path_never_emits_network_path_or_control_characters() -> None:
+    @get('//attacker.example/path/')
+    async def network_path() -> str:
+        return 'unsafe redirect target'
+
+    @get('/safe/')
+    async def safe_path() -> str:
+        return 'safe'
+
+    app = Rapidy(
+        middlewares=[normalize_path_middleware(merge_slashes=False)],
+        http_route_handlers=[network_path, safe_path],
+    )
+    async with app.lifespan.ctx_manager():
+        network = await get_response(app, '/%2Fattacker.example/path')
+        encoded_query = await get_response(app, '/safe', params={'next': 'line\nvalue'})
+
+    assert network.status_code == 404
+    assert 'location' not in network.headers
+    assert encoded_query.status_code == 308
+    assert encoded_query.headers['location'] == '/safe/?next=line%0Avalue'

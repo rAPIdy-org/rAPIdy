@@ -52,6 +52,30 @@ The complete example is
 - `Scope.SESSION`: one value per accepted WebSocket connection. The context contains the current `WebSocket` and
   `Request`; finalizers run once on close, disconnect, or handler failure.
 
+Dishka sends the handled request exception back into an async-generator provider as the value of its `yield`
+expression. Use that outcome for transaction commit/rollback; a `try/except` around `yield` is not equivalent because
+the exception is not thrown into the generator:
+
+```python
+from collections.abc import AsyncGenerator
+
+from rapidy.depends import provide, Provider, Scope
+
+
+class DatabaseProvider(Provider):
+    @provide(scope=Scope.REQUEST)
+    async def transaction(self) -> AsyncGenerator[Transaction, BaseException | None]:
+        transaction = await begin_transaction()
+        outcome = yield transaction
+        if outcome is None:
+            await transaction.commit()
+        else:
+            await transaction.rollback()
+```
+
+The outcome covers exceptions rendered by rAPIdy into HTTP error responses as well as unhandled handler failures.
+Cancellation still propagates normally while the provider receives the same cancellation outcome during cleanup.
+
 The root `Rapidy` application owns the container unless an external `di_container` is supplied. Mounted
 `HTTPRouter` applications share the root request scope and do not create a second container.
 

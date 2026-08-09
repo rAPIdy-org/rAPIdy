@@ -3,6 +3,11 @@ hide:
   - navigation
 ---
 
+<!-- RAPIDY_LEGACY_1X -->
+
+> **⚠️ Legacy rAPIdy 1.x documentation.** This page is retained only for historical reference and may describe aiohttp APIs that do not exist in rAPIdy 2.0. Use the [current 2.0 documentation](https://rapidy.dev/) for new code.
+
+
 # Why Rapidy?
 
 **Rapidy is not just another framework.** It is a lightweight, fast, and powerful tool for building server applications, combining

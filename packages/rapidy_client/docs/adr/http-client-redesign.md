@@ -22,8 +22,8 @@ client, but the client does not import server implementation modules.
 the public DI and parameter-marker facades of `rapidy-core`. Server-specific
 code and legacy transport implementations are forbidden dependencies.
 
-The package exposes a typed `py.typed` distribution and supports Python 3.13
-and 3.14.
+The package exposes a typed `py.typed` distribution and supports Python 3.12,
+3.13, and 3.14.
 
 ### Request pipeline
 
@@ -135,7 +135,7 @@ The release gate combines:
 - unit, contract, golden, property, lifecycle, and loopback integration tests;
 - at least 90% package coverage;
 - strict mypy, Ruff, and import-linter checks;
-- Python 3.13 and 3.14 test runs;
+- Python 3.12, 3.13, and 3.14 test runs;
 - a committed multi-variant performance baseline, with `+di` as the hard gate;
 - a streaming-memory ceiling of 32 MiB while consuming a logical 2 GiB body;
 - wheel and sdist inspection plus public-import smoke tests.

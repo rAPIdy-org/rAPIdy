@@ -15,7 +15,7 @@ from rapidy.testing.sse import AsyncSSESession, SSESession
 from rapidy.testing.websocket import AsyncWebSocketSession, WebSocketSession
 from rapidy.typedefs import ASGIScope, Receive, Send
 
-__all__ = ('AsyncTestClient', 'TestClient', 'create_async_test_client', 'create_test_client')
+__all__ = ('AsyncTestClient', 'ClientAddress', 'TestClient', 'create_async_test_client', 'create_test_client')
 
 type ClientAddress = tuple[str, int]
 

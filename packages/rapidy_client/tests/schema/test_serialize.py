@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import AsyncIterator
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from enum import Enum
 from typing import Annotated, Any
 from urllib.parse import urlencode
@@ -83,7 +83,7 @@ def test_query_repeat_and_csv_list_style() -> None:
 def test_query_datetime_uuid_and_escape_boundary() -> None:
     identifier = UUID("c6819dc7-499f-4dd9-a12f-8f99c16a1d66")
     naive = datetime(2026, 8, 8, 12, 0)  # noqa: DTZ001 - naive is the subject
-    aware = datetime(2026, 8, 8, 12, 0, tzinfo=timezone.utc)
+    aware = datetime(2026, 8, 8, 12, 0, tzinfo=UTC)
 
     pairs = serialize_query(
         {"naive": naive, "aware": aware, "id": identifier, "q": "a b/../x"}

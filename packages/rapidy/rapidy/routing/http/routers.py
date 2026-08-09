@@ -5,12 +5,15 @@ from abc import ABC
 from collections.abc import Iterable, Mapping, Sequence
 from concurrent.futures import Executor
 from http import HTTPStatus
-from typing import Any, cast, NamedTuple, TYPE_CHECKING
+from typing import Any, cast, NamedTuple
 
 from rapidy_core.annotation_checkers import lenient_issubclass
 from rapidy_core.constants import DEFAULT_JSON_ENCODER
+from rapidy_core.encoders import CustomEncoder, Exclude, Include  # noqa: TC002 - runtime annotations
 from rapidy_core.enums import Charset, ContentType, HTTPMethod, HTTPRequestParamType
+from rapidy_core.parameters.http import RequestParamFieldInfo  # noqa: TC002 - runtime annotations
 
+from rapidy import application as _application
 from rapidy._base_exceptions import RapidyException, RapidyHandlerException
 from rapidy.constants import CLIENT_MAX_SIZE
 from rapidy.depends import inject_http
@@ -18,10 +21,11 @@ from rapidy.endpoint_handlers.http.attrs_extractor import get_http_handler_info
 from rapidy.endpoint_handlers.http.handlers import handler_validation_wrapper, METH_ALL, view_validation_wrapper
 from rapidy.endpoint_handlers.http.request.data_validators import request_validator_factory
 from rapidy.exceptions import HTTPValidationFailure
-from rapidy.request import Request
+from rapidy.request import DEFAULT_MULTIPART_LIMITS, MultipartLimits, Request
 from rapidy.routing.http.base import BaseHTTPRouter
 from rapidy.routing.http.helper_types import HandlerPartial
 from rapidy.routing.matcher import RouteRecord
+from rapidy.security import Guard, SecurityConfig
 from rapidy.typedefs import (
     ControllerHTTPRouterType,
     Handler,
@@ -29,18 +33,11 @@ from rapidy.typedefs import (
     LifespanCTX,
     LifespanHook,
     Middleware,
-    Unset,
+    UNSET,
     UnsetType,
     View,
 )
 from rapidy.websockets import WebSocket
-
-if TYPE_CHECKING:
-    from rapidy_core.encoders import CustomEncoder, Exclude, Include
-    from rapidy_core.parameters.http import RequestParamFieldInfo
-
-    from rapidy.application import Rapidy
-    from rapidy.security import Guard, SecurityConfig
 
 __all__ = (
     'HandlerParameterRecord',
@@ -218,6 +215,7 @@ class HTTPRouter(BaseHTTPRouter):
         *,
         middlewares: Iterable[Middleware] | None = None,
         client_max_size: int = CLIENT_MAX_SIZE,
+        multipart_limits: MultipartLimits = DEFAULT_MULTIPART_LIMITS,
         lifespan: list[LifespanCTX] | None = None,
         on_startup: list[LifespanHook] | None = None,
         on_shutdown: list[LifespanHook] | None = None,
@@ -231,6 +229,7 @@ class HTTPRouter(BaseHTTPRouter):
             middlewares=middlewares,
             http_route_handlers=route_handlers,
             client_max_size=client_max_size,
+            multipart_limits=multipart_limits,
             lifespan=lifespan or (),
             on_startup=on_startup or (),
             on_shutdown=on_shutdown or (),
@@ -238,7 +237,7 @@ class HTTPRouter(BaseHTTPRouter):
             security=security,
         )
 
-    def route_register(self, application: Rapidy) -> None:
+    def route_register(self, application: _application.Rapidy) -> None:
         application.add_subapp(prefix=cast('str', self.path), subapp=self.application)
 
 
@@ -252,9 +251,9 @@ class websocket(BaseHTTPRouter):
         path: str | None = None,
         *,
         name: str | None = None,
-        security: Sequence[Mapping[str, Sequence[str]]] | UnsetType = Unset,
-        guards: Sequence[Guard] | UnsetType = Unset,
-        public: bool | UnsetType = Unset,
+        security: Sequence[Mapping[str, Sequence[str]]] | UnsetType = UNSET,
+        guards: Sequence[Guard] | UnsetType = UNSET,
+        public: bool | UnsetType = UNSET,
     ) -> None:
         super().__init__(path=path)
         if name is not None and (not isinstance(name, str) or not name):
@@ -263,7 +262,7 @@ class websocket(BaseHTTPRouter):
         self._route_kwargs = {
             key: value
             for key, value in {'name': name, 'security': security, 'guards': guards, 'public': public}.items()
-            if value is not Unset
+            if value is not UNSET
         }
         if public is True:
             self._route_kwargs['security'] = ()
@@ -274,7 +273,7 @@ class websocket(BaseHTTPRouter):
         self._handler = handler
         return self
 
-    def route_register(self, application: Rapidy) -> None:
+    def route_register(self, application: _application.Rapidy) -> None:
         if self.path is None:
             raise MissingPathError.create(handler=self._handler)
         application._matcher.add_ws_route(  # noqa: SLF001
@@ -296,35 +295,35 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         self,
         path: str | None = None,
         *,
-        name: str | UnsetType | None = Unset,
-        status_code: int | HTTPStatus | UnsetType = Unset,
-        response_validate: bool | UnsetType = Unset,
-        response_type: type[Any] | UnsetType | None = Unset,
-        response_content_type: str | ContentType | UnsetType | None = Unset,
-        response_charset: str | Charset | UnsetType = Unset,
-        response_zlib_executor: Executor | UnsetType | None = Unset,
-        response_zlib_executor_size: int | UnsetType | None = Unset,
-        response_include_fields: Include | UnsetType | None = Unset,
-        response_exclude_fields: Exclude | UnsetType | None = Unset,
-        response_by_alias: bool | UnsetType = Unset,
-        response_exclude_unset: bool | UnsetType = Unset,
-        response_exclude_defaults: bool | UnsetType = Unset,
-        response_exclude_none: bool | UnsetType = Unset,
-        response_custom_encoder: CustomEncoder | UnsetType | None = Unset,
-        response_json_encoder: JSONEncoder | UnsetType = Unset,
-        include_in_schema: bool | UnsetType = Unset,
-        operation_id: str | UnsetType | None = Unset,
-        summary: str | UnsetType | None = Unset,
-        description: str | UnsetType | None = Unset,
-        tags: Iterable[str] | UnsetType = Unset,
-        deprecated: bool | UnsetType = Unset,
-        response_description: str | UnsetType | None = Unset,
-        responses: dict[int | str, dict[str, Any]] | UnsetType = Unset,
-        response_links: Mapping[str, Mapping[str, Any]] | UnsetType = Unset,
-        callbacks: Mapping[str, Mapping[str, Any]] | UnsetType = Unset,
-        security: Sequence[Mapping[str, Sequence[str]]] | UnsetType = Unset,
-        guards: Sequence[Guard] | UnsetType = Unset,
-        public: bool | UnsetType = Unset,
+        name: str | UnsetType | None = UNSET,
+        status_code: int | HTTPStatus | UnsetType = UNSET,
+        response_validate: bool | UnsetType = UNSET,
+        response_type: type[Any] | UnsetType | None = UNSET,
+        response_content_type: str | ContentType | UnsetType | None = UNSET,
+        response_charset: str | Charset | UnsetType = UNSET,
+        response_zlib_executor: Executor | UnsetType | None = UNSET,
+        response_zlib_executor_size: int | UnsetType | None = UNSET,
+        response_include_fields: Include | UnsetType | None = UNSET,
+        response_exclude_fields: Exclude | UnsetType | None = UNSET,
+        response_by_alias: bool | UnsetType = UNSET,
+        response_exclude_unset: bool | UnsetType = UNSET,
+        response_exclude_defaults: bool | UnsetType = UNSET,
+        response_exclude_none: bool | UnsetType = UNSET,
+        response_custom_encoder: CustomEncoder | UnsetType | None = UNSET,
+        response_json_encoder: JSONEncoder | UnsetType = UNSET,
+        include_in_schema: bool | UnsetType = UNSET,
+        operation_id: str | UnsetType | None = UNSET,
+        summary: str | UnsetType | None = UNSET,
+        description: str | UnsetType | None = UNSET,
+        tags: Iterable[str] | UnsetType = UNSET,
+        deprecated: bool | UnsetType = UNSET,
+        response_description: str | UnsetType | None = UNSET,
+        responses: dict[int | str, dict[str, Any]] | UnsetType = UNSET,
+        response_links: Mapping[str, Mapping[str, Any]] | UnsetType = UNSET,
+        callbacks: Mapping[str, Mapping[str, Any]] | UnsetType = UNSET,
+        security: Sequence[Mapping[str, Sequence[str]]] | UnsetType = UNSET,
+        guards: Sequence[Guard] | UnsetType = UNSET,
+        public: bool | UnsetType = UNSET,
         **kwargs: Any,
     ) -> None:
         raw_kwargs = {
@@ -359,7 +358,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
             'public': public,
             **kwargs,
         }
-        self._set_route_kwargs = {key: value for key, value in raw_kwargs.items() if value is not Unset}
+        self._set_route_kwargs = {key: value for key, value in raw_kwargs.items() if value is not UNSET}
         self.init(path=path, **self._set_route_kwargs)
 
     def init(
@@ -369,7 +368,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         name: str | None = None,
         status_code: int | HTTPStatus = HTTPStatus.OK,
         response_validate: bool = True,
-        response_type: type[Any] | UnsetType | None = Unset,
+        response_type: type[Any] | UnsetType | None = UNSET,
         response_content_type: str | ContentType | None = None,
         response_charset: str | Charset = Charset.utf8,
         response_zlib_executor: Executor | None = None,
@@ -390,11 +389,11 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         deprecated: bool = False,
         response_description: str | None = None,
         responses: dict[int | str, dict[str, Any]] | None = None,
-        response_links: Mapping[str, Mapping[str, Any]] | UnsetType = Unset,
-        callbacks: Mapping[str, Mapping[str, Any]] | UnsetType = Unset,
-        security: Sequence[Mapping[str, Sequence[str]]] | UnsetType = Unset,
-        guards: Sequence[Guard] | UnsetType = Unset,
-        public: bool | UnsetType = Unset,
+        response_links: Mapping[str, Mapping[str, Any]] | UnsetType = UNSET,
+        callbacks: Mapping[str, Mapping[str, Any]] | UnsetType = UNSET,
+        security: Sequence[Mapping[str, Sequence[str]]] | UnsetType = UNSET,
+        guards: Sequence[Guard] | UnsetType = UNSET,
+        public: bool | UnsetType = UNSET,
         **kwargs: Any,
     ) -> None:
         if name is not None and (not isinstance(name, str) or not name):
@@ -446,35 +445,35 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         path: str,
         handler: Handler | ControllerHTTPRouterType,
         *,
-        name: str | UnsetType | None = Unset,
-        status_code: int | HTTPStatus | UnsetType = Unset,
-        response_validate: bool | UnsetType = Unset,
-        response_type: type[Any] | UnsetType | None = Unset,
-        response_content_type: str | ContentType | UnsetType | None = Unset,
-        response_charset: str | Charset | UnsetType = Unset,
-        response_zlib_executor: Executor | UnsetType | None = Unset,
-        response_zlib_executor_size: int | UnsetType | None = Unset,
-        response_include_fields: Include | UnsetType | None = Unset,
-        response_exclude_fields: Exclude | UnsetType | None = Unset,
-        response_by_alias: bool | UnsetType = Unset,
-        response_exclude_unset: bool | UnsetType = Unset,
-        response_exclude_defaults: bool | UnsetType = Unset,
-        response_exclude_none: bool | UnsetType = Unset,
-        response_custom_encoder: CustomEncoder | UnsetType | None = Unset,
-        response_json_encoder: JSONEncoder | UnsetType = Unset,
-        include_in_schema: bool | UnsetType = Unset,
-        operation_id: str | UnsetType | None = Unset,
-        summary: str | UnsetType | None = Unset,
-        description: str | UnsetType | None = Unset,
-        tags: Iterable[str] | UnsetType = Unset,
-        deprecated: bool | UnsetType = Unset,
-        response_description: str | UnsetType | None = Unset,
-        responses: dict[int | str, dict[str, Any]] | UnsetType = Unset,
-        response_links: Mapping[str, Mapping[str, Any]] | UnsetType = Unset,
-        callbacks: Mapping[str, Mapping[str, Any]] | UnsetType = Unset,
-        security: Sequence[Mapping[str, Sequence[str]]] | UnsetType = Unset,
-        guards: Sequence[Guard] | UnsetType = Unset,
-        public: bool | UnsetType = Unset,
+        name: str | UnsetType | None = UNSET,
+        status_code: int | HTTPStatus | UnsetType = UNSET,
+        response_validate: bool | UnsetType = UNSET,
+        response_type: type[Any] | UnsetType | None = UNSET,
+        response_content_type: str | ContentType | UnsetType | None = UNSET,
+        response_charset: str | Charset | UnsetType = UNSET,
+        response_zlib_executor: Executor | UnsetType | None = UNSET,
+        response_zlib_executor_size: int | UnsetType | None = UNSET,
+        response_include_fields: Include | UnsetType | None = UNSET,
+        response_exclude_fields: Exclude | UnsetType | None = UNSET,
+        response_by_alias: bool | UnsetType = UNSET,
+        response_exclude_unset: bool | UnsetType = UNSET,
+        response_exclude_defaults: bool | UnsetType = UNSET,
+        response_exclude_none: bool | UnsetType = UNSET,
+        response_custom_encoder: CustomEncoder | UnsetType | None = UNSET,
+        response_json_encoder: JSONEncoder | UnsetType = UNSET,
+        include_in_schema: bool | UnsetType = UNSET,
+        operation_id: str | UnsetType | None = UNSET,
+        summary: str | UnsetType | None = UNSET,
+        description: str | UnsetType | None = UNSET,
+        tags: Iterable[str] | UnsetType = UNSET,
+        deprecated: bool | UnsetType = UNSET,
+        response_description: str | UnsetType | None = UNSET,
+        responses: dict[int | str, dict[str, Any]] | UnsetType = UNSET,
+        response_links: Mapping[str, Mapping[str, Any]] | UnsetType = UNSET,
+        callbacks: Mapping[str, Mapping[str, Any]] | UnsetType = UNSET,
+        security: Sequence[Mapping[str, Sequence[str]]] | UnsetType = UNSET,
+        guards: Sequence[Guard] | UnsetType = UNSET,
+        public: bool | UnsetType = UNSET,
         **kwargs: Any,
     ) -> HTTPRouteHandler:
         route = cls(
@@ -512,7 +511,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         )
         return route(cast('Handler', handler))
 
-    def route_register(self, application: Rapidy) -> None:
+    def route_register(self, application: _application.Rapidy) -> None:
         if self.path is None:
             raise MissingPathError.create(handler=self._handler)
 
@@ -601,9 +600,9 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
             **self._set_route_kwargs,
             **sub_route_set_kwargs,
         }
-        controller_guards = self._set_route_kwargs.get('guards', Unset)
-        handler_guards = sub_route_set_kwargs.get('guards', Unset)
-        if controller_guards is not Unset and handler_guards is not Unset:
+        controller_guards = self._set_route_kwargs.get('guards', UNSET)
+        handler_guards = sub_route_set_kwargs.get('guards', UNSET)
+        if controller_guards is not UNSET and handler_guards is not UNSET:
             extended['guards'] = (*controller_guards, *handler_guards)
         if extended.get('public') is True:
             extended['security'] = ()
@@ -624,25 +623,30 @@ class controller(HTTPRouteHandler):
 
     _method_name = MethodName.any
 
+    def __call__(self, handler: Handler | type[Any]) -> controller:
+        """Bind a controller class while preserving the decorator's router type."""
+        self._handler = cast('Handler', handler)
+        return self
+
     def __init__(
         self,
         path: str,
         *,
-        status_code: int | HTTPStatus | UnsetType = Unset,
-        response_validate: bool | UnsetType = Unset,
-        response_type: type[Any] | UnsetType | None = Unset,
-        response_content_type: str | ContentType | UnsetType | None = Unset,
-        response_charset: str | Charset | UnsetType = Unset,
-        response_zlib_executor: Executor | UnsetType | None = Unset,
-        response_zlib_executor_size: int | UnsetType | None = Unset,
-        response_include_fields: Include | UnsetType | None = Unset,
-        response_exclude_fields: Exclude | UnsetType | None = Unset,
-        response_by_alias: bool | UnsetType = Unset,
-        response_exclude_unset: bool | UnsetType = Unset,
-        response_exclude_defaults: bool | UnsetType = Unset,
-        response_exclude_none: bool | UnsetType = Unset,
-        response_custom_encoder: CustomEncoder | UnsetType | None = Unset,
-        response_json_encoder: JSONEncoder | UnsetType = Unset,
+        status_code: int | HTTPStatus | UnsetType = UNSET,
+        response_validate: bool | UnsetType = UNSET,
+        response_type: type[Any] | UnsetType | None = UNSET,
+        response_content_type: str | ContentType | UnsetType | None = UNSET,
+        response_charset: str | Charset | UnsetType = UNSET,
+        response_zlib_executor: Executor | UnsetType | None = UNSET,
+        response_zlib_executor_size: int | UnsetType | None = UNSET,
+        response_include_fields: Include | UnsetType | None = UNSET,
+        response_exclude_fields: Exclude | UnsetType | None = UNSET,
+        response_by_alias: bool | UnsetType = UNSET,
+        response_exclude_unset: bool | UnsetType = UNSET,
+        response_exclude_defaults: bool | UnsetType = UNSET,
+        response_exclude_none: bool | UnsetType = UNSET,
+        response_custom_encoder: CustomEncoder | UnsetType | None = UNSET,
+        response_json_encoder: JSONEncoder | UnsetType = UNSET,
         **kwargs: Any,
     ) -> None:
         super().__init__(
@@ -676,21 +680,21 @@ class get(HTTPMethodRouteHandler):
         path: str | None = None,
         *,
         allow_head: bool = True,
-        status_code: int | HTTPStatus | UnsetType = Unset,
-        response_validate: bool | UnsetType = Unset,
-        response_type: type[Any] | UnsetType | None = Unset,
-        response_content_type: str | ContentType | UnsetType | None = Unset,
-        response_charset: str | Charset | UnsetType = Unset,
-        response_zlib_executor: Executor | UnsetType | None = Unset,
-        response_zlib_executor_size: int | UnsetType | None = Unset,
-        response_include_fields: Include | UnsetType | None = Unset,
-        response_exclude_fields: Exclude | UnsetType | None = Unset,
-        response_by_alias: bool | UnsetType = Unset,
-        response_exclude_unset: bool | UnsetType = Unset,
-        response_exclude_defaults: bool | UnsetType = Unset,
-        response_exclude_none: bool | UnsetType = Unset,
-        response_custom_encoder: CustomEncoder | UnsetType | None = Unset,
-        response_json_encoder: JSONEncoder | UnsetType = Unset,
+        status_code: int | HTTPStatus | UnsetType = UNSET,
+        response_validate: bool | UnsetType = UNSET,
+        response_type: type[Any] | UnsetType | None = UNSET,
+        response_content_type: str | ContentType | UnsetType | None = UNSET,
+        response_charset: str | Charset | UnsetType = UNSET,
+        response_zlib_executor: Executor | UnsetType | None = UNSET,
+        response_zlib_executor_size: int | UnsetType | None = UNSET,
+        response_include_fields: Include | UnsetType | None = UNSET,
+        response_exclude_fields: Exclude | UnsetType | None = UNSET,
+        response_by_alias: bool | UnsetType = UNSET,
+        response_exclude_unset: bool | UnsetType = UNSET,
+        response_exclude_defaults: bool | UnsetType = UNSET,
+        response_exclude_none: bool | UnsetType = UNSET,
+        response_custom_encoder: CustomEncoder | UnsetType | None = UNSET,
+        response_json_encoder: JSONEncoder | UnsetType = UNSET,
         **kwargs: Any,
     ) -> None:
         super().__init__(

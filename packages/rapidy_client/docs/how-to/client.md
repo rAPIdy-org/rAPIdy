@@ -35,8 +35,10 @@ response = await client.post(
 Only one of `json`, `content`, `data`, or `files` may be supplied. Multipart
 `files` support is introduced with the streaming/files feature.
 
-Absolute request URLs are rejected by default, which keeps an upstream client
-from becoming an accidental SSRF proxy. Set `allow_absolute_urls=True` only for
+Absolute request URL references are rejected by default, which keeps an upstream
+client from becoming an accidental SSRF proxy. This includes ordinary absolute
+URLs, protocol-relative references such as `//other.example/path`, and
+scheme-bearing references without `//`. Set `allow_absolute_urls=True` only for
 a deliberate use case.
 
 ## Per-call overrides

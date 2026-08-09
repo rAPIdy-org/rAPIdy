@@ -38,6 +38,12 @@ source_modules = ["rapidy"]
 forbidden_modules = ["rapidy_client"]
 
 [[tool.importlinter.contracts]]
+name = "rapidy_client does not import rapidy server"
+type = "forbidden"
+source_modules = ["rapidy_client"]
+forbidden_modules = ["rapidy"]
+
+[[tool.importlinter.contracts]]
 name = "rapidy testing dependencies stay in rapidy.testing"
 type = "forbidden"
 source_modules = ["rapidy"]

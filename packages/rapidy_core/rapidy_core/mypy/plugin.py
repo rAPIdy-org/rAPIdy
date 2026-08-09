@@ -2,10 +2,10 @@ from collections.abc import Callable
 from typing import cast
 
 from mypy.nodes import EllipsisExpr
-from mypy.plugin import FunctionContext, Plugin
 from mypy.types import CallableType, Overloaded, Type, TypeVarType
 from pydantic.mypy import MYPY_VERSION_TUPLE
 
+from mypy.plugin import FunctionContext, Plugin
 from rapidy_core.mypy._api_errors import (
     error_default_and_default_factory_specified,
     error_default_or_default_factory_specified,
@@ -23,7 +23,7 @@ class RapidyPlugin(Plugin):
     def get_function_hook(
         self, fullname: str
     ) -> Callable[[FunctionContext], Type] | None:
-        """Retrieves a function hook for a given fully qualified function name.
+        """Retrieve a hook for a fully qualified function name.
 
         Args:
             fullname (str): The fully qualified function name.
@@ -31,14 +31,15 @@ class RapidyPlugin(Plugin):
         Returns:
             Optional[Callable[[FunctionContext], Type]]: A callback function if the function matches
             a Rapidy parameter, otherwise None.
+
         """
         sym = self.lookup_fully_qualified(fullname)
-        if sym and _name_is_rapidy_param_name(cast(str, sym.fullname)):
+        if sym and _name_is_rapidy_param_name(cast("str", sym.fullname)):
             return self._rapidy_param_callback
         return None
 
     def _rapidy_param_callback(self, ctx: FunctionContext) -> Type:
-        """Processes Rapidy parameter validation in a function call.
+        """Process Rapidy parameter validation in a function call.
 
         This function ensures that parameters are correctly defined, handling constraints such as
         the mutual exclusivity of `default` and `default_factory` parameters.
@@ -48,16 +49,19 @@ class RapidyPlugin(Plugin):
 
         Returns:
             Type: The determined type of the parameter based on mypy's type system.
+
         """
         # ty pydantic for this code <3 https://github.com/pydantic/pydantic/blob/main/pydantic/mypy.py
         default_any_type = AnyTypeExplicit
 
-        assert ctx.callee_arg_names[0] == "default", (
-            "`default` is no longer first argument in ParamFieldInfo()"
-        )
-        assert ctx.callee_arg_names[1] == "default_factory", (
-            "`default_factory` is no longer second argument in ParamFieldInfo()"
-        )
+        if ctx.callee_arg_names[0] != "default":
+            raise RuntimeError(
+                "`default` is no longer first argument in ParamFieldInfo()"
+            )
+        if ctx.callee_arg_names[1] != "default_factory":
+            raise RuntimeError(
+                "`default_factory` is no longer second argument in ParamFieldInfo()"
+            )
 
         default_args, default_factory_args = ctx.args[0], ctx.args[1]
 

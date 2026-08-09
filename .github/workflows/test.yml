@@ -16,8 +16,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.13", "3.14"]
-        runtime: [granian, uvicorn]
+        python-version: ["3.12", "3.13", "3.14"]
+        runtime: [granian, hypercorn, uvicorn]
     env:
       RAPIDY_LIVE_RUNTIME: ${{ matrix.runtime }}
     steps:
@@ -88,7 +88,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.13", "3.14"]
+        python-version: ["3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -104,15 +104,23 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - run: uv build --package rapidy-core -o dist/rapidy-core
       - run: uv venv --python 3.12 /tmp/core312
-      - run: VIRTUAL_ENV=/tmp/core312 uv pip install dist/rapidy-core/*.whl
+      - run: VIRTUAL_ENV=/tmp/core312 uv pip install dist/rapidy-core/*.whl "pytest>=8,<9"
       - run: /tmp/core312/bin/python -c "import rapidy_core; print('core-3.12-ok')"
+      - name: Run source-independent core wheel tests
+        run: |
+          mkdir -p /tmp/core-wheel-tests
+          cp packages/rapidy_core/tests/test_annotation_checkers.py /tmp/core-wheel-tests/
+          cp packages/rapidy_core/tests/test_parameters_http.py /tmp/core-wheel-tests/
+          cd /tmp/core-wheel-tests
+          /tmp/core312/bin/pytest --import-mode=importlib -q
+      - run: VIRTUAL_ENV=/tmp/core312 uv pip check
 
   client:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.13", "3.14"]
+        python-version: ["3.12", "3.13", "3.14"]
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -129,6 +137,30 @@ jobs:
           --cov=rapidy_client
           --cov-report=term-missing
           --cov-fail-under=90
+
+  client-py312-wheel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv build --package rapidy-core -o dist/rapidy-core
+      - run: uv build --package rapidy-client -o dist/rapidy-client
+      - run: uv venv --python 3.12 /tmp/client312
+      - name: Install built core and client wheels
+        run: >-
+          VIRTUAL_ENV=/tmp/client312 uv pip install
+          dist/rapidy-core/*.whl dist/rapidy-client/*.whl
+          "pytest>=8,<9" "pytest-asyncio>=1,<2"
+      - run: /tmp/client312/bin/python scripts/smoke_rapidy_client_wheel.py
+      - name: Run source-independent client wheel tests
+        run: |
+          mkdir -p /tmp/client-wheel-tests
+          cp packages/rapidy_client/tests/test_config.py /tmp/client-wheel-tests/
+          cp packages/rapidy_client/tests/test_errors.py /tmp/client-wheel-tests/
+          cp packages/rapidy_client/tests/test_models.py /tmp/client-wheel-tests/
+          cd /tmp/client-wheel-tests
+          /tmp/client312/bin/pytest --import-mode=importlib -q
+      - run: VIRTUAL_ENV=/tmp/client312 uv pip check
 
   client-release-gates:
     runs-on: ubuntu-latest
@@ -155,7 +187,14 @@ jobs:
       - run: uv sync
       - run: uv run ruff check .
         working-directory: packages/rapidy
-      - run: uv run ruff check packages/rapidy_core/rapidy_core packages/rapidy_client
+      - run: uv run ruff check packages/rapidy_core packages/rapidy_client
+      - name: Collect all distribution suites in one pytest invocation
+        run: >-
+          uv run pytest --collect-only -qq --import-mode=importlib
+          -o asyncio_mode=auto
+          packages/rapidy_core/tests
+          packages/rapidy_client/tests
+          packages/rapidy/tests
       - run: uv build --package rapidy
       - run: uv build --package rapidy-core
       - run: uv build --package rapidy-client
@@ -179,6 +218,7 @@ jobs:
       - core
       - core-py312-wheel
       - client
+      - client-py312-wheel
       - client-release-gates
       - lint
       - parse-tag-dryrun
@@ -191,6 +231,7 @@ jobs:
           test "${{ needs.core.result }}" = success
           test "${{ needs.core-py312-wheel.result }}" = success
           test "${{ needs.client.result }}" = success
+          test "${{ needs.client-py312-wheel.result }}" = success
           test "${{ needs.client-release-gates.result }}" = success
           test "${{ needs.lint.result }}" = success
           test "${{ needs.parse-tag-dryrun.result }}" = success

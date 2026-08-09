@@ -100,7 +100,7 @@ def _make_extensions(**overrides: Any) -> RequestExtensions:
         "idempotent": False,
         "auth_override": UNSET,
         "deadline": None,
-        "redirects": cast(Any, None),
+        "redirects": cast("Any", None),
     }
     values.update(overrides)
     return RequestExtensions(**values)

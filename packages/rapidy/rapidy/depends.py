@@ -99,7 +99,7 @@ def _inject_wrapper[**P, T](
         ]
     else:
         first_param = next(iter(endpoint_signature_params.values()))
-        if is_empty(first_param.annotation) and first_param.name != 'self':
+        if is_empty(first_param.annotation) and is_empty(first_param.default) and first_param.name != 'self':
             actual_param_name = first_param.name
         else:
             additional_params = [
@@ -131,12 +131,12 @@ class RapidyProvider(Provider):
     request = from_context(Request, scope=Scope.SESSION)
     web_socket = from_context(WebSocket, scope=Scope.SESSION)
 
-    @provide(scope=Scope.SESSION)
+    @provide(scope=Scope.SESSION, cache=False)
     def security_identity(self, request: Request) -> SecurityIdentity:
-        """Expose the lazily established security identity to HTTP and WebSocket DI."""
+        """Read the current identity without caching its pre-authentication value."""
         return request.identity
 
-    @provide(scope=Scope.SESSION)
+    @provide(scope=Scope.SESSION, cache=False)
     def auth_credentials(self, identity: SecurityIdentity) -> AuthCredentials:
-        """Expose scope metadata without storing or injecting raw credential material."""
+        """Read current scope metadata without caching anonymous credentials."""
         return identity.auth

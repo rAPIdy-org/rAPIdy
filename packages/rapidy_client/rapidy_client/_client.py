@@ -6,8 +6,8 @@ import logging
 import warnings
 import weakref
 from collections.abc import AsyncIterable, Mapping, Sequence
-from contextlib import AbstractAsyncContextManager
-from datetime import date, datetime, timezone
+from contextlib import AbstractAsyncContextManager, suppress
+from datetime import UTC, date, datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Protocol
 from urllib.parse import quote, urlencode
@@ -75,7 +75,7 @@ class _FiniteDrainable(_Drainable, Protocol):
 
 def _apply_timeout_level(
     base: Timeout,
-    level: Timeout | float | None | Unset,
+    level: Timeout | float | Unset | None,
 ) -> Timeout:
     if level is UNSET:
         return base
@@ -89,7 +89,7 @@ def _apply_timeout_level(
 
 
 def _merge_timeout(
-    levels: Sequence[Timeout | float | None | Unset],
+    levels: Sequence[Timeout | float | Unset | None],
     *,
     base: Timeout,
 ) -> Timeout:
@@ -106,7 +106,7 @@ def _query_values(value: Any) -> list[str]:
         return ["true" if value else "false"]
     if isinstance(value, datetime):
         normalized = (
-            value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
+            value if value.tzinfo is not None else value.replace(tzinfo=UTC)
         )
         return [normalized.isoformat()]
     if isinstance(value, date):
@@ -146,6 +146,16 @@ def _serialize_headers(
         values = headers.model_dump(mode="json", by_alias=True, exclude_none=True)
         return Headers((str(name), str(value)) for name, value in values.items())
     return Headers(headers)
+
+
+def _merge_default_headers(defaults: Mapping[str, str], headers: Headers) -> Headers:
+    overridden = {name.casefold() for name, _ in headers.multi_items()}
+    return Headers(
+        (
+            *((name, value) for name, value in defaults.items() if name.casefold() not in overridden),
+            *headers.multi_items(),
+        )
+    )
 
 
 def _with_content_type(headers: Headers, content_type: str) -> Headers:
@@ -189,7 +199,6 @@ class HttpClient:
                 tls=config.tls,
                 proxy=config.proxy,
                 cookies=config.cookies,
-                default_headers=config.default_headers,
                 observers=self._observers,
             )
         )
@@ -241,7 +250,7 @@ class HttpClient:
 
     def _effective_timeout(
         self,
-        timeout: Timeout | float | None | Unset,
+        timeout: Timeout | float | Unset | None,
         *,
         stream: bool,
     ) -> Timeout:
@@ -265,14 +274,15 @@ class HttpClient:
         path_params: Mapping[str, object] | None,
         query: Mapping[str, QueryValue] | BaseModel | None,
     ) -> URL:
-        if "://" in path and not self._config.allow_absolute_urls:
-            raise ValueError("absolute URLs are disabled for this upstream")
         rendered_path = path
         for name, value in (path_params or {}).items():
             rendered_path = rendered_path.replace(
                 "{" + name + "}",
                 _quote_path_value(value),
             )
+        reference = URL(rendered_path)
+        if reference.is_absolute_reference and not self._config.allow_absolute_urls:
+            raise ValueError("absolute URLs are disabled for this upstream")
         url = URL(str(self._config.base_url)).join(rendered_path)
         pairs = _serialize_query(query)
         if pairs:
@@ -327,9 +337,9 @@ class HttpClient:
         content: bytes | AsyncIterable[bytes] | ContentFactory | None = None,
         data: Mapping[str, str] | None = None,
         files: Sequence[FilePart] | None = None,
-        timeout: Timeout | float | None | Unset = UNSET,
-        retry: RetryConfig | None | Unset = UNSET,
-        auth: AuthPolicy | None | Unset = UNSET,
+        timeout: Timeout | float | Unset | None = UNSET,
+        retry: RetryConfig | Unset | None = UNSET,
+        auth: AuthPolicy | Unset | None = UNSET,
         follow_redirects: bool | Unset = UNSET,
         deadline: float | Unset = UNSET,
         stream: bool = False,
@@ -353,6 +363,7 @@ class HttpClient:
             data=data,
             files=files,
         )
+        headers_obj = _merge_default_headers(self._config.default_headers, headers_obj)
         upper_method = method.upper()
         request = Request(
             method=upper_method,
@@ -484,9 +495,9 @@ class HttpClient:
         content: bytes | AsyncIterable[bytes] | ContentFactory | None = None,
         data: Mapping[str, str] | None = None,
         files: Sequence[FilePart] | None = None,
-        timeout: Timeout | float | None | Unset = UNSET,
-        retry: RetryConfig | None | Unset = UNSET,
-        auth: AuthPolicy | None | Unset = UNSET,
+        timeout: Timeout | float | Unset | None = UNSET,
+        retry: RetryConfig | Unset | None = UNSET,
+        auth: AuthPolicy | Unset | None = UNSET,
         follow_redirects: bool | Unset = UNSET,
         deadline: float | Unset = UNSET,
         raise_for_status: bool = True,
@@ -565,6 +576,8 @@ class HttpClient:
         path: str,
         *,
         heartbeat: Heartbeat | None = None,
+        max_message_size: int = 16_777_216,
+        receive_queue_limit: int = 256,
         send_queue_limit: int = 256,
         send_timeout: float = 10.0,
         subprotocols: Sequence[str] = (),
@@ -578,6 +591,8 @@ class HttpClient:
             self,
             path,
             heartbeat=heartbeat,
+            max_message_size=max_message_size,
+            receive_queue_limit=receive_queue_limit,
             send_queue_limit=send_queue_limit,
             send_timeout=send_timeout,
             subprotocols=subprotocols,
@@ -738,10 +753,8 @@ class _StreamCM(AbstractAsyncContextManager[Response]):
     def __del__(self) -> None:
         if not self._entered or self._exited:
             return
-        try:
+        with suppress(RuntimeError):
             asyncio.get_running_loop().create_task(self.aclose())
-        except RuntimeError:
-            pass
         if client_debug_enabled():
             warnings.warn("unclosed HttpClient stream", ResourceWarning, stacklevel=2)
 

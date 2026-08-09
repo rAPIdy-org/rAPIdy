@@ -36,6 +36,7 @@ async def asgi_request(
     path: str = '/',
     body: bytes = b'',
     receive_messages: list[dict[str, Any]] | None = None,
+    expected_exception: type[Exception] | None = None,
 ) -> list[dict[str, Any]]:
     incoming = deque(
         receive_messages
@@ -65,7 +66,11 @@ async def asgi_request(
         'server': ('testserver', 80),
     }
     async with app.lifespan.ctx_manager():
-        await app(scope, receive, send)
+        if expected_exception is None:
+            await app(scope, receive, send)
+        else:
+            with pytest.raises(expected_exception):
+                await app(scope, receive, send)
     return sent
 
 
@@ -315,9 +320,13 @@ async def test_no_second_response_start_after_started(caplog: pytest.LogCaptureF
         raise ValueError
 
     caplog.set_level(logging.ERROR, logger='rapidy.application')
-    messages = await asgi_request(Rapidy(http_route_handlers=[handler]))
+    messages = await asgi_request(
+        Rapidy(http_route_handlers=[handler]),
+        expected_exception=ValueError,
+    )
 
     assert sum(message['type'] == 'http.response.start' for message in messages) == 1
+    assert not any(message['type'] == 'http.response.body' for message in messages)
     assert any(record.exc_info is not None for record in caplog.records)
 
 
@@ -341,3 +350,24 @@ async def test_client_disconnect_while_reading_body(caplog: pytest.LogCaptureFix
 
     assert not any(message['type'] == 'http.response.start' for message in messages)
     assert not any(record.levelno >= logging.ERROR for record in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_handler_connection_reset_is_not_misclassified_as_client_disconnect(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    @get('/')
+    async def handler() -> None:
+        msg = 'database connection was reset'
+        raise ConnectionResetError(msg)
+
+    caplog.set_level(logging.ERROR, logger='rapidy.application')
+    app = Rapidy(http_route_handlers=[handler])
+    async with app.lifespan.ctx_manager():
+        response = await request(app)
+
+    assert response.status_code == 500
+    assert any(
+        record.exc_info is not None and isinstance(record.exc_info[1], ConnectionResetError)
+        for record in caplog.records
+    )

@@ -1,3 +1,7 @@
+<!-- RAPIDY_LEGACY_1X -->
+
+> **⚠️ Legacy rAPIdy 1.x documentation.** This page is retained only for historical reference and may describe aiohttp APIs that do not exist in rAPIdy 2.0. Use the [current 2.0 documentation](https://rapidy.dev/) for new code.
+
 # Application
 ## Description
 `Application` is the core of the web server responsible for handling all incoming requests.
@@ -264,9 +268,17 @@ middlewares: Optional[Iterable[Middleware]] = None
 ---
 
 ##### client_max_size
-Maximum request size in bytes.
+Maximum ordinary or raw request size in bytes. Multipart forms use `multipart_limits` instead.
 ```python
 client_max_size: int = 1024**2
+```
+
+---
+
+##### multipart_limits
+Independent multipart body, part, field, file, and spooling limits.
+```python
+multipart_limits: MultipartLimits = MultipartLimits()
 ```
 
 ---

@@ -1,4 +1,6 @@
 import inspect
+from collections import deque
+from collections.abc import Collection, Mapping, Sequence
 from typing import Annotated, Optional, Union
 
 import rapidy_core.annotation_checkers as checkers
@@ -6,6 +8,7 @@ from rapidy_core.annotation_checkers import (
     get_base_annotations,
     is_annotated,
     is_empty,
+    is_multi_value_annotation,
     is_not_none_and_unset,
     is_optional,
     is_union,
@@ -37,6 +40,24 @@ def test_get_base_annotations() -> None:
     assert get_base_annotations(int | str | None) == (int, str)
     assert get_base_annotations(Annotated[int, "meta"]) == (int,)
     assert get_base_annotations(str) == (str,)
+
+
+def test_is_multi_value_annotation() -> None:
+    for annotation in (
+        list[str],
+        tuple[int, ...],
+        set[int],
+        frozenset[int],
+        deque[int],
+        Collection[int],
+        Sequence[int],
+        Annotated[list[int], "meta"],
+        list[int] | None,
+    ):
+        assert is_multi_value_annotation(annotation)
+
+    for annotation in (str, bytes, bytearray, int, Mapping[str, str], dict[str, list[str]]):
+        assert not is_multi_value_annotation(annotation)
 
 
 def test_is_empty_and_unset_predicate() -> None:

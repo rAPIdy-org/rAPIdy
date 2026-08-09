@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Annotated
 
 from pydantic import BaseModel, Field
@@ -7,6 +8,7 @@ from pydantic import BaseModel, Field
 from rapidy import Rapidy, run_app
 from rapidy.http import Body, get, PathParam, post, QueryParam
 from rapidy.openapi import OpenAPIComponents, OpenAPIConfig, RedocRenderPlugin, SwaggerRenderPlugin
+from rapidy.security import BearerAuth, constant_time_compare, SecurityConfig, SimpleUser
 
 
 class ItemIn(BaseModel):
@@ -55,8 +57,23 @@ async def create_item(
     return ItemOut(id=1, **payload.model_dump())
 
 
+async def verify_token(token: str) -> SimpleUser | None:
+    """Stand in for application-owned JWT verification."""
+    expected = os.environ.get('ITEMS_BEARER_TOKEN')
+    if expected is None or not constant_time_compare(token, expected):
+        return None
+    return SimpleUser('example-client')
+
+
+security = SecurityConfig(
+    schemes=[BearerAuth(verify_token, bearer_format='JWT')],
+    requirements=[{'bearerAuth': []}],
+)
+
+
 app = Rapidy(
     http_route_handlers=[read_item, create_item],
+    security=security,
     openapi_config=OpenAPIConfig(
         title='Items API',
         version='1.0.0',
@@ -65,13 +82,6 @@ app = Rapidy(
         components=OpenAPIComponents(
             responses={'NotFound': {'description': 'Item not found'}},
         ),
-        security_schemes={
-            'bearerAuth': {
-                'type': 'http',
-                'scheme': 'bearer',
-                'bearerFormat': 'JWT',
-            },
-        },
         security=({'bearerAuth': ()},),
         render_plugins=(
             SwaggerRenderPlugin(options={'displayRequestDuration': True}),

@@ -28,6 +28,7 @@ from rapidy.response import (
     ResponseEncodeError,
     StreamResponse,
 )
+from rapidy.responses import StreamResponse as ResponsesStreamResponse
 from rapidy.version import SERVER_INFO
 from tests.live_server import live_server
 
@@ -36,6 +37,16 @@ class Item(BaseModel):
     value: int
     optional: str | None = None
     aliased: str = Field('default', alias='alias')
+
+
+class PublicUser(BaseModel):
+    id: int
+    email: str
+
+
+class StoredUser(PublicUser):
+    password_hash: str
+    totp_secret: str
 
 
 @dataclass
@@ -200,8 +211,11 @@ async def test_send_headers_cookies_and_server_info() -> None:
     assert ('server', SERVER_INFO) in headers
     cookies = [value for name, value in headers if name == 'set-cookie']
     assert len(cookies) == 2
-    assert any('a=""' in value and 'Max-Age=0' in value for value in cookies)
-    assert any('b=2' in value and 'HttpOnly' in value for value in cookies)
+    assert any('a=""' in value and 'Max-Age=0' in value and 'SameSite=Lax' in value for value in cookies)
+    assert any('b=2' in value and 'HttpOnly' in value and 'SameSite=Lax' in value for value in cookies)
+
+    with pytest.raises(ValueError, match='samesite'):
+        response.set_cookie('bad', '1', samesite='invalid')
 
 
 @pytest.mark.asyncio
@@ -249,6 +263,43 @@ async def test_route_serialization_validation_type_and_charset() -> None:
 
     assert charset_response.headers['content-type'] == 'text/plain; charset=utf-16'
     assert charset_response.content == 'hello'.encode('utf-16')
+
+
+@pytest.mark.asyncio
+async def test_declared_response_contract_filters_runtime_subclass_fields() -> None:
+    user = StoredUser(
+        id=1,
+        email='user@example.test',
+        password_hash='secret-hash',  # noqa: S106
+        totp_secret='secret-totp',  # noqa: S106
+    )
+
+    @get('/one')
+    async def one() -> PublicUser:
+        return user
+
+    @get('/many')
+    async def many() -> list[PublicUser]:
+        return [user]
+
+    @get('/raw', response_validate=False)
+    async def raw() -> PublicUser:
+        return user
+
+    app = Rapidy(http_route_handlers=[one, many, raw])
+    async with app.lifespan.ctx_manager():
+        one_response = await request(app, path='/one')
+        many_response = await request(app, path='/many')
+        raw_response = await request(app, path='/raw')
+
+    assert one_response.json() == {'id': 1, 'email': 'user@example.test'}
+    assert many_response.json() == [{'id': 1, 'email': 'user@example.test'}]
+    assert raw_response.json() == {
+        'id': 1,
+        'email': 'user@example.test',
+        'password_hash': 'secret-hash',
+        'totp_secret': 'secret-totp',
+    }
 
 
 @pytest.mark.asyncio
@@ -338,8 +389,9 @@ async def test_server_info_uses_matched_subapplication() -> None:
     assert ('server', SERVER_INFO) in decoded_headers((await asgi_request(app, path='/root'))[0])
 
 
-def test_response_is_stream_placeholder() -> None:
-    assert isinstance(Response(), StreamResponse)
+def test_stream_response_has_one_public_identity() -> None:
+    assert StreamResponse is ResponsesStreamResponse
+    assert not isinstance(Response(), StreamResponse)
 
 
 def test_live_uvicorn_no_body_and_server_header() -> None:

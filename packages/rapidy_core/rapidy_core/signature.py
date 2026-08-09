@@ -17,6 +17,9 @@ from rapidy_core.fields.field_info import RapidyFieldInfo, copy_field_info
 from rapidy_core.typedefs import Required, Undefined
 
 __all__ = (  # noqa: RUF022 - preserve the extraction API's logical order
+    "Attr",
+    "DataAttr",
+    "SignatureRawInfo",
     "DefaultError",
     "ParameterNotInstanceError",
     "ParameterCannotUseDefaultError",
@@ -38,7 +41,7 @@ __all__ = (  # noqa: RUF022 - preserve the extraction API's logical order
 
 
 @dataclass(slots=True)
-class _Attr:
+class Attr:
     """Raw information about an ordinary callable parameter."""
 
     attribute_name: str
@@ -47,19 +50,19 @@ class _Attr:
 
 
 @dataclass(slots=True)
-class _DataAttr(_Attr):
+class DataAttr(Attr):
     """Raw information about a callable parameter carrying rAPIdy metadata."""
 
     field_info: RapidyFieldInfo
 
 
 @dataclass(slots=True)
-class _SignatureRawInfo:
+class SignatureRawInfo:
     """Raw return and parameter information extracted from a callable."""
 
     return_annotation: Any
-    attrs: list[_Attr] = field(default_factory=list)
-    data_attrs: list[_DataAttr] = field(default_factory=list)
+    attrs: list[Attr] = field(default_factory=list)
+    data_attrs: list[DataAttr] = field(default_factory=list)
 
 
 class DefaultError(RapidyException, ABC):
@@ -294,7 +297,7 @@ def create_data_attr(
     raw_field_info: RapidyFieldInfo,
     annotation_def_as_annotated: bool,
     func: Callable[..., Any],
-) -> _DataAttr:
+) -> DataAttr:
     """Create a data-attribute container from raw marker metadata."""
     prepared_field_info = prepare_attribute_field_info(
         attribute=attribute,
@@ -303,7 +306,7 @@ def create_data_attr(
         annotation_def_as_annotated=annotation_def_as_annotated,
         func=func,
     )
-    return _DataAttr(
+    return DataAttr(
         attribute_name=attribute.name,
         attribute_idx=attribute_idx,
         attribute_annotation=attribute.annotation,
@@ -311,12 +314,12 @@ def create_data_attr(
     )
 
 
-def get_signature_raw_info(func: Callable[..., Any]) -> _SignatureRawInfo:
+def get_signature_raw_info(func: Callable[..., Any]) -> SignatureRawInfo:
     """Extract return, ordinary-parameter, and marker-parameter information."""
     hints = get_type_hints(func, include_extras=True)
     signature = inspect.signature(func)
     return_annotation = hints.get("return", signature.return_annotation)
-    raw_info = _SignatureRawInfo(return_annotation=return_annotation)
+    raw_info = SignatureRawInfo(return_annotation=return_annotation)
 
     for attribute_idx, (param_name, parameter) in enumerate(
         signature.parameters.items()
@@ -376,7 +379,7 @@ def get_signature_raw_info(func: Callable[..., Any]) -> _SignatureRawInfo:
                 )
 
         raw_info.attrs.append(
-            _Attr(
+            Attr(
                 attribute_name=parameter.name,
                 attribute_idx=attribute_idx,
                 attribute_annotation=annotation,

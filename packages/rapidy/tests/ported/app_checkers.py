@@ -9,7 +9,7 @@ from rapidy import Rapidy
 from rapidy.constants import DEFAULT_JSON_ENCODER
 from rapidy.http import controller, middleware, Request
 from rapidy.routing.http import routers
-from rapidy.typedefs import CallNext, JSONEncoder, Unset, UnsetType, View
+from rapidy.typedefs import CallNext, JSONEncoder, UNSET, UnsetType, View
 from tests.ported.client import AppClientFactory
 from tests.ported.constants import ClientBodyExtractMethod, DEFAULT_RETURN_TYPE, DEFAULT_RETURN_VALUE
 
@@ -184,7 +184,7 @@ async def check_handlers(
     handler_return_type: Any = DEFAULT_RETURN_TYPE,
     handler_return_value: Any | None = DEFAULT_RETURN_VALUE,
     response_validate: bool = True,
-    response_type: type[Any] | UnsetType | None = Unset,
+    response_type: type[Any] | UnsetType | None = UNSET,
     response_content_type: str | ContentType | None = None,
     response_charset: str | Charset = Charset.utf8,
     response_zlib_executor: Executor | None = None,

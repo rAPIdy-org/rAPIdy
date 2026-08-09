@@ -1,3 +1,7 @@
+<!-- RAPIDY_LEGACY_1X -->
+
+> **⚠️ Историческая документация rAPIdy 1.x.** Страница сохранена только для справки и может описывать aiohttp API, которых нет в rAPIdy 2.0. Для нового кода используйте [актуальную документацию 2.0](https://rapidy.dev/).
+
 # HTTPRouter
 
 ## Описание
@@ -66,11 +70,17 @@
 ---
 
 ### client_max_size
-**`client_max_size`**: `int = 1024**2` — Максимальный размер запроса в байтах.
+**`client_max_size`**: `int = 1024**2` — Максимальный размер обычного или raw-запроса в байтах.
 
 ```python hl_lines="5"
 {!> ./docs/docs/server/handlers/http_router/attrs/client_max_size.py !}
 ```
+
+---
+
+### multipart_limits
+**`multipart_limits`**: `MultipartLimits = MultipartLimits()` — Независимые лимиты multipart для этого вложенного
+приложения.
 
 ---
 

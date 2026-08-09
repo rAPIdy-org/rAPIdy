@@ -3,9 +3,11 @@ from __future__ import annotations
 from concurrent.futures import Executor
 from http import HTTPStatus
 from pprint import pformat
-from typing import Any, cast, TYPE_CHECKING
+from typing import Any, cast
 
 from rapidy_core.client_errors import normalize_errors
+from rapidy_core.encoders import CustomEncoder, Exclude, Include, jsonify
+from rapidy_core.enums import ContentType  # noqa: TC002 - runtime annotations
 
 from rapidy._base_exceptions import RapidyHandlerException
 from rapidy.endpoint_handlers.http.annotation_checkers import annotation_is_stream_response
@@ -18,13 +20,9 @@ from rapidy.endpoint_handlers.http.request.data_validators import (
 )
 from rapidy.exceptions import HTTPValidationFailure
 from rapidy.request import Request
-from rapidy.response import Response
+from rapidy.response import Response, ResponseEncodeError
 from rapidy.responses.streaming import StreamResponse
 from rapidy.typedefs import Handler, JSONEncoder, UnsetType, ValidationErrorList
-
-if TYPE_CHECKING:
-    from rapidy_core.encoders import CustomEncoder, Exclude, Include
-    from rapidy_core.enums import ContentType
 
 __all__ = ('HandlerController', 'ResponseValidationError', 'controller_factory')
 
@@ -122,6 +120,20 @@ class HandlerController:
                     handler=self._handler,
                     errors=validated_errors,
                 )
+            if handler_result is not None and self._result_validator.has_response_contract:
+                try:
+                    handler_result = self._result_validator.serialize(
+                        handler_result,
+                        include=self._response_include_fields,
+                        exclude=self._response_exclude_fields,
+                        by_alias=self._response_by_alias,
+                        exclude_unset=self._response_exclude_unset,
+                        exclude_defaults=self._response_exclude_defaults,
+                        exclude_none=self._response_exclude_none,
+                        fallback=self._serialize_unknown,
+                    )
+                except Exception as exc:
+                    raise ResponseEncodeError(errors=str(exc)) from exc
 
         if current_response is None:
             current_response = Response(
@@ -142,8 +154,18 @@ class HandlerController:
         if handler_result is None:
             return current_response
 
-        current_response.body = handler_result
+        if self._response_validate and self._result_validator.has_response_contract:
+            current_response._set_pre_serialized_body(handler_result)  # noqa: SLF001
+        else:
+            current_response.body = handler_result
         return current_response
+
+    def _serialize_unknown(self, value: Any) -> Any:
+        return jsonify(
+            value,
+            custom_encoder=self._response_custom_encoder,
+            charset=self._response_charset,
+        )
 
 
 def controller_factory(

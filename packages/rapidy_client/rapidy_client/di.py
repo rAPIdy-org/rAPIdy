@@ -141,7 +141,7 @@ class HttpApp:
             raise LookupError(
                 f"controller {controller.__qualname__!r} is not registered"
             )
-        return cast(C, await self.container.get(controller))
+        return cast("C", await self.container.get(controller))
 
 
 __all__ = (

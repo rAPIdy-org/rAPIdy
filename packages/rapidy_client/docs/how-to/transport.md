@@ -38,8 +38,11 @@ pip install "rapidy-client[http2]"
 Without the extra, the same transport uses HTTP/1.1. TLS verification is on by
 default in the configuration layer; custom CA files, TLS 1.2/1.3 minimums,
 client certificates, and an explicit proxy are passed to the native client.
-Cookie persistence is opt-in through the `shared` policy; the default
-`disabled` policy does not retain `Set-Cookie` values between requests.
+`ProxyConfig.no_proxy` installs more-specific direct mounts in the same native
+client, so bypassed destinations retain the normal TLS, cookie, and pool
+lifecycle instead of using an unrelated client. Cookie persistence is opt-in
+through the `shared` policy; the default `disabled` policy does not retain
+`Set-Cookie` values between requests.
 
 ## Stable transport errors
 

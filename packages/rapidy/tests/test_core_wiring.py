@@ -22,6 +22,10 @@ from rapidy_core.parameters.http import (
     QueryParam as CoreQueryParam,
 )
 from rapidy_core.signature import ParameterNotInstanceError
+from rapidy_core.typedefs import (
+    UNSET as CORE_UNSET,
+    Unset as CoreUnset,
+)
 
 from rapidy._base_exceptions import RapidyException
 from rapidy.constants import DEFAULT_JSON_DECODER, DEFAULT_JSON_ENCODER
@@ -47,7 +51,7 @@ from rapidy.http import (
 )
 from rapidy.request import Request
 from rapidy.response import Response
-from rapidy.typedefs import Unset, View
+from rapidy.typedefs import UNSET, Unset, UnsetType, View
 
 
 def test_server_facade_preserves_core_identity() -> None:
@@ -61,6 +65,10 @@ def test_server_facade_preserves_core_identity() -> None:
     assert DEFAULT_JSON_ENCODER is CORE_JSON_ENCODER
     assert DEFAULT_JSON_DECODER is CORE_JSON_DECODER
     assert RapidyException is CoreRapidyException
+    assert UNSET is CORE_UNSET
+    assert Unset is CoreUnset
+    assert UnsetType is CoreUnset
+    assert isinstance(UNSET, Unset)
 
 
 def test_http_attrs_extend_core_signature_information() -> None:
@@ -151,7 +159,7 @@ async def test_request_and_result_validation_use_core_fields() -> None:
     assert {'input', 'url'} <= errors[0].keys()
     assert normalize_errors(errors, pop_useless_keys=False)[0]['input'] == 'wrong'
 
-    result_validator = result_validator_factory(handler, int, Unset)
+    result_validator = result_validator_factory(handler, int, UNSET)
     result, result_errors = await result_validator.validate('5')
     assert result == 5
     assert result_errors is None

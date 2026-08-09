@@ -4,14 +4,21 @@ on:
   push:
     tags: ["rapidy-v*", "rapidy-core-v*", "rapidy-client-v*"]
 
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  publish:
+  verify:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write
+    outputs:
+      distribution: ${{ steps.dist.outputs.name }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: astral-sh/setup-uv@v6
       - name: Parse distribution from tag
         id: dist
@@ -22,7 +29,119 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.ref_name }}
         run: bash scripts/parse_release_tag.sh --check-version
-      - name: Build
-        run: uv build --package ${{ steps.dist.outputs.name }} -o dist/${{ steps.dist.outputs.name }}
-      - name: Publish
-        run: uv publish dist/${{ steps.dist.outputs.name }}/*
+      - name: Require a commit reachable from main
+        run: git merge-base --is-ancestor "$GITHUB_SHA" origin/main
+      - name: Install verification dependencies
+        run: uv sync --python 3.13 --group test --group docs --extra test
+
+      - name: Test rapidy-core
+        if: steps.dist.outputs.name == 'rapidy-core'
+        run: uv run --python 3.13 pytest packages/rapidy_core/tests
+      - name: Type-check rapidy-core
+        if: steps.dist.outputs.name == 'rapidy-core'
+        run: uv run --python 3.13 mypy --strict packages/rapidy_core/rapidy_core
+
+      - name: Test rapidy-client with coverage gate
+        if: steps.dist.outputs.name == 'rapidy-client'
+        run: >-
+          uv run --python 3.13 pytest packages/rapidy_client/tests
+          --cov=rapidy_client --cov-report=term-missing --cov-fail-under=90
+      - name: Type-check rapidy-client public and usage contracts
+        if: steps.dist.outputs.name == 'rapidy-client'
+        run: >-
+          uv run --python 3.13 mypy --strict
+          packages/rapidy_client/rapidy_client packages/rapidy_client/tests/typecheck
+
+      - name: Test rapidy server with coverage gate
+        if: steps.dist.outputs.name == 'rapidy'
+        env:
+          RAPIDY_LIVE_RUNTIME: uvicorn
+        run: >-
+          uv run --python 3.13 pytest packages/rapidy/tests
+          --cov=rapidy --cov-report=term-missing --cov-fail-under=90
+      - name: Type-check rapidy server public and usage contracts
+        if: steps.dist.outputs.name == 'rapidy'
+        working-directory: packages/rapidy
+        run: uv run --python 3.13 mypy --strict rapidy tests/typecheck
+      - name: Build rapidy documentation strictly
+        if: steps.dist.outputs.name == 'rapidy'
+        working-directory: packages/rapidy/docs
+        env:
+          DISABLE_MKDOCS_2_WARNING: "true"
+        run: uv run --python 3.13 --no-sync mkdocs build --strict
+
+      - name: Check rapidy-core source
+        if: steps.dist.outputs.name == 'rapidy-core'
+        run: uv run --python 3.13 ruff check packages/rapidy_core
+      - name: Check rapidy-client source
+        if: steps.dist.outputs.name == 'rapidy-client'
+        run: uv run --python 3.13 ruff check packages/rapidy_client
+      - name: Check rapidy server source
+        if: steps.dist.outputs.name == 'rapidy'
+        run: uv run --python 3.13 ruff check packages/rapidy
+      - name: Check family import architecture
+        run: uv run --python 3.13 lint-imports
+      - name: Build exact release artifacts
+        run: uv build --package ${{ steps.dist.outputs.name }} -o dist/release
+      - name: Build rapidy-core support wheel for isolated smoke
+        if: steps.dist.outputs.name != 'rapidy-core'
+        run: uv build --package rapidy-core --wheel -o dist/support
+      - name: Check exact wheel and sdist
+        env:
+          DISTRIBUTION: ${{ steps.dist.outputs.name }}
+        run: |
+          shopt -s nullglob
+          wheel=(dist/release/*.whl)
+          sdist=(dist/release/*.tar.gz)
+          test "${#wheel[@]}" -eq 1
+          test "${#sdist[@]}" -eq 1
+          uv run --python 3.13 python scripts/check_release_dist.py "$DISTRIBUTION" "${wheel[0]}" "${sdist[0]}"
+          if [[ "$DISTRIBUTION" == rapidy ]]; then
+            uv run --python 3.13 python scripts/check_rapidy_dist.py "${wheel[0]}" "${sdist[0]}"
+          fi
+      - name: Install exact wheel in an isolated environment
+        env:
+          DISTRIBUTION: ${{ steps.dist.outputs.name }}
+        run: |
+          uv venv --python 3.13 /tmp/rapidy-release-smoke
+          if [[ "$DISTRIBUTION" == rapidy-core ]]; then
+            VIRTUAL_ENV=/tmp/rapidy-release-smoke uv pip install dist/release/*.whl
+          else
+            VIRTUAL_ENV=/tmp/rapidy-release-smoke uv pip install dist/support/*.whl dist/release/*.whl
+          fi
+          case "$DISTRIBUTION" in
+            rapidy-core)
+              /tmp/rapidy-release-smoke/bin/python -I -c "import rapidy_core; print('rapidy-core wheel: ok')"
+              ;;
+            rapidy-client)
+              /tmp/rapidy-release-smoke/bin/python -I scripts/smoke_rapidy_client_wheel.py
+              ;;
+            rapidy)
+              /tmp/rapidy-release-smoke/bin/python -I scripts/smoke_rapidy_wheel.py
+              ;;
+          esac
+          VIRTUAL_ENV=/tmp/rapidy-release-smoke uv pip check
+      - name: Store verified release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: verified-${{ steps.dist.outputs.name }}-${{ github.sha }}
+          path: dist/release/*
+          if-no-files-found: error
+          retention-days: 1
+
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: astral-sh/setup-uv@v6
+      - name: Download artifacts verified for this commit
+        uses: actions/download-artifact@v4
+        with:
+          name: verified-${{ needs.verify.outputs.distribution }}-${{ github.sha }}
+          path: dist/release
+      - name: Publish verified artifacts
+        run: uv publish dist/release/*

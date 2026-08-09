@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import logging
+import warnings
 from collections.abc import AsyncIterator, Iterable, Iterator, Mapping, MutableMapping, Sequence
-from contextlib import asynccontextmanager, suppress
+from contextlib import asynccontextmanager
 from dataclasses import replace
 from inspect import isawaitable
-from typing import Any, cast, TYPE_CHECKING
+from typing import Any, cast
 
 from rapidy.constants import CLIENT_MAX_SIZE
 from rapidy.depends import AsyncContainer, BaseScope, Provider, Scope, ValidationSettings
@@ -14,20 +15,23 @@ from rapidy.di import (
     DEFAULT_DI_LOCK_FACTORY,
     DEFAULT_DI_VALIDATION_SETTINGS,
     di_lifespan,
+    di_scope,
     DIConfig,
+    DIScopeOutcome,
+    ensure_di_container,
     LockFactory,
     request_di_scope,
 )
-from rapidy.exceptions import HTTPException, HTTPNotFound
+from rapidy.exceptions import HTTPException, HTTPForbidden, HTTPNotFound
 from rapidy.lifespan import Lifespan
 from rapidy.middlewares._utils import apply_response_hooks
 from rapidy.middlewares.runner import build_onion, prepare_middlewares
 from rapidy.openapi import create_openapi_schema, OpenAPIConfig, OpenAPIRenderPlugin
 from rapidy.problems import ExceptionHandler
-from rapidy.request import Request, State
+from rapidy.request import _RequestDisconnectedError, DEFAULT_MULTIPART_LIMITS, MultipartLimits, Request, State
 from rapidy.response import Response
 from rapidy.responses.streaming import StreamResponse
-from rapidy.routing.http.base import raise_if_not_base_http_router
+from rapidy.routing.http.base import BaseHTTPRouter, raise_if_not_base_http_router
 from rapidy.routing.http.routers import get
 from rapidy.routing.matcher import RouteMatch, RouteRecord, UrlMatcher
 from rapidy.routing.reverse import (
@@ -39,16 +43,14 @@ from rapidy.routing.reverse import (
 )
 from rapidy.security import Guard, SecurityConfig, SecurityScheme
 from rapidy.security.runtime import authorize_request
-from rapidy.typedefs import ASGIScope, CallNext, Handler, LifespanCTX, LifespanHook, Middleware, Receive, Send, Unset
+from rapidy.typedefs import ASGIScope, CallNext, Handler, LifespanCTX, LifespanHook, Middleware, Receive, Send, UNSET
 from rapidy.version import SERVER_INFO
 from rapidy.websockets import WebSocket, WebSocketDisconnect, WebSocketState
-
-if TYPE_CHECKING:
-    from rapidy.routing.http.base import BaseHTTPRouter
 
 __all__ = ('Rapidy',)
 
 logger = logging.getLogger('rapidy.application')
+_DEPRECATED_ARGUMENT_UNSET = object()
 
 
 class Rapidy(MutableMapping[str, Any]):
@@ -62,6 +64,7 @@ class Rapidy(MutableMapping[str, Any]):
         '_exception_handlers',
         '_matcher',
         '_middlewares',
+        '_multipart_limits',
         '_onion',
         '_onion_built',
         '_openapi_config',
@@ -78,6 +81,7 @@ class Rapidy(MutableMapping[str, Any]):
         self,
         *,
         client_max_size: int = CLIENT_MAX_SIZE,
+        multipart_limits: MultipartLimits = DEFAULT_MULTIPART_LIMITS,
         server_info_in_response: bool = False,
         middlewares: Iterable[Middleware] | None = None,
         lifespan: Iterable[LifespanCTX] = (),
@@ -96,8 +100,26 @@ class Rapidy(MutableMapping[str, Any]):
         openapi_config: OpenAPIConfig | None = None,
         security: SecurityConfig | None = None,
         exception_handlers: Mapping[type[Exception], ExceptionHandler] | None = None,
+        logger: object = _DEPRECATED_ARGUMENT_UNSET,
+        handler_args: Mapping[str, Any] | object = _DEPRECATED_ARGUMENT_UNSET,
     ) -> None:
+        if logger is not _DEPRECATED_ARGUMENT_UNSET:
+            warnings.warn(
+                'Rapidy(logger=...) is deprecated and ignored; configure logging through the ASGI server.',
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        if handler_args is not _DEPRECATED_ARGUMENT_UNSET:
+            warnings.warn(
+                'Rapidy(handler_args=...) is deprecated and ignored; use route handlers or middleware.',
+                DeprecationWarning,
+                stacklevel=2,
+            )
         self._client_max_size = client_max_size
+        if not isinstance(multipart_limits, MultipartLimits):
+            msg = 'multipart_limits must be a MultipartLimits instance'
+            raise TypeError(msg)
+        self._multipart_limits = multipart_limits
         self._parent_app: Rapidy | None = None
         self._root_app: Rapidy | None = None
         self._di_container_closed = False
@@ -140,6 +162,11 @@ class Rapidy(MutableMapping[str, Any]):
     def client_max_size(self) -> int:
         """Return the per-application request-body limit."""
         return self._client_max_size
+
+    @property
+    def multipart_limits(self) -> MultipartLimits:
+        """Return independently bounded multipart parser limits."""
+        return self._multipart_limits
 
     @property
     def routes(self) -> tuple[RouteRecord, ...]:
@@ -264,8 +291,8 @@ class Rapidy(MutableMapping[str, Any]):
             msg = 'Application cannot mount itself'
             raise ValueError(msg)
 
-        subapp._bind_to_root(self)
         self._matcher.add_prefix(prefix, subapp)
+        subapp._bind_to_root(self)
         self.lifespan.append(_subapp_lifespan(subapp))
         self._invalidate_openapi_schema()
         return subapp
@@ -278,14 +305,21 @@ class Rapidy(MutableMapping[str, Any]):
     def _add_openapi_routes(self) -> None:
         config = cast('OpenAPIConfig', self._openapi_config)
 
-        async def openapi_json() -> dict[str, Any]:
-            return cast('dict[str, Any]', self.openapi_schema)
+        def schema_for_request(request: Request) -> dict[str, Any]:
+            schema = cast('dict[str, Any]', self.openapi_schema)
+            prefix = str(request.scope.get('_rapidy_mount_prefix', ''))
+            if not prefix or 'servers' in schema:
+                return schema
+            return {**schema, 'servers': [{'url': prefix}]}
+
+        async def openapi_json(request: Request) -> dict[str, Any]:
+            return schema_for_request(request)
 
         self.add_http_router(
             get(
                 config.json_path,
                 include_in_schema=False,
-                public=True,
+                public=config.public,
                 response_content_type='application/json',
                 response_type=dict[str, Any],
             )(openapi_json)
@@ -294,7 +328,7 @@ class Rapidy(MutableMapping[str, Any]):
         def create_ui_handler(plugin: OpenAPIRenderPlugin) -> Handler:
             async def openapi_ui(request: Request) -> Response:
                 prefix = str(request.scope.get('_rapidy_mount_prefix', ''))
-                schema = cast('dict[str, Any]', self.openapi_schema)
+                schema = schema_for_request(request)
                 document = plugin.render(
                     request,
                     schema,
@@ -305,7 +339,9 @@ class Rapidy(MutableMapping[str, Any]):
             return openapi_ui
 
         for plugin in config.get_render_plugins():
-            self.add_http_router(get(plugin.path, include_in_schema=False, public=True)(create_ui_handler(plugin)))
+            self.add_http_router(
+                get(plugin.path, include_in_schema=False, public=config.public)(create_ui_handler(plugin))
+            )
 
     async def __call__(self, scope: ASGIScope, receive: Receive, send: Send) -> None:
         """Dispatch one ASGI connection by scope type."""
@@ -344,14 +380,17 @@ class Rapidy(MutableMapping[str, Any]):
         scope['_rapidy_mount_prefix'] = str(scope.get('root_path', '')).rstrip('/')
 
         container = self._request_di_container()
-        if container is None:
-            await self._handle_http(request, tracking_send)
-            return
+        root_app = self._root_app or self
+        if container is None or root_app._di_container_closed:  # noqa: SLF001
+            # Some in-process ASGI transports intentionally omit lifespan. They still
+            # need a valid request scope; a later lifespan (or explicit close) owns cleanup.
+            container = ensure_di_container(root_app)
 
-        async with request_di_scope(container, request):
-            await self._handle_http(request, tracking_send)
+        outcome = DIScopeOutcome()
+        async with request_di_scope(container, request, outcome):
+            outcome.exception = await self._handle_http(request, tracking_send)
 
-    async def _handle_websocket(  # noqa: C901, PLR0915
+    async def _handle_websocket(  # noqa: C901, PLR0912, PLR0915
         self,
         scope: ASGIScope,
         receive: Receive,
@@ -403,6 +442,16 @@ class Rapidy(MutableMapping[str, Any]):
             return
         request.path_params = route_match.path_params
 
+        try:
+            matched_app._validate_websocket_handshake(request, route_match.route_kwargs)  # noqa: SLF001
+        except HTTPException as exc:
+            await ws.close(code=1008, reason=exc.reason)
+            return
+        except Exception:
+            logger.exception('Unhandled exception while validating WebSocket handshake security')
+            await ws.close(code=1011)
+            return
+
         root_container = self._request_di_container()
         if root_container is None:
             await ws.close(code=1011, reason='Application dependency container is not available')
@@ -410,27 +459,33 @@ class Rapidy(MutableMapping[str, Any]):
 
         open_websockets = cast('set[WebSocket]', self.state['_open_websockets'])
         open_websockets.add(ws)
+        outcome = DIScopeOutcome()
         try:
-            async with root_container(
+            async with di_scope(
+                root_container,
                 context={WebSocket: ws, Request: request},
                 scope=Scope.SESSION,
+                outcome=outcome,
             ) as session_container:
                 request.state.di_container = session_container
                 try:
                     try:
                         await matched_app._authorize_route(request, route_match.route_kwargs)  # noqa: SLF001
                     except HTTPException as exc:
+                        outcome.exception = exc
                         await ws.close(code=1008, reason=exc.reason)
                         return
                     ws_terminal = cast('Handler', route_match.terminal)
                     await ws_terminal(ws, request)
                 except WebSocketDisconnect:
                     pass
-                except HTTPException:
+                except HTTPException as exc:
+                    outcome.exception = exc
                     code = 1000 if ws.client_state is WebSocketState.CONNECTING else 1011
                     await ws.close(code=code)
                 except Exception as exc:
                     _raise_server_exception_for_tests(scope, exc)
+                    outcome.exception = exc
                     logger.exception('Unhandled exception during WebSocket processing')
                     await ws.close(code=1011)
                 else:
@@ -459,35 +514,41 @@ class Rapidy(MutableMapping[str, Any]):
         except HTTPNotFound:
             return None
 
-    async def _handle_http(self, request: Request, tracking_send: _TrackingSend) -> None:
+    async def _handle_http(self, request: Request, tracking_send: _TrackingSend) -> BaseException | None:
         try:
             response = await self._run_onion(request)
             response = await apply_response_hooks(request, response)
             await self._send_response(response, tracking_send, app=request.app, request=request)
-        except ConnectionResetError:
+        except _RequestDisconnectedError as exc:
             logger.debug('Client disconnected while reading request body: %s %s', request.method, request.path)
+            return exc
         except HTTPException as exc:
             if tracking_send.started:
                 logger.exception('HTTP exception raised after response was started')
-                await _finalize_started_response(tracking_send)
-            else:
-                exception_response = await self._registered_exception_response(request, exc)
-                if exception_response is None:
-                    exception_response = _exception_response(exc)
-                exception_response = await apply_response_hooks(request, exception_response)
-                await self._send_response(exception_response, tracking_send, app=request.app, request=request)
+                if not tracking_send.completed:
+                    raise
+                return exc
+            exception_response = await self._registered_exception_response(request, exc)
+            if exception_response is None:
+                exception_response = _exception_response(exc)
+            exception_response = await apply_response_hooks(request, exception_response)
+            await self._send_response(exception_response, tracking_send, app=request.app, request=request)
+            return exc
         except Exception as exc:
             if tracking_send.started:
                 logger.exception('Unhandled exception after response was started')
-                await _finalize_started_response(tracking_send)
-            else:
-                exception_response = await self._registered_exception_response(request, exc)
-                if exception_response is None:
-                    logger.exception('Unhandled exception during request processing')
-                    _raise_server_exception_for_tests(request.scope, exc)
-                    exception_response = _internal_server_error_response()
-                exception_response = await apply_response_hooks(request, exception_response)
-                await self._send_response(exception_response, tracking_send, app=request.app, request=request)
+                if not tracking_send.completed:
+                    raise
+                return exc
+            exception_response = await self._registered_exception_response(request, exc)
+            if exception_response is None:
+                logger.exception('Unhandled exception during request processing')
+                _raise_server_exception_for_tests(request.scope, exc)
+                exception_response = _internal_server_error_response()
+            exception_response = await apply_response_hooks(request, exception_response)
+            await self._send_response(exception_response, tracking_send, app=request.app, request=request)
+            return exc
+        return None
 
     async def _registered_exception_response(
         self,
@@ -542,7 +603,7 @@ class Rapidy(MutableMapping[str, Any]):
                 request.scope['_rapidy_mount_path'] = path[len(prefix) :] or '/'
                 current_prefix = str(request.scope.get('_rapidy_mount_prefix', ''))
                 request.scope['_rapidy_mount_prefix'] = f'{current_prefix}{prefix}'
-                # Request.client_max_size reads request.app lazily, after this rebind.
+                # Request body and multipart limits read request.app lazily, after this rebind.
                 return await subapp._run_onion(request)  # noqa: SLF001
 
         local_template = self._matcher.route_template(path)
@@ -556,6 +617,18 @@ class Rapidy(MutableMapping[str, Any]):
         return await route_match.terminal(request)
 
     async def _authorize_route(self, request: Request, route_kwargs: dict[str, Any]) -> None:
+        schemes, requirements, guards = self._route_security_contract(route_kwargs)
+        await authorize_request(
+            request,
+            schemes=schemes,
+            requirements=requirements,
+            guards=guards,
+        )
+
+    def _route_security_contract(
+        self,
+        route_kwargs: dict[str, Any],
+    ) -> tuple[dict[str, SecurityScheme], Any, list[Guard]]:
         configs = [
             app._security_config  # noqa: SLF001
             for app in self._application_chain
@@ -573,26 +646,54 @@ class Rapidy(MutableMapping[str, Any]):
             guards.extend(config.guards)
 
         public = route_kwargs.get('public') is True
-        configured_guards = route_kwargs.get('guards', Unset)
-        if configured_guards is not Unset:
+        configured_guards = route_kwargs.get('guards', UNSET)
+        if configured_guards is not UNSET:
             guards.extend(configured_guards)
         requirements: Any
         if public:
             requirements = ()
             guards = []
         elif configs:
-            configured_requirements = route_kwargs.get('security', Unset)
-            requirements = configs[-1].requirements if configured_requirements is Unset else configured_requirements
+            configured_requirements = route_kwargs.get('security', UNSET)
+            requirements = configs[-1].requirements if configured_requirements is UNSET else configured_requirements
         else:
-            # Keep pre-milestone OpenAPI-only metadata non-enforcing until a SecurityConfig is installed.
+            configured_requirements = route_kwargs.get('security', UNSET)
+            if (
+                configured_requirements is not UNSET
+                and _requirements_reference_schemes(configured_requirements)
+                and not self._allows_documentation_only_security()
+            ):
+                msg = (
+                    'Route security requirements need a runtime SecurityConfig. '
+                    'Set OpenAPIConfig(allow_documentation_only_security=True) only for explicitly '
+                    'documentation-only metadata.'
+                )
+                raise RuntimeError(msg)
             requirements = ()
 
-        await authorize_request(
-            request,
-            schemes=schemes,
-            requirements=requirements,
-            guards=guards,
+        return schemes, requirements, guards
+
+    def _validate_websocket_handshake(self, request: Request, route_kwargs: dict[str, Any]) -> None:
+        policies = tuple(
+            config.websocket
+            for app in self._application_chain
+            if (config := app._security_config) is not None  # noqa: SLF001
+            and config.websocket is not None
         )
+        if any(not policy.accepts(request) for policy in policies):
+            raise HTTPForbidden(text='WebSocket handshake denied by Host/Origin policy.')
+
+        schemes, requirements, _guards = self._route_security_contract(route_kwargs)
+        normalized_requirements = SecurityConfig.normalize_requirements(requirements)
+        uses_cookie_auth = any(
+            scheme_name in schemes and schemes[scheme_name].openapi_schema.get('in') == 'cookie'
+            for requirement in normalized_requirements
+            for scheme_name in requirement
+        )
+        if uses_cookie_auth and not any(policy.protects_ambient_credentials for policy in policies):
+            raise HTTPForbidden(
+                text='Cookie-authenticated WebSockets require a strict allowed_origins policy.',
+            )
 
     @property
     def _application_chain(self) -> tuple[Rapidy, ...]:
@@ -615,9 +716,20 @@ class Rapidy(MutableMapping[str, Any]):
         records: list[RouteRecord] = []
         for record in self._matcher.routes:
             route_kwargs = dict(record.route_kwargs)
-            configured = route_kwargs.get('security', Unset)
+            configured = route_kwargs.get('security', UNSET)
             if (
-                configured is Unset
+                effective_security is None
+                and configured is not UNSET
+                and _requirements_reference_schemes(configured)
+                and not self._allows_documentation_only_security()
+            ):
+                msg = (
+                    f'Route security requirements for {record.method} {prefix}{record.path} need a runtime '
+                    'SecurityConfig; documentation-only security must be explicitly enabled.'
+                )
+                raise ValueError(msg)
+            if (
+                configured is UNSET
                 and effective_security is not None
                 and tuple(effective_security.requirements) != document_requirements
             ):
@@ -667,12 +779,21 @@ class Rapidy(MutableMapping[str, Any]):
     def _build_onion(self) -> None:
         if self._onion_built:
             return
+        for record in self._matcher.routes:
+            self._route_security_contract(dict(record.route_kwargs))
         prepared_middlewares = prepare_middlewares(self._middlewares)
         onion = build_onion(prepared_middlewares, cast('CallNext', self._dispatch_terminal))
         for _prefix, subapp in self._subapps:
             subapp._build_onion()  # noqa: SLF001
         self._onion = onion
         self._onion_built = True
+
+    def _allows_documentation_only_security(self) -> bool:
+        return any(
+            app._openapi_config is not None  # noqa: SLF001
+            and app._openapi_config.allow_documentation_only_security  # noqa: SLF001
+            for app in self._application_chain
+        )
 
     async def _send_response(
         self,
@@ -729,9 +850,11 @@ class Rapidy(MutableMapping[str, Any]):
 
 
 def _strip_root_path(path: str, root_path: str) -> str:
-    # NOTE: root_path policy is frozen in milestone 03; user documentation belongs to milestone 15.
-    if root_path and path.startswith(root_path):
-        return path[len(root_path) :] or '/'
+    normalized_root = root_path.rstrip('/')
+    if normalized_root and path == normalized_root:
+        return '/'
+    if normalized_root and path.startswith(f'{normalized_root}/'):
+        return path[len(normalized_root) :]
     return path
 
 
@@ -739,7 +862,15 @@ def _bind_openapi_security(
     openapi_config: OpenAPIConfig | None,
     security: SecurityConfig | None,
 ) -> OpenAPIConfig | None:
-    if openapi_config is None or security is None:
+    if openapi_config is None:
+        return openapi_config
+    if security is None:
+        if openapi_config.security and not openapi_config.allow_documentation_only_security:
+            msg = (
+                'OpenAPIConfig.security needs a runtime SecurityConfig; '
+                'set allow_documentation_only_security=True only for explicitly documentation-only metadata.'
+            )
+            raise ValueError(msg)
         return openapi_config
 
     security_schemes = dict(openapi_config.security_schemes)
@@ -763,6 +894,11 @@ def _bind_openapi_security(
         security_schemes=security_schemes,
         security=runtime_requirements,
     )
+
+
+def _requirements_reference_schemes(requirements: Any) -> bool:
+    normalized = SecurityConfig.normalize_requirements(requirements)
+    return any(bool(requirement) for requirement in normalized)
 
 
 def _raise_server_exception_for_tests(scope: ASGIScope, exc: Exception) -> None:
@@ -817,13 +953,6 @@ def _internal_server_error_response() -> Response:
         text='500: Internal Server Error',
         content_type='text/plain',
     )
-
-
-async def _finalize_started_response(tracking_send: _TrackingSend) -> None:
-    if tracking_send.completed:
-        return
-    with suppress(Exception):
-        await tracking_send({'type': 'http.response.body', 'body': b'', 'more_body': False})
 
 
 def _without_head_body(send: Send) -> Send:

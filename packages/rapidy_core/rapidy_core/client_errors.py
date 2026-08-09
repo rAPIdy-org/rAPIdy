@@ -36,6 +36,7 @@ class ClientError(ClientBaseError, ABC):
     """Client validation error backed by pydantic-core."""
 
     def get_error_info(self, loc: LocStr) -> dict[str, Any]:
+        """Build a pydantic-core error dictionary for ``loc``."""
         err = PydanticCustomError(self.type, self._err_msg)
         loc_tuple = loc if isinstance(loc, tuple) else (loc,)
         err_details = InitErrorDetails(type=err, loc=loc_tuple, input=None)

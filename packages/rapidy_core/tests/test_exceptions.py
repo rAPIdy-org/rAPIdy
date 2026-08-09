@@ -12,18 +12,18 @@ class _FormattedError(RapidyException):
     message = "x={val}"
 
 
-def test_message_wrapped_with_border() -> None:
-    message = str(_Error())
-    assert "boom" in message
-    assert "-" * 30 in message
+def test_message_is_stable_log_friendly_text() -> None:
+    error = _Error()
+    assert str(error) == "boom"
+    assert error.args == ("boom",)
 
 
 def test_explicit_message_overrides_class_message() -> None:
-    assert "custom" in str(_Error("custom"))
+    assert str(_Error("custom")) == "custom"
 
 
 def test_format_fields_substituted() -> None:
-    assert "x=7" in str(_FormattedError(val="7"))
+    assert str(_FormattedError(val="7")) == "x=7"
 
 
 def test_no_create_no_handler_partial() -> None:

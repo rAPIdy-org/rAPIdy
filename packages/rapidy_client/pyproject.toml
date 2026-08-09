@@ -3,7 +3,7 @@ name = "rapidy-client"
 version = "0.1.0"
 description = "Declarative async HTTP client for the rAPIdy family."
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.12"
 license = "MIT"
 license-files = ["LICENSE"]
 authors = [{ name = "Daniil Grois", email = "daniil.grois@gmail.com" }]
@@ -11,6 +11,7 @@ classifiers = [
     "Intended Audience :: Developers",
     "Development Status :: 3 - Alpha",
     "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
     "Typing :: Typed",
@@ -34,9 +35,6 @@ testing = [
 ]
 zstd = ["zstandard>=0.23; python_version < '3.14'"]
 
-[project.entry-points.pytest11]
-rapidy_client = "rapidy_client.testing.plugin"
-
 [build-system]
 requires = ["uv_build>=0.9,<1.0"]
 build-backend = "uv_build"
@@ -44,6 +42,97 @@ build-backend = "uv_build"
 [tool.uv.build-backend]
 module-root = ""
 module-name = "rapidy_client"
+
+[tool.ruff]
+src = ["rapidy_client", "tests"]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "ANN401",  # Dynamic transport/schema boundaries intentionally accept Any.
+    "ASYNC109",# `timeout` is part of the public request API, not local task control.
+    "COM812",  # Conflicts with the formatter's trailing-comma decisions.
+    "CPY001",  # Copyright is declared once in the repository LICENSE.
+    "D100",    # Public documentation is maintained in docs and API guides.
+    "D101",    # Existing public classes are documented outside inline docstrings.
+    "D102",    # Existing public methods are documented outside inline docstrings.
+    "D103",    # Existing public functions are documented outside inline docstrings.
+    "D104",    # Public documentation is maintained outside __init__ modules.
+    "D105",    # Magic methods inherit their protocol contract.
+    "D107",    # Constructor contracts live on their public classes.
+    "E501",    # The formatter cannot split a few protocol/type declarations.
+    "EM101",   # Exception messages remain readable next to their raise site.
+    "EM102",   # Dynamic exception context remains readable next to the raise site.
+    "FA100",   # Runtime annotation behaviour is intentionally explicit per module.
+    "FA102",   # Runtime annotation behaviour is intentionally explicit per module.
+    "FIX001",  # FIXME markers remain searchable engineering debt.
+    "PLC0415", # Lazy imports break real protocol/schema dependency cycles.
+    "PLR0911", # Protocol parsers are clearer with early returns.
+    "PLR0913", # Public transport and protocol signatures are intentionally explicit.
+    "PLR2004", # HTTP/WebSocket status and wire constants are meaningful literals.
+    "SIM108",  # Multi-line protocol branches are clearer than dense ternaries.
+    "SLF001",  # Package-private collaborators intentionally share internal state.
+    "TC001",   # Runtime schema inspection requires first-party annotation imports.
+    "TC003",   # Runtime schema inspection requires selected stdlib annotation imports.
+    "TD001",   # The repository tracks work in roadmap/TODO.md.
+    "TD002",   # The repository tracks ownership in roadmap/TODO.md.
+    "TD003",   # The repository tracks issue links in roadmap/TODO.md.
+    "TD005",   # The repository tracks descriptions in roadmap/TODO.md.
+    "TRY003",  # Public exceptions deliberately carry local contextual messages.
+    "TRY300",  # Cleanup paths intentionally keep success returns inside try blocks.
+    "TRY301",  # Exception translation stays adjacent to the failing operation.
+    "UP006",   # Compatibility aliases intentionally preserve their spelling.
+    "UP035",   # Compatibility aliases intentionally preserve their import paths.
+    "UP046",   # Public generics preserve their current mypy/runtime representation.
+    "UP047",   # Public generics preserve their current mypy/runtime representation.
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 20
+
+[tool.ruff.lint.pylint]
+max-branches = 24
+max-statements = 63
+
+[tool.ruff.lint.per-file-ignores]
+"benchmarks/**" = ["T201"] # Benchmark commands intentionally report to stdout.
+"rapidy_client/middleware/retry.py" = ["S311"] # Backoff jitter is not a secret.
+"rapidy_client/observability.py" = ["FBT001"] # Observer callback protocol.
+"rapidy_client/schema/__init__.py" = ["E402"] # Exports follow marker definitions.
+"rapidy_client/schema/_binding.py" = [
+    "C901",
+    "PLR0912",
+    "PLR0915",
+] # Central dispatcher has one intentionally exhaustive protocol branch table.
+"rapidy_client/sse.py" = ["S311"] # Reconnect jitter is not a secret.
+"rapidy_client/transports/httpx.py" = ["S105"] # `identity` is a content coding.
+"rapidy_client/ws.py" = ["S311"] # Ping jitter is not a secret.
+"tests/**" = [
+    "ANN",
+    "ARG",
+    "D",
+    "FBT",
+    "INP001",
+    "PLR0917",
+    "PLR2004",
+    "PT011",
+    "PT012",
+    "PT022",
+    "RUF043",
+    "S",
+    "SIM105",
+    "SIM300",
+    "SLF001",
+    "TC002",
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"

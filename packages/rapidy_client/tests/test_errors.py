@@ -32,6 +32,7 @@ from rapidy_client import (
     WSClosedError,
     WSError,
     WSHandshakeError,
+    WSMessageTooLargeError,
     WSQueueFullError,
 )
 from rapidy_client._redaction import CROP_SUFFIX
@@ -61,6 +62,7 @@ from rapidy_client._redaction import CROP_SUFFIX
         (WSError, HttpClientError),
         (WSHandshakeError, WSError),
         (WSClosedError, WSError),
+        (WSMessageTooLargeError, WSError),
         (WSQueueFullError, WSError),
         (MessageValidationError, HttpClientError),
     ],
@@ -129,6 +131,7 @@ def test_each_error_instantiable_with_attrs() -> None:
         DecodeError,
         ResponseValidationError,
         WSError,
+        WSMessageTooLargeError,
         WSQueueFullError,
         MessageValidationError,
     ]

@@ -112,7 +112,11 @@ async def extract_body_json(request: Request, body_field_info: Body) -> DictStrA
     try:
         return cast('DictStrAny', await request.json(loads=body_field_info.json_decoder))
     except JSONDecodeError as json_decode_error:
-        raise ExtractJsonError(json_decode_err_msg=json_decode_error.args[0]) from json_decode_error
+        raise ExtractJsonError(json_decode_err_msg=json_decode_error.msg) from json_decode_error
+    except ValueError as value_error:
+        raise ExtractJsonError(json_decode_err_msg='Invalid JSON value') from value_error
+    except RecursionError as recursion_error:
+        raise ExtractJsonError(json_decode_err_msg='JSON nesting is too deep') from recursion_error
 
 
 async def extract_post_data(

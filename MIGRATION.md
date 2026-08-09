@@ -1,8 +1,11 @@
 # Migrating from rAPIdy 1.x to 2.0
 
-rAPIdy 1.x → 2.0: `import rapidy` is preserved. The root package, `rapidy.http`, and
-`rapidy.depends` are not renamed. The breaking changes are limited to the transport layer:
-Request/Response objects, HTTP exceptions, WebSockets, `run_app`, and worker management.
+rAPIdy 1.x → 2.0 preserves `import rapidy` and the main `rapidy.http` and
+`rapidy.depends` facades, but it is a breaking ASGI migration rather than a
+transport-only drop-in replacement. Request/response objects, HTTP exceptions,
+WebSockets, serving, lifecycle, application mutation, and aiohttp-derived
+modules all require review. The sections below name the removed public APIs and
+their replacements where one exists.
 
 ### 01. Request
 
@@ -224,7 +227,7 @@ async def list_items(): ...
 async def create_item(): ...
 
 router = HTTPRouter('/v1', [list_items, create_item])
-app = Rapidy(http_route_handlers=[router], middleware=[add_headers])
+app = Rapidy(http_route_handlers=[router], middlewares=[add_headers])
 app.add_http_router(another_router)
 app.add_http_routers([admin_router, health_router])
 ```

@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from rapidy.request import Request
     from rapidy.typedefs import CallNext, HTTPResponse
 
-__all__ = ('ProxyHeadersMiddleware',)
+__all__ = ('ProxyHeaderMode', 'ProxyHeadersMiddleware')
 
 _MAX_PORT = 65535
 

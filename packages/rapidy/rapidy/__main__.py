@@ -5,6 +5,7 @@ import importlib
 import json
 import sys
 from collections.abc import Sequence
+from pathlib import Path
 from typing import Any
 
 from rapidy.application import Rapidy
@@ -25,10 +26,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     routes_parser = commands.add_parser('routes', help='print registered HTTP routes')
     routes_parser.add_argument('target', help="application in 'module:attribute' form")
+    _add_app_dir_argument(routes_parser)
     routes_parser.add_argument('--json', action='store_true', dest='as_json')
 
     check_parser = commands.add_parser('check', help='validate application configuration')
     check_parser.add_argument('target', help="application in 'module:attribute' form")
+    _add_app_dir_argument(check_parser)
     return parser
 
 
@@ -39,10 +42,12 @@ def main(argv: Sequence[str] | None = None) -> None:
     if arguments and arguments[0] not in {'run', 'dev', 'routes', 'check', '-h', '--help'}:
         arguments.insert(0, 'run')
     args = build_parser().parse_args(arguments)
+    app_dir = _prepare_app_dir(args.app_dir)
     if args.command in {'run', 'dev'}:
         try:
             run_app(
                 args.target,
+                app_dir=app_dir,
                 host=args.host,
                 port=args.port,
                 workers=args.workers,
@@ -81,10 +86,31 @@ def load_app(target: str) -> Rapidy:
 
 def _add_server_arguments(parser: argparse.ArgumentParser, *, host: str) -> None:
     parser.add_argument('target', help="ASGI target in 'module:attribute' form")
+    _add_app_dir_argument(parser)
     parser.add_argument('--host', default=host)
     parser.add_argument('--port', type=int, default=8080)
     parser.add_argument('--workers', type=int, default=1)
     parser.add_argument('--timeout-graceful-shutdown', type=int)
+
+
+def _add_app_dir_argument(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        '--app-dir',
+        default='.',
+        help='directory containing the application module (default: current directory)',
+    )
+
+
+def _prepare_app_dir(value: str) -> str:
+    app_dir = Path(value).resolve()
+    if not app_dir.is_dir():
+        msg = f'Application directory does not exist or is not a directory: {value!r}'
+        raise SystemExit(msg)
+    resolved = str(app_dir)
+    if resolved in sys.path:
+        sys.path.remove(resolved)
+    sys.path.insert(0, resolved)
+    return resolved
 
 
 def _print_routes(app: Rapidy, *, as_json: bool) -> None:
@@ -119,6 +145,11 @@ def _check_app(app: Rapidy) -> None:
     openapi = 'disabled'
     if app.openapi_config is not None:
         config = app.openapi_config
+        try:
+            _ = app.openapi_schema
+        except Exception as exc:
+            msg = f'OpenAPI schema validation failed: {exc}'
+            raise SystemExit(msg) from exc
         openapi = ', '.join([config.json_path, *(plugin.path for plugin in config.get_render_plugins())])
     visible_routes = sum(not record.is_auto_head for record in app.routes)
     print(  # noqa: T201

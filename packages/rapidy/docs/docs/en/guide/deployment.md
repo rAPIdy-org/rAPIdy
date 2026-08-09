@@ -48,9 +48,12 @@ Each worker is an independent process with its own lifespan and DI container. `S
 instance per worker, not one instance for the whole cluster. External databases, brokers, and caches must tolerate
 that process model.
 
-rAPIdy stops accepting new work through the server, closes accepted WebSockets with code 1001, and lets active HTTP
-streams finish. Configure the server's graceful/kill timeout for the longest response you intend to allow. Do not use
-the aiohttp Gunicorn worker from rAPIdy 1.x; it is not part of 2.0.
+The process server stops accepting new work. During direct application-lifespan shutdown rAPIdy requests code 1001
+for accepted WebSockets that are still open, before user shutdown hooks, and lets active HTTP streams finish. A server
+may close connections before sending lifespan shutdown and then owns the wire code; Uvicorn currently uses its
+orderly restart close, while Granian 2.8.1 has a tracked strict-xfail because it drops the socket as 1006. Configure
+the server's graceful/kill timeout for the longest response you intend to allow. Do not use the aiohttp Gunicorn
+worker from rAPIdy 1.x; it is not part of 2.0.
 
 Access logs and TLS are server concerns. Put a reverse proxy or load balancer in front when you need centralized TLS,
 timeouts, request-size policy, or cross-process balancing.

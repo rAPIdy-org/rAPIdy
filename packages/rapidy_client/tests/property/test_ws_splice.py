@@ -61,6 +61,8 @@ def _session() -> WSSession[object, object]:
         _client=client,
         _request=request,
         _heartbeat=Heartbeat(),
+        _max_message_size=16_777_216,
+        _receive_queue_limit=1,
         _send_queue_limit=1,
         _send_timeout=1.0,
         _subprotocol=None,
@@ -76,10 +78,10 @@ def _decode(frame: bytes, offsets: list[int]) -> WSMessage:
         session._connection.receive_data(frame[start:end])
         for event in session._connection.events():
             if isinstance(event, (TextMessage, BytesMessage)):
-                session._message_event(event)
-    item = session._receive_queue.get_nowait()
-    assert isinstance(item, WSMessage)
-    return item
+                message = session._message_event(event)
+                if message is not None:
+                    return message
+    raise AssertionError("frame did not produce a complete WebSocket message")
 
 
 @settings(max_examples=40, deadline=None)

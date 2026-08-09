@@ -24,7 +24,11 @@ app = Rapidy(http_route_handlers=[echo])
 ```
 
 `WebSocket` supports text, bytes, JSON, subprotocols, headers, async iteration, and explicit close/reject. A client
-disconnect raises `WebSocketDisconnect`. Accepted connections receive close code 1001 during application shutdown.
+disconnect, including a transport failure during `send`, raises `WebSocketDisconnect` without an application-error
+traceback. During direct lifespan shutdown rAPIdy requests code 1001 for still-open accepted connections; a process
+server may close them earlier with its own orderly restart code, so signal behavior is runtime-specific.
+HTTP middleware does not wrap WebSocket handshakes; configure Host/Origin policy through
+`rapidy.security.WebSocketSecurityConfig`, especially when credentials come from cookies.
 
 ## Server-Sent Events
 
@@ -46,7 +50,9 @@ async def event_stream() -> SSEResponse:
 ```
 
 `SSEResponse` emits `text/event-stream; charset=utf-8`, `Cache-Control: no-cache`, multiline frames, optional event
-name/id, and retry metadata. It never sets `Content-Length`.
+name/id, and retry metadata. It never sets `Content-Length`. CR, LF, and CRLF inside event data are normalized into
+separate `data:` lines, so untrusted content cannot create SSE fields or a second event. Event names and IDs reject CR
+or LF; IDs also reject NUL. `retry` must be a non-negative integer.
 
 ## Generic streaming
 

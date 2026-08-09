@@ -29,7 +29,9 @@ path = await download_to(client, "/reports/latest", "latest.pdf")
 
 `aiter_file()` is a one-shot, chunked body, so retry is disabled for that
 request. Wrap a factory around a source that can be reopened when retries are
-safe.
+safe. Method-preserving redirects such as 307/308 also require replayability;
+otherwise the client raises `RedirectBodyNotReplayableError` before attempting
+the redirected request.
 
 ```python
 from pathlib import Path

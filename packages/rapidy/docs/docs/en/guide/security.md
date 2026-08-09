@@ -41,8 +41,9 @@ app = Rapidy(
 ```
 
 Missing or invalid credentials return HTTP 401 and a `WWW-Authenticate` challenge when the scheme provides one.
-An authenticated identity without required scopes returns HTTP 403. The OpenAPI JSON and UI routes are explicitly
-public, so a global policy does not lock clients out of the authentication description.
+An authenticated identity without required scopes returns HTTP 403. The OpenAPI JSON and UI routes are public by
+default, so a global policy does not lock clients out of the authentication description. Set
+`OpenAPIConfig(public=False)` when the schema and UI must inherit the same runtime policy.
 
 ## Requirements and inheritance
 
@@ -90,11 +91,47 @@ scopes configured on the built-in scheme.
 
 Raw passwords, API keys, and Bearer tokens are never stored in `AuthCredentials`. Built-in scheme/backend `repr`
 values omit secret material. Application verifiers remain responsible for safe logging and storage.
+Repeated `Authorization` fields and repeated header/query API-key parameters are rejected with HTTP 401, regardless
+of value order, so authentication cannot disagree with handler parameter extraction.
+
+`Response.set_cookie()` defaults to `SameSite=Lax`. For authentication cookies, explicitly set `secure=True` and
+`httponly=True` (and choose `lax` or `strict` for the application flow); those flags cannot be inferred safely for
+generic cookies or local HTTP development.
 
 ## Request, WebSocket, and DI
 
 HTTP handlers receive `request.user`, `request.auth`, and `request.identity`. WebSocket handlers get the same values
 from both the synthetic `Request` and `WebSocket`; a rejected handshake closes with WebSocket code 1008.
+
+HTTP middleware is not executed for WebSocket connections: `CORSMiddleware`, `TrustedHostMiddleware`, proxy/header,
+redirect, compression, and request-ID behavior is HTTP-only. Configure handshake Host/Origin checks explicitly with
+`WebSocketSecurityConfig`; application/router/route guards remain available for additional WebSocket authorization.
+
+```python
+from rapidy.security import APIKeyAuth, SecurityConfig, WebSocketSecurityConfig
+
+
+session_cookie = APIKeyAuth(
+    name='sessionCookie',
+    parameter_name='session',
+    location='cookie',
+    verify=verify_session,
+)
+security = SecurityConfig(
+    schemes=[session_cookie],
+    websocket=WebSocketSecurityConfig(
+        allowed_hosts=('api.example.com',),
+        allowed_origins=('https://app.example.com',),
+    ),
+)
+```
+
+Host patterns use the same exact/`*.example.com` semantics as `TrustedHostMiddleware`; ports are ignored for matching.
+Origins are exact serialized origins. Missing, malformed, or duplicate Host/Origin values fail closed when that check
+is configured. `allow_missing_origin=True` is available for non-browser clients, and `*` can opt into any valid
+origin. Neither option is accepted as protection for a WebSocket route that references a cookie API-key scheme:
+cookie-authenticated handshakes require an explicit, non-`null`, non-wildcard origin list and a present Origin header
+to prevent Cross-Site WebSocket Hijacking (CSWSH).
 
 ```python
 from rapidy.depends import FromDI

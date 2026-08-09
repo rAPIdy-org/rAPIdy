@@ -5,8 +5,10 @@ from collections.abc import Iterable, Sequence
 from concurrent.futures import Executor
 from functools import partial
 from http import HTTPStatus
-from typing import Any, cast, NamedTuple, TYPE_CHECKING
+from typing import Any, cast, NamedTuple
 
+from rapidy_core.encoders import CustomEncoder, Exclude, Include  # noqa: TC002 - runtime annotations
+from rapidy_core.enums import Charset, ContentType  # noqa: TC002 - runtime annotations
 from rapidy_core.exceptions import RapidyException
 
 from rapidy.depends import inject_http
@@ -14,10 +16,6 @@ from rapidy.endpoint_handlers.http.controller import controller_factory
 from rapidy.request import Request
 from rapidy.response import Response
 from rapidy.typedefs import CallNext, JSONEncoder, Middleware, UnsetType
-
-if TYPE_CHECKING:
-    from rapidy_core.encoders import CustomEncoder, Exclude, Include
-    from rapidy_core.enums import Charset, ContentType
 
 __all__ = ('MiddlewareAttrData', 'build_onion', 'middleware_validation_wrapper', 'prepare_middlewares')
 

@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from rapidy.request import Request
     from rapidy.typedefs import CallNext, HTTPResponse
 
-__all__ = ('CompressionMiddleware', 'GZipMiddleware', 'MissingBrotliDependencyError')
+__all__ = ('CompressionAlgorithm', 'CompressionMiddleware', 'GZipMiddleware', 'MissingBrotliDependencyError')
 
 type CompressionAlgorithm = Literal['br', 'gzip']
 

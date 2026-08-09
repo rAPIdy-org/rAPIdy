@@ -35,6 +35,6 @@ app = Rapidy(
     http_route_handlers=[
         create_export,
         download_report,
-        StaticFiles('/assets', directory=ASSET_DIR, html=True),
+        StaticFiles('/assets', directory=ASSET_DIR, html=True, public=True),
     ]
 )

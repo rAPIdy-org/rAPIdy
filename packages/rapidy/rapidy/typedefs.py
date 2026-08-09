@@ -15,10 +15,12 @@ from rapidy_core.typedefs import (
     NoArgAnyCallable,
     ResultValidate,
     UNSET,
-    Unset as UnsetType,
+    Unset,
     ValidateReturn,
     ValidationErrorList,
 )
+
+from rapidy import request as _request
 
 if TYPE_CHECKING:
     from rapidy.application import Rapidy
@@ -81,7 +83,7 @@ type LifespanHook = Callable[[Rapidy], SyncOrAsync] | Callable[[], SyncOrAsync]
 type LifespanManager = Any
 type LifespanCTX = LifespanManager | Callable[[Rapidy], LifespanManager]
 
-Unset = UNSET
+UnsetType = Unset
 
 
 class View:
@@ -89,7 +91,7 @@ class View:
 
     __slots__ = ('request',)
 
-    def __init__(self, request: Request) -> None:
+    def __init__(self, request: _request.Request) -> None:
         self.request = request
 
     def __await__(self) -> Any:

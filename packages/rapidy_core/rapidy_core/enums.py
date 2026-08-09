@@ -20,6 +20,7 @@ class StrEnum(str, Enum):
     Methods:
         __str__: Returns the string value of the enum member.
         __repr__: Returns a string representation of the enum member.
+
     """
 
     def __str__(self) -> str:
@@ -27,6 +28,7 @@ class StrEnum(str, Enum):
 
         Returns:
             str: The string value of the enum member.
+
         """
         return str(self.value)
 
@@ -35,6 +37,7 @@ class StrEnum(str, Enum):
 
         Returns:
             str: The string representation of the enum member.
+
         """
         return str(self)
 
