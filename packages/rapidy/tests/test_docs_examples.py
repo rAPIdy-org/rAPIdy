@@ -8,7 +8,7 @@ import websockets
 
 import httpx
 import pytest
-from examples import di, middleware_mounts, openapi, parameters, quickstart, realtime, testing
+from examples import di, middleware_mounts, openapi, parameters, quickstart, realtime, security, testing
 
 from tests.live_server import live_server
 
@@ -66,6 +66,20 @@ async def test_openapi_example() -> None:
     assert schema.json()['paths']['/items']['post']['operationId'] == 'createItem'
     assert created.status_code == 201
     assert created.json() == {'id': 1, 'name': 'Example'}
+
+
+@pytest.mark.asyncio
+async def test_security_example(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv('ITEMS_API_KEY', 'example-key')
+    async with security.app.lifespan.ctx_manager():
+        denied = await request(security.app, 'GET', '/items')
+        allowed = await request(security.app, 'GET', '/items', headers={'X-API-Key': 'example-key'})
+        health = await request(security.app, 'GET', '/health')
+
+    assert denied.status_code == 401
+    assert allowed.json()['identity_matches_request'] is True
+    assert allowed.json()['scopes'] == ['items:read']
+    assert health.text == 'ok'
 
 
 @pytest.mark.asyncio

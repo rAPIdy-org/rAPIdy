@@ -2,13 +2,16 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Mapping
 from enum import Enum
-from typing import Any, cast
+from typing import Any, cast, TYPE_CHECKING
 
 from multidict import CIMultiDict, CIMultiDictProxy
 
 from rapidy._base_exceptions import RapidyException
 from rapidy.constants import DEFAULT_JSON_DECODER, DEFAULT_JSON_ENCODER
 from rapidy.typedefs import ASGIScope, JSONDecoder, JSONEncoder, LooseHeaders, Receive, Send
+
+if TYPE_CHECKING:
+    from rapidy.security import AuthCredentials, SecurityIdentity
 
 __all__ = ('WebSocket', 'WebSocketDisconnect')
 
@@ -105,6 +108,24 @@ class WebSocket:
     def application_state(self) -> WebSocketState:
         """Return the current application-side state."""
         return self._application_state
+
+    @property
+    def identity(self) -> SecurityIdentity:
+        """Return the handshake security identity, anonymous by default."""
+        from rapidy.security import ANONYMOUS_IDENTITY  # noqa: PLC0415
+
+        state = cast('dict[str, Any]', self._scope.get('state', {}))
+        return cast('SecurityIdentity', state.get('_rapidy_security_identity', ANONYMOUS_IDENTITY))
+
+    @property
+    def user(self) -> Any:
+        """Return the authenticated handshake user."""
+        return self.identity.user
+
+    @property
+    def auth(self) -> AuthCredentials:
+        """Return authenticated scheme and scope metadata."""
+        return self.identity.auth
 
     async def accept(self, subprotocol: str | None = None, headers: LooseHeaders | None = None) -> None:
         """Consume the connect event and accept the WebSocket handshake."""

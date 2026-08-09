@@ -22,9 +22,15 @@ Read the complete, executable before/after guide in
 | static files / background tasks | external server/service; no 2.0 equivalent |
 | `AppKey` | `app.state` / `request.state` |
 | `rapidy.mypy` | `rapidy_core.mypy` |
+| middleware/DI authentication | `SecurityConfig`, built-in schemes, route requirements, and guards |
 
 Application-scoped DI is per process. If you configure N server workers, each worker creates and closes its own root
 container. Review startup side effects and singleton assumptions before increasing worker count.
+
+Runtime authentication is now available from `rapidy.security`. Existing OpenAPI-only `security_schemes` metadata
+keeps its documentation-only behavior until a `SecurityConfig` is installed, so migration is opt-in. Once installed,
+move scheme definitions and default requirements into `SecurityConfig`; the framework then enforces the same contract
+for HTTP and WebSocket and derives OpenAPI metadata from it.
 
 The migration test in the repository compares a typical 1.x and 2.0 application and permits changes only in the
 startup block; it also executes the 2.0 variant against routes, validation, DI, middleware, and mounts.

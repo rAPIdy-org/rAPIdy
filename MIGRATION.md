@@ -305,3 +305,24 @@ app = Rapidy(http_route_handlers=routes)
 
 Configure server logging through `run_app`/Granian settings and express handler behavior through
 route handlers or middleware.
+
+### 13. Authentication and authorization
+
+OpenAPI security metadata remains documentation-only until runtime security is explicitly installed. Applications
+that previously implemented authentication in middleware or DI can migrate incrementally to `SecurityConfig`.
+
+```python
+from rapidy.security import APIKeyAuth, SecurityConfig
+
+security = SecurityConfig(
+    schemes=[APIKeyAuth(key=settings.api_key)],
+    requirements=[{'apiKey': []}],
+)
+app = Rapidy(security=security, openapi_config=OpenAPIConfig())
+```
+
+The same requirements now enforce HTTP and WebSocket access and generate OpenAPI security metadata. Use route-level
+`security=...` for overrides, `security=[]` to remove authentication while retaining guards, or `public=True` to
+remove both inherited authentication and guards. `request.user`, `request.auth`, and `request.identity` replace
+middleware-specific request-state conventions; `SecurityIdentity` and `AuthCredentials` are also available through
+typed DI.

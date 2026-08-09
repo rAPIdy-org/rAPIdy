@@ -106,6 +106,7 @@ nav:
 - Guide:
   - Parameters and validation: guide/parameters.md
   - OpenAPI and documentation: guide/openapi.md
+  - Authentication and authorization: guide/security.md
   - Dependency injection: guide/di.md
   - Middleware and mounts: guide/middleware-routing.md
   - WebSockets and streaming: guide/realtime.md

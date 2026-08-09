@@ -135,35 +135,41 @@ shortcut remains supported and merges with `components.security_schemes` under t
 
 ## Security metadata
 
-Declare reusable OpenAPI security schemes in the application config and select them globally or per operation:
+Use `SecurityConfig` when the same declaration must authenticate requests at runtime and describe them in OpenAPI:
 
 ```python
-config = OpenAPIConfig(
-    title='Items API',
-    version='1.0.0',
-    security_schemes={
-        'bearerAuth': {
-            'type': 'http',
-            'scheme': 'bearer',
-            'bearerFormat': 'JWT',
-        },
-    },
-    security=({'bearerAuth': ()},),
+from rapidy.security import BearerAuth, SecurityConfig, SimpleUser
+
+
+async def verify_token(token: str) -> SimpleUser | None:
+    return await token_store.authenticate(token)
+
+
+security = SecurityConfig(
+    schemes=[BearerAuth(verify_token)],
+    requirements=[{'bearerAuth': []}],
 )
 
 
-@get('/health', security=[])
+@get('/health', public=True)
 async def health() -> str:
     return 'ok'
+
+
+app = Rapidy(
+    security=security,
+    openapi_config=OpenAPIConfig(title='Items API', version='1.0.0'),
+    http_route_handlers=[health],
+)
 ```
 
-An operation without `security` inherits the document-level requirement. `security=[]` removes that requirement for
-a public operation, while `security=[{'oauth': ['items:write']}]` selects a different scheme and scopes. Use
-`security=[{}]` when authentication is optional. Unknown scheme names and malformed scheme definitions fail schema
-generation instead of producing a broken document.
+An operation without `security` inherits the application requirement. `public=True` removes inherited runtime auth
+and guards and emits `security: []`; an explicit `security=[]` removes auth while retaining cumulative guards.
+`security=[{'bearerAuth': ['items:write']}]` requires scopes, while `security=[{}]` allows an anonymous alternative.
+Unknown runtime schemes fail closed. The older `OpenAPIConfig.security_schemes` and `OpenAPIConfig.security` fields
+remain available for documentation-only configurations when no `SecurityConfig` is installed.
 
-These values describe the API to OpenAPI clients and documentation UIs only. They do not authenticate requests or
-install runtime authorization policy; implement that policy with rAPIdy dependencies or middleware.
+See [authentication and authorization](security.md) for HTTP/WebSocket behavior, guards, DI, and built-in schemes.
 
 ## UI render plugins and offline assets
 

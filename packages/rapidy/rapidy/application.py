@@ -3,6 +3,7 @@ from __future__ import annotations
 import logging
 from collections.abc import AsyncIterator, Iterable, Iterator, MutableMapping, Sequence
 from contextlib import asynccontextmanager, suppress
+from dataclasses import replace
 from typing import Any, cast, TYPE_CHECKING
 
 from rapidy.constants import CLIENT_MAX_SIZE
@@ -26,7 +27,9 @@ from rapidy.responses.streaming import StreamResponse
 from rapidy.routing.http.base import raise_if_not_base_http_router
 from rapidy.routing.http.routers import get
 from rapidy.routing.matcher import RouteMatch, RouteRecord, UrlMatcher
-from rapidy.typedefs import ASGIScope, CallNext, Handler, LifespanCTX, LifespanHook, Middleware, Receive, Send
+from rapidy.security import Guard, SecurityConfig, SecurityScheme
+from rapidy.security.runtime import authorize_request
+from rapidy.typedefs import ASGIScope, CallNext, Handler, LifespanCTX, LifespanHook, Middleware, Receive, Send, Unset
 from rapidy.version import SERVER_INFO
 from rapidy.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
@@ -52,7 +55,9 @@ class Rapidy(MutableMapping[str, Any]):
         '_onion_built',
         '_openapi_config',
         '_openapi_schema',
+        '_parent_app',
         '_root_app',
+        '_security_config',
         'lifespan',
         'server_info_in_response',
         'state',
@@ -78,15 +83,18 @@ class Rapidy(MutableMapping[str, Any]):
         di_start_scope: BaseScope | None = None,
         di_validation_settings: ValidationSettings = DEFAULT_DI_VALIDATION_SETTINGS,
         openapi_config: OpenAPIConfig | None = None,
+        security: SecurityConfig | None = None,
     ) -> None:
         self._client_max_size = client_max_size
+        self._parent_app: Rapidy | None = None
         self._root_app: Rapidy | None = None
         self._di_container_closed = False
         self._di_container_owned = False
         self._middlewares = list(middlewares or ())
         self._onion: CallNext | None = None
         self._onion_built = False
-        self._openapi_config = openapi_config
+        self._security_config = security
+        self._openapi_config = _bind_openapi_security(openapi_config, security)
         self._openapi_schema: dict[str, Any] | None = None
         self._di_config = DIConfig(
             container=di_container,
@@ -121,10 +129,12 @@ class Rapidy(MutableMapping[str, Any]):
     @property
     def routes(self) -> tuple[RouteRecord, ...]:
         """Return root and recursively mounted route records with full paths."""
-        records = list(self._matcher.routes)
-        for prefix, subapp in self._subapps:
-            records.extend(record._replace(path=f'{prefix}{record.path}') for record in subapp.routes)
-        return tuple(records)
+        document_requirements = tuple(self._openapi_config.security) if self._openapi_config is not None else ()
+        return self._openapi_routes(
+            inherited_security=None,
+            document_requirements=document_requirements,
+            prefix='',
+        )
 
     @property
     def openapi_config(self) -> OpenAPIConfig | None:
@@ -137,7 +147,7 @@ class Rapidy(MutableMapping[str, Any]):
         if self._openapi_config is None:
             return None
         if self._openapi_schema is None:
-            self._openapi_schema = create_openapi_schema(self.routes, self._openapi_config)
+            self._openapi_schema = create_openapi_schema(self.routes, self._openapi_generation_config())
         return self._openapi_schema
 
     @property
@@ -147,11 +157,12 @@ class Rapidy(MutableMapping[str, Any]):
             return None
         return self.state.get('di_container')
 
-    def _bind_to_root(self, root_app: Rapidy) -> None:
-        """Mark this application as a mounted child of the given root."""
-        self._root_app = root_app._root_app or root_app
+    def _bind_to_root(self, parent_app: Rapidy) -> None:
+        """Mark this application as a mounted child of the given parent and root."""
+        self._parent_app = parent_app
+        self._root_app = parent_app._root_app or parent_app
         for _prefix, subapp in self._subapps:
-            subapp._bind_to_root(self._root_app)  # noqa: SLF001
+            subapp._bind_to_root(self)  # noqa: SLF001
 
     def _request_di_container(self) -> AsyncContainer | None:
         if self._root_app is not None:
@@ -211,6 +222,7 @@ class Rapidy(MutableMapping[str, Any]):
             get(
                 config.json_path,
                 include_in_schema=False,
+                public=True,
                 response_content_type='application/json',
                 response_type=dict[str, Any],
             )(openapi_json)
@@ -230,7 +242,7 @@ class Rapidy(MutableMapping[str, Any]):
             return openapi_ui
 
         for plugin in config.get_render_plugins():
-            self.add_http_router(get(plugin.path, include_in_schema=False)(create_ui_handler(plugin)))
+            self.add_http_router(get(plugin.path, include_in_schema=False, public=True)(create_ui_handler(plugin)))
 
     async def __call__(self, scope: ASGIScope, receive: Receive, send: Send) -> None:
         """Dispatch one ASGI connection by scope type."""
@@ -276,7 +288,12 @@ class Rapidy(MutableMapping[str, Any]):
         async with request_di_scope(container, request):
             await self._handle_http(request, tracking_send)
 
-    async def _handle_websocket(self, scope: ASGIScope, receive: Receive, send: Send) -> None:
+    async def _handle_websocket(  # noqa: C901, PLR0915
+        self,
+        scope: ASGIScope,
+        receive: Receive,
+        send: Send,
+    ) -> None:
         if not self._onion_built:
             await receive()
             await send(
@@ -297,11 +314,13 @@ class Rapidy(MutableMapping[str, Any]):
 
         matched_app, route_match = resolved
         request_scope = dict(scope)
+        shared_state = cast('dict[str, Any]', scope.setdefault('state', {}))
         request_scope.update(
             {
                 'app': matched_app,
                 'method': 'GET',
                 'path_params': route_match.path_params,
+                'state': shared_state,
             }
         )
         ws = WebSocket(scope, receive, send)
@@ -332,6 +351,11 @@ class Rapidy(MutableMapping[str, Any]):
             ) as session_container:
                 request.state.di_container = session_container
                 try:
+                    try:
+                        await matched_app._authorize_route(request, route_match.route_kwargs)  # noqa: SLF001
+                    except HTTPException as exc:
+                        await ws.close(code=1008, reason=exc.reason)
+                        return
                     ws_terminal = cast('Handler', route_match.terminal)
                     await ws_terminal(ws, request)
                 except WebSocketDisconnect:
@@ -410,7 +434,103 @@ class Rapidy(MutableMapping[str, Any]):
         route_match = self._matcher.resolve(request.method, path)
         request.scope['path_params'] = route_match.path_params
         request.path_params = route_match.path_params
+        await self._authorize_route(request, route_match.route_kwargs)
         return cast('Response | StreamResponse', await route_match.terminal(request))
+
+    async def _authorize_route(self, request: Request, route_kwargs: dict[str, Any]) -> None:
+        configs = [
+            app._security_config  # noqa: SLF001
+            for app in self._application_chain
+            if app._security_config is not None  # noqa: SLF001
+        ]
+        schemes: dict[str, SecurityScheme] = {}
+        guards: list[Guard] = []
+        for config in configs:
+            for scheme in config.schemes:
+                existing = schemes.get(scheme.name)
+                if existing is not None and existing.openapi_schema != scheme.openapi_schema:
+                    msg = f'Conflicting runtime security scheme: {scheme.name!r}'
+                    raise RuntimeError(msg)
+                schemes[scheme.name] = scheme
+            guards.extend(config.guards)
+
+        public = route_kwargs.get('public') is True
+        configured_guards = route_kwargs.get('guards', Unset)
+        if configured_guards is not Unset:
+            guards.extend(configured_guards)
+        requirements: Any
+        if public:
+            requirements = ()
+            guards = []
+        elif configs:
+            configured_requirements = route_kwargs.get('security', Unset)
+            requirements = configs[-1].requirements if configured_requirements is Unset else configured_requirements
+        else:
+            # Keep pre-milestone OpenAPI-only metadata non-enforcing until a SecurityConfig is installed.
+            requirements = ()
+
+        await authorize_request(
+            request,
+            schemes=schemes,
+            requirements=requirements,
+            guards=guards,
+        )
+
+    @property
+    def _application_chain(self) -> tuple[Rapidy, ...]:
+        chain: list[Rapidy] = []
+        current: Rapidy | None = self
+        while current is not None:
+            chain.append(current)
+            current = current._parent_app  # noqa: SLF001
+        chain.reverse()
+        return tuple(chain)
+
+    def _openapi_routes(
+        self,
+        *,
+        inherited_security: SecurityConfig | None,
+        document_requirements: tuple[Any, ...],
+        prefix: str,
+    ) -> tuple[RouteRecord, ...]:
+        effective_security = self._security_config or inherited_security
+        records: list[RouteRecord] = []
+        for record in self._matcher.routes:
+            route_kwargs = dict(record.route_kwargs)
+            configured = route_kwargs.get('security', Unset)
+            if (
+                configured is Unset
+                and effective_security is not None
+                and tuple(effective_security.requirements) != document_requirements
+            ):
+                route_kwargs['security'] = effective_security.requirements
+            records.append(record._replace(path=f'{prefix}{record.path}', route_kwargs=route_kwargs))
+        for child_prefix, subapp in self._subapps:
+            records.extend(
+                subapp._openapi_routes(  # noqa: SLF001
+                    inherited_security=effective_security,
+                    document_requirements=document_requirements,
+                    prefix=f'{prefix}{child_prefix}',
+                )
+            )
+        return tuple(records)
+
+    def _openapi_generation_config(self) -> OpenAPIConfig:
+        config = cast('OpenAPIConfig', self._openapi_config)
+        security_schemes = dict(config.security_schemes)
+        applications = [self]
+        while applications:
+            app = applications.pop()
+            applications.extend(subapp for _prefix, subapp in app._subapps)  # noqa: SLF001
+            if app._security_config is None:  # noqa: SLF001
+                continue
+            for scheme in app._security_config.schemes:  # noqa: SLF001
+                existing = security_schemes.get(scheme.name)
+                if existing is not None and dict(existing) != scheme.openapi_schema:
+                    msg = f'Conflicting OpenAPI security scheme: {scheme.name!r}'
+                    raise ValueError(msg)
+                security_schemes[scheme.name] = scheme.openapi_schema
+        return replace(config, security_schemes=security_schemes)
 
     def _can_resolve(self, method: str, path: str) -> bool:
         for prefix, subapp in self._subapps:
@@ -480,6 +600,36 @@ def _strip_root_path(path: str, root_path: str) -> str:
     if root_path and path.startswith(root_path):
         return path[len(root_path) :] or '/'
     return path
+
+
+def _bind_openapi_security(
+    openapi_config: OpenAPIConfig | None,
+    security: SecurityConfig | None,
+) -> OpenAPIConfig | None:
+    if openapi_config is None or security is None:
+        return openapi_config
+
+    security_schemes = dict(openapi_config.security_schemes)
+    for scheme in security.schemes:
+        existing = security_schemes.get(scheme.name)
+        if existing is not None and dict(existing) != scheme.openapi_schema:
+            msg = f'Conflicting OpenAPI security scheme: {scheme.name!r}'
+            raise ValueError(msg)
+        security_schemes[scheme.name] = scheme.openapi_schema
+
+    configured_requirements = tuple(
+        {name: tuple(scopes) for name, scopes in requirement.items()}
+        for requirement in openapi_config.security
+    )
+    runtime_requirements = tuple(security.requirements)
+    if configured_requirements and configured_requirements != runtime_requirements:
+        msg = 'OpenAPIConfig.security conflicts with SecurityConfig.requirements'
+        raise ValueError(msg)
+    return replace(
+        openapi_config,
+        security_schemes=security_schemes,
+        security=runtime_requirements,
+    )
 
 
 def _raise_server_exception_for_tests(scope: ASGIScope, exc: Exception) -> None:

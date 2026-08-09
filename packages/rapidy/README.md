@@ -74,6 +74,24 @@ response schemas come from the same Pydantic annotations used for runtime valida
 callbacks, webhooks, and response links use their native OpenAPI 3.1 object shapes. UI render plugins can use CDN,
 internal-host, or application-local asset URLs and support custom renderers without adding runtime dependencies.
 
+Runtime authentication and OpenAPI can share one contract:
+
+```python
+from rapidy.security import APIKeyAuth, SecurityConfig
+
+security = SecurityConfig(
+    schemes=[APIKeyAuth(key=settings.api_key)],
+    requirements=[{'apiKey': []}],
+)
+app = Rapidy(
+    security=security,
+    openapi_config=OpenAPIConfig(title='Users API', version='1.0.0'),
+)
+```
+
+Built-in API-key, Basic, and opaque Bearer schemes cover HTTP and WebSocket. Scopes, cumulative guards, public route
+overrides, `request.user`/`request.auth`, and typed DI are included without adding a cryptography dependency.
+
 Run it with Granian:
 
 ```bash
@@ -139,6 +157,8 @@ provide in-process WebSocket/SSE sessions plus isolated Dishka provider override
 - OpenAPI 3.1 generation is available from `rapidy.openapi`, including Pydantic components, request bodies,
   parameters, responses, all reusable component sections, callbacks, webhooks, response links, mounted routes,
   Swagger UI, and ReDoc.
+- Runtime security from `rapidy.security` shares schemes and requirements with OpenAPI and exposes identities through
+  HTTP, WebSocket, and DI.
 - `HTTPRouter('/v1', handlers)` creates nested mounts with their own middleware, limits, and lifespan while sharing
   the root DI container.
 - `@websocket`, `WebSocket`, `SSEResponse`, and `StreamResponse` provide native ASGI realtime and streaming APIs.

@@ -135,36 +135,43 @@ async def read_item(item_id: int = PathParam()) -> ItemOut:
 
 ## Метаданные безопасности
 
-Переиспользуемые OpenAPI security schemes задаются в конфигурации приложения, а требования выбираются глобально
-или для отдельной операции:
+Если одно объявление должно одновременно проверять запросы в runtime и описывать их в OpenAPI, используйте
+`SecurityConfig`:
 
 ```python
-config = OpenAPIConfig(
-    title='Items API',
-    version='1.0.0',
-    security_schemes={
-        'bearerAuth': {
-            'type': 'http',
-            'scheme': 'bearer',
-            'bearerFormat': 'JWT',
-        },
-    },
-    security=({'bearerAuth': ()},),
+from rapidy.security import BearerAuth, SecurityConfig, SimpleUser
+
+
+async def verify_token(token: str) -> SimpleUser | None:
+    return await token_store.authenticate(token)
+
+
+security = SecurityConfig(
+    schemes=[BearerAuth(verify_token)],
+    requirements=[{'bearerAuth': []}],
 )
 
 
-@get('/health', security=[])
+@get('/health', public=True)
 async def health() -> str:
     return 'ok'
+
+
+app = Rapidy(
+    security=security,
+    openapi_config=OpenAPIConfig(title='Items API', version='1.0.0'),
+    http_route_handlers=[health],
+)
 ```
 
-Операция без `security` наследует глобальное требование документа. `security=[]` отменяет его для публичного
-маршрута, а `security=[{'oauth': ['items:write']}]` выбирает другую схему и scopes. `security=[{}]` означает, что
-авторизация необязательна. Ссылка на неизвестную схему или некорректное определение останавливают генерацию вместо
-создания сломанного документа.
+Операция без `security` наследует требование приложения. `public=True` снимает унаследованные runtime auth и guards
+и добавляет `security: []`; явное `security=[]` снимает только auth, сохраняя cumulative guards.
+`security=[{'bearerAuth': ['items:write']}]` требует scopes, а `security=[{}]` разрешает анонимную альтернативу.
+Неизвестные runtime-схемы закрывают доступ. Прежние `OpenAPIConfig.security_schemes` и `OpenAPIConfig.security`
+остаются доступны для конфигурации только документации, если `SecurityConfig` не установлен.
 
-Эти параметры только описывают API для OpenAPI-клиентов и интерфейсов документации. Они не аутентифицируют запросы
-и не устанавливают runtime-политику авторизации — её нужно реализовать через зависимости или middleware rAPIdy.
+HTTP/WebSocket-поведение, guards, DI и встроенные схемы описаны в разделе
+[аутентификация и авторизация](security.md).
 
 ## UI render plugins и offline assets
 

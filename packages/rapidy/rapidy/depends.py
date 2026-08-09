@@ -34,6 +34,7 @@ from rapidy_core.di import (
 
 from rapidy.request import Request
 from rapidy.response import Response
+from rapidy.security.models import AuthCredentials, SecurityIdentity
 from rapidy.websockets import WebSocket
 
 __all__ = [
@@ -129,3 +130,13 @@ class RapidyProvider(Provider):
 
     request = from_context(Request, scope=Scope.SESSION)
     web_socket = from_context(WebSocket, scope=Scope.SESSION)
+
+    @provide(scope=Scope.SESSION)
+    def security_identity(self, request: Request) -> SecurityIdentity:
+        """Expose the lazily established security identity to HTTP and WebSocket DI."""
+        return request.identity
+
+    @provide(scope=Scope.SESSION)
+    def auth_credentials(self, identity: SecurityIdentity) -> AuthCredentials:
+        """Expose scope metadata without storing or injecting raw credential material."""
+        return identity.auth

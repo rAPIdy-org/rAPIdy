@@ -40,6 +40,7 @@ if TYPE_CHECKING:
     from rapidy_core.parameters.http import RequestParamFieldInfo
 
     from rapidy.application import Rapidy
+    from rapidy.security import Guard, SecurityConfig
 
 __all__ = (
     'HandlerParameterRecord',
@@ -59,7 +60,7 @@ __all__ = (
 
 MethodName = HTTPMethod
 DUNDER_NAME_MIN_LENGTH = 4
-_OPENAPI_ROUTE_KWARGS = frozenset(
+_ROUTE_METADATA_KWARGS = frozenset(
     {
         'callbacks',
         'deprecated',
@@ -72,6 +73,8 @@ _OPENAPI_ROUTE_KWARGS = frozenset(
         'security',
         'summary',
         'tags',
+        'guards',
+        'public',
     }
 )
 
@@ -218,6 +221,7 @@ class HTTPRouter(BaseHTTPRouter):
         on_startup: list[LifespanHook] | None = None,
         on_shutdown: list[LifespanHook] | None = None,
         on_cleanup: list[LifespanHook] | None = None,
+        security: SecurityConfig | None = None,
     ) -> None:
         from rapidy.application import Rapidy  # noqa: PLC0415
 
@@ -230,6 +234,7 @@ class HTTPRouter(BaseHTTPRouter):
             on_startup=on_startup or (),
             on_shutdown=on_shutdown or (),
             on_cleanup=on_cleanup or (),
+            security=security,
         )
 
     def route_register(self, application: Rapidy) -> None:
@@ -239,10 +244,24 @@ class HTTPRouter(BaseHTTPRouter):
 class websocket(BaseHTTPRouter):
     """Register an asynchronous WebSocket route."""
 
-    __slots__ = ('_handler',)
+    __slots__ = ('_handler', '_route_kwargs')
 
-    def __init__(self, path: str | None = None) -> None:
+    def __init__(
+        self,
+        path: str | None = None,
+        *,
+        security: Sequence[Mapping[str, Sequence[str]]] | UnsetType = Unset,
+        guards: Sequence[Guard] | UnsetType = Unset,
+        public: bool | UnsetType = Unset,
+    ) -> None:
         super().__init__(path=path)
+        self._route_kwargs = {
+            key: value
+            for key, value in {'security': security, 'guards': guards, 'public': public}.items()
+            if value is not Unset
+        }
+        if public is True:
+            self._route_kwargs['security'] = ()
 
     def __call__(self, handler: Handler) -> websocket:
         if not _is_async_callable(handler):
@@ -256,6 +275,7 @@ class websocket(BaseHTTPRouter):
         application._matcher.add_ws_route(  # noqa: SLF001
             self.path,
             _create_ws_terminal(self._handler),
+            self._route_kwargs,
         )
 
 
@@ -297,6 +317,8 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         response_links: Mapping[str, Mapping[str, Any]] | UnsetType = Unset,
         callbacks: Mapping[str, Mapping[str, Any]] | UnsetType = Unset,
         security: Sequence[Mapping[str, Sequence[str]]] | UnsetType = Unset,
+        guards: Sequence[Guard] | UnsetType = Unset,
+        public: bool | UnsetType = Unset,
         **kwargs: Any,
     ) -> None:
         raw_kwargs = {
@@ -326,6 +348,8 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
             'response_links': response_links,
             'callbacks': callbacks,
             'security': security,
+            'guards': guards,
+            'public': public,
             **kwargs,
         }
         self._set_route_kwargs = {key: value for key, value in raw_kwargs.items() if value is not Unset}
@@ -361,6 +385,8 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         response_links: Mapping[str, Mapping[str, Any]] | UnsetType = Unset,
         callbacks: Mapping[str, Mapping[str, Any]] | UnsetType = Unset,
         security: Sequence[Mapping[str, Sequence[str]]] | UnsetType = Unset,
+        guards: Sequence[Guard] | UnsetType = Unset,
+        public: bool | UnsetType = Unset,
         **kwargs: Any,
     ) -> None:
         self._route_kwargs = {
@@ -390,8 +416,12 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
             'response_links': response_links,
             'callbacks': callbacks,
             'security': security,
+            'guards': guards,
+            'public': public,
             **kwargs,
         }
+        if public is True:
+            self._route_kwargs['security'] = ()
         super().__init__(path=path)
 
     def __call__(self, handler: Handler) -> HTTPRouteHandler:
@@ -430,6 +460,8 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         response_links: Mapping[str, Mapping[str, Any]] | UnsetType = Unset,
         callbacks: Mapping[str, Mapping[str, Any]] | UnsetType = Unset,
         security: Sequence[Mapping[str, Sequence[str]]] | UnsetType = Unset,
+        guards: Sequence[Guard] | UnsetType = Unset,
+        public: bool | UnsetType = Unset,
         **kwargs: Any,
     ) -> HTTPRouteHandler:
         route = cls(
@@ -460,6 +492,8 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
             response_links=response_links,
             callbacks=callbacks,
             security=security,
+            guards=guards,
+            public=public,
             **kwargs,
         )
         return route(cast('Handler', handler))
@@ -472,7 +506,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
             view = cast('type[View]', self._handler)
             route_kwargs = dict(self._route_kwargs)
             route_kwargs.pop('allow_head', None)
-            terminal_kwargs = {key: value for key, value in route_kwargs.items() if key not in _OPENAPI_ROUTE_KWARGS}
+            terminal_kwargs = {key: value for key, value in route_kwargs.items() if key not in _ROUTE_METADATA_KWARGS}
             original_handlers = {
                 name.upper(): cast('Handler', getattr(view, name))
                 for name in ('get', 'post', 'put', 'patch', 'delete', 'head', 'options')
@@ -525,7 +559,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
 
         route_kwargs = dict(self._route_kwargs)
         allow_head = bool(route_kwargs.pop('allow_head', True))
-        terminal_kwargs = {key: value for key, value in route_kwargs.items() if key not in _OPENAPI_ROUTE_KWARGS}
+        terminal_kwargs = {key: value for key, value in route_kwargs.items() if key not in _ROUTE_METADATA_KWARGS}
         terminal = handler_validation_wrapper(self._handler, **terminal_kwargs)
         parameters = _get_handler_parameters(self._handler)
         application._matcher.add_route(  # noqa: SLF001
@@ -548,11 +582,18 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         sub_route_kwargs: dict[str, Any],
         sub_route_set_kwargs: dict[str, Any],
     ) -> dict[str, Any]:
-        return {
+        extended = {
             **sub_route_kwargs,
             **self._set_route_kwargs,
             **sub_route_set_kwargs,
         }
+        controller_guards = self._set_route_kwargs.get('guards', Unset)
+        handler_guards = sub_route_set_kwargs.get('guards', Unset)
+        if controller_guards is not Unset and handler_guards is not Unset:
+            extended['guards'] = (*controller_guards, *handler_guards)
+        if extended.get('public') is True:
+            extended['security'] = ()
+        return extended
 
 
 class HTTPMethodRouteHandler(HTTPRouteHandler):

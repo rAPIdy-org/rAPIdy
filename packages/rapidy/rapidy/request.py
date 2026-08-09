@@ -22,6 +22,7 @@ if TYPE_CHECKING:
     from python_multipart.multipart import MultipartCallbacks
 
     from rapidy.application import Rapidy
+    from rapidy.security import AuthCredentials, SecurityIdentity
 
 __all__ = ('BaseRequest', 'FileField', 'Request', 'State')
 
@@ -294,6 +295,23 @@ class Request:
     def client_max_size(self) -> int:
         """Resolve the body limit from the currently bound application."""
         return self.app.client_max_size
+
+    @property
+    def identity(self) -> SecurityIdentity:
+        """Return the current typed security identity, anonymous by default."""
+        from rapidy.security import ANONYMOUS_IDENTITY  # noqa: PLC0415
+
+        return cast('SecurityIdentity', self.state.get('_rapidy_security_identity', ANONYMOUS_IDENTITY))
+
+    @property
+    def user(self) -> Any:
+        """Return the authenticated user object, or the stable anonymous user."""
+        return self.identity.user
+
+    @property
+    def auth(self) -> AuthCredentials:
+        """Return authenticated scheme and scope metadata without raw credential material."""
+        return self.identity.auth
 
     @property
     def deadline_remaining_ms(self) -> int | None:

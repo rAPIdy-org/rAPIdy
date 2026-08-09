@@ -8,6 +8,7 @@ from rapidy import Rapidy
 from rapidy.depends import FromDI
 from rapidy.http import Body, get, PathParam, post
 from rapidy.openapi import create_openapi_schema, OpenAPIComponents, OpenAPIConfig, SwaggerRenderPlugin
+from rapidy.security import APIKeyAuth, AuthCredentials, SecurityConfig, SecurityIdentity
 from rapidy.testing import (
     AsyncSSESession,
     AsyncTestClient,
@@ -45,9 +46,14 @@ openapi_config = OpenAPIConfig(
         ),
     ),
 )
+security_config = SecurityConfig(
+    schemes=[APIKeyAuth(key='typed-key')],
+    requirements=[{'apiKey': []}],
+)
 app: Rapidy = Rapidy(
     http_route_handlers=[get_item, create_item],
     openapi_config=openapi_config,
+    security=security_config,
 )
 openapi_schema: dict[str, object] | None = app.openapi_schema
 generated_schema: dict[str, object] = create_openapi_schema(app.routes, openapi_config)
@@ -55,5 +61,7 @@ sync_client: TestClient = create_test_client([get_item])
 async_client: AsyncTestClient = AsyncTestClient(app)
 
 if TYPE_CHECKING:
+    security_identity: SecurityIdentity
+    auth_credentials: AuthCredentials
     websocket_session: AsyncWebSocketSession = async_client.websocket_connect('/ws')
     sse_session: AsyncSSESession = async_client.sse_connect('/events')
