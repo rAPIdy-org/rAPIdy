@@ -52,6 +52,38 @@ Use `include_in_schema=False` for an HTTP route that must remain callable but hi
 `HEAD` routes are omitted; an explicitly declared `@head` operation is included. When `description` is absent, the
 handler docstring is used. Default operation IDs are deterministic and duplicate custom IDs fail schema generation.
 
+## Security metadata
+
+Declare reusable OpenAPI security schemes in the application config and select them globally or per operation:
+
+```python
+config = OpenAPIConfig(
+    title='Items API',
+    version='1.0.0',
+    security_schemes={
+        'bearerAuth': {
+            'type': 'http',
+            'scheme': 'bearer',
+            'bearerFormat': 'JWT',
+        },
+    },
+    security=({'bearerAuth': ()},),
+)
+
+
+@get('/health', security=[])
+async def health() -> str:
+    return 'ok'
+```
+
+An operation without `security` inherits the document-level requirement. `security=[]` removes that requirement for
+a public operation, while `security=[{'oauth': ['items:write']}]` selects a different scheme and scopes. Use
+`security=[{}]` when authentication is optional. Unknown scheme names and malformed scheme definitions fail schema
+generation instead of producing a broken document.
+
+These values describe the API to OpenAPI clients and documentation UIs only. They do not authenticate requests or
+install runtime authorization policy; implement that policy with rAPIdy dependencies or middleware.
+
 ## What is inferred
 
 - `PathParam`, `QueryParam`, `Header`, and `Cookie` become OpenAPI parameters with aliases, defaults, constraints,

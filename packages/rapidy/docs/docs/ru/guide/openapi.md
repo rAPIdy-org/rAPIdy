@@ -51,6 +51,39 @@ async def create_item(payload: ItemIn = Body()) -> ItemOut:
 явный `@head` включается. Если `description` не задан, используется docstring хендлера. Идентификаторы операций по
 умолчанию детерминированы, а повтор пользовательского `operation_id` останавливает генерацию.
 
+## Метаданные безопасности
+
+Переиспользуемые OpenAPI security schemes задаются в конфигурации приложения, а требования выбираются глобально
+или для отдельной операции:
+
+```python
+config = OpenAPIConfig(
+    title='Items API',
+    version='1.0.0',
+    security_schemes={
+        'bearerAuth': {
+            'type': 'http',
+            'scheme': 'bearer',
+            'bearerFormat': 'JWT',
+        },
+    },
+    security=({'bearerAuth': ()},),
+)
+
+
+@get('/health', security=[])
+async def health() -> str:
+    return 'ok'
+```
+
+Операция без `security` наследует глобальное требование документа. `security=[]` отменяет его для публичного
+маршрута, а `security=[{'oauth': ['items:write']}]` выбирает другую схему и scopes. `security=[{}]` означает, что
+авторизация необязательна. Ссылка на неизвестную схему или некорректное определение останавливают генерацию вместо
+создания сломанного документа.
+
+Эти параметры только описывают API для OpenAPI-клиентов и интерфейсов документации. Они не аутентифицируют запросы
+и не устанавливают runtime-политику авторизации — её нужно реализовать через зависимости или middleware rAPIdy.
+
 ## Что выводится автоматически
 
 - `PathParam`, `QueryParam`, `Header` и `Cookie` становятся параметрами с alias, default, constraints, description и

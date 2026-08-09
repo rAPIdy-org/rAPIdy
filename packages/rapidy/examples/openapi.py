@@ -21,9 +21,9 @@ class ItemOut(ItemIn):
     id: int
 
 
-@get('/items/{item_id:\\d+}', tags=['items'], summary='Read an item')
+@get('/items/{item_id:\\d+}', tags=['items'], summary='Read an item', security=[])
 async def read_item(item_id: int = PathParam()) -> ItemOut:
-    """Return one item by its integer identifier."""
+    """Return one public item by its integer identifier."""
     return ItemOut(id=item_id, name='Example')
 
 
@@ -44,6 +44,14 @@ app = Rapidy(
         version='1.0.0',
         description='A small OpenAPI-enabled rAPIdy application.',
         tags=({'name': 'items', 'description': 'Item operations'},),
+        security_schemes={
+            'bearerAuth': {
+                'type': 'http',
+                'scheme': 'bearer',
+                'bearerFormat': 'JWT',
+            },
+        },
+        security=({'bearerAuth': ()},),
     ),
 )
 

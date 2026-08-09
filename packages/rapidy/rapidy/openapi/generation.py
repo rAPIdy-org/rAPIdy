@@ -25,6 +25,8 @@ __all__ = ('OpenAPIGenerationError', 'create_openapi_schema')
 
 _REF_TEMPLATE = '#/components/schemas/{model}'
 _NO_BODY_STATUSES = {204, 304}
+_SECURITY_SCHEME_TYPES = frozenset({'apiKey', 'http', 'mutualTLS', 'oauth2', 'openIdConnect'})
+_NON_ARRAY_TYPES = (str, bytes, bytearray)
 _VALIDATION_ERROR_SCHEMA = {
     'properties': {
         'loc': {'items': {'anyOf': [{'type': 'string'}, {'type': 'integer'}]}, 'type': 'array'},
@@ -78,9 +80,9 @@ class _SchemaRegistry:
             self._fallbacks[key] = fallback or _fallback_schema(annotation)
 
     def build(self) -> None:
-        inputs: list[
-            tuple[str, Literal['validation', 'serialization'], TypeAdapter[Any]]
-        ] = [(key, mode, adapter) for key, (mode, adapter) in self._adapters.items()]
+        inputs: list[tuple[str, Literal['validation', 'serialization'], TypeAdapter[Any]]] = [
+            (key, mode, adapter) for key, (mode, adapter) in self._adapters.items()
+        ]
         if inputs:
             try:
                 schemas, root = TypeAdapter.json_schemas(inputs, ref_template=_REF_TEMPLATE)
@@ -88,10 +90,7 @@ class _SchemaRegistry:
                 self._build_individually()
             else:
                 self._schemas.update(
-                    {
-                        key: deepcopy(schemas[(key, mode)])
-                        for key, (mode, _adapter) in self._adapters.items()
-                    }
+                    {key: deepcopy(schemas[(key, mode)]) for key, (mode, _adapter) in self._adapters.items()}
                 )
                 self._merge_components(root.pop('$defs', {}))
         self._schemas.update({key: deepcopy(schema) for key, schema in self._fallbacks.items()})
@@ -418,12 +417,111 @@ def _default_operation_id(route: RouteRecord, openapi_path: str) -> str:
     return f'{handler_name}_{route.method.lower()}{suffix}'
 
 
+def _is_array(value: Any) -> bool:
+    return isinstance(value, Sequence) and not isinstance(value, _NON_ARRAY_TYPES)
+
+
+def _validate_api_key_security_scheme(name: str, scheme: Mapping[str, Any]) -> None:
+    if not isinstance(scheme.get('name'), str) or not scheme['name']:
+        msg = f'OpenAPI apiKey security scheme {name!r} requires a non-empty `name`'
+        raise OpenAPIGenerationError(msg)
+    location = scheme.get('in')
+    if not isinstance(location, str) or location not in {'query', 'header', 'cookie'}:
+        msg = f'OpenAPI apiKey security scheme {name!r} has an invalid `in` value'
+        raise OpenAPIGenerationError(msg)
+
+
+def _validate_http_security_scheme(name: str, scheme: Mapping[str, Any]) -> None:
+    if not isinstance(scheme.get('scheme'), str) or not scheme['scheme']:
+        msg = f'OpenAPI http security scheme {name!r} requires a non-empty `scheme`'
+        raise OpenAPIGenerationError(msg)
+
+
+def _validate_openid_security_scheme(name: str, scheme: Mapping[str, Any]) -> None:
+    url = scheme.get('openIdConnectUrl')
+    if not isinstance(url, str) or not url:
+        msg = f'OpenAPI openIdConnect security scheme {name!r} requires `openIdConnectUrl`'
+        raise OpenAPIGenerationError(msg)
+
+
+def _validate_security_scheme(name: str, scheme: Mapping[str, Any]) -> None:
+    reference = scheme.get('$ref')
+    if reference is not None:
+        if not isinstance(reference, str) or not reference:
+            msg = f'OpenAPI security scheme {name!r} has an invalid `$ref`'
+            raise OpenAPIGenerationError(msg)
+        return
+
+    scheme_type = scheme.get('type')
+    if not isinstance(scheme_type, str) or scheme_type not in _SECURITY_SCHEME_TYPES:
+        msg = f'OpenAPI security scheme {name!r} has an unsupported type: {scheme_type!r}'
+        raise OpenAPIGenerationError(msg)
+    if scheme_type == 'apiKey':
+        _validate_api_key_security_scheme(name, scheme)
+    elif scheme_type == 'http':
+        _validate_http_security_scheme(name, scheme)
+    elif scheme_type == 'oauth2' and not isinstance(scheme.get('flows'), Mapping):
+        msg = f'OpenAPI oauth2 security scheme {name!r} requires a `flows` mapping'
+        raise OpenAPIGenerationError(msg)
+    elif scheme_type == 'openIdConnect':
+        _validate_openid_security_scheme(name, scheme)
+
+
+def _security_schemes(config: OpenAPIConfig) -> dict[str, dict[str, Any]]:
+    result: dict[str, dict[str, Any]] = {}
+    for name, configured_scheme in config.security_schemes.items():
+        if not isinstance(name, str) or not name:
+            msg = f'OpenAPI security scheme name must be a non-empty string: {name!r}'
+            raise OpenAPIGenerationError(msg)
+        if not isinstance(configured_scheme, Mapping):
+            msg = f'OpenAPI security scheme {name!r} must be a mapping'
+            raise OpenAPIGenerationError(msg)
+
+        scheme = deepcopy(dict(configured_scheme))
+        _validate_security_scheme(name, scheme)
+        result[name] = scheme
+    return result
+
+
+def _security_requirements(
+    configured: Any,
+    scheme_names: set[str],
+    *,
+    context: str,
+) -> list[dict[str, list[str]]]:
+    if not _is_array(configured):
+        msg = f'OpenAPI security requirements for {context} must be a sequence'
+        raise OpenAPIGenerationError(msg)
+
+    requirements: list[dict[str, list[str]]] = []
+    for requirement in configured:
+        if not isinstance(requirement, Mapping):
+            msg = f'Each OpenAPI security requirement for {context} must be a mapping'
+            raise OpenAPIGenerationError(msg)
+        normalized: dict[str, list[str]] = {}
+        for scheme_name, configured_scopes in requirement.items():
+            if not isinstance(scheme_name, str) or not scheme_name:
+                msg = f'OpenAPI security scheme reference for {context} must be a non-empty string'
+                raise OpenAPIGenerationError(msg)
+            if scheme_name not in scheme_names:
+                msg = f'Unknown OpenAPI security scheme {scheme_name!r} referenced by {context}'
+                raise OpenAPIGenerationError(msg)
+            if not _is_array(configured_scopes) or not all(isinstance(scope, str) for scope in configured_scopes):
+                msg = f'OpenAPI security scopes for {scheme_name!r} in {context} must be a sequence of strings'
+                raise OpenAPIGenerationError(msg)
+            normalized[scheme_name] = list(configured_scopes)
+        requirements.append(normalized)
+    return requirements
+
+
 def _operation(
     route_index: int,
     route: RouteRecord,
     openapi_path: str,
     path_parameters: Mapping[str, str | None],
     registry: _SchemaRegistry,
+    *,
+    security_scheme_names: set[str],
 ) -> dict[str, Any]:
     operation: dict[str, Any] = {
         'operationId': route.route_kwargs.get('operation_id') or _default_operation_id(route, openapi_path),
@@ -448,6 +546,14 @@ def _operation(
     if route.route_kwargs.get('deprecated'):
         operation['deprecated'] = True
 
+    configured_security = route.route_kwargs.get('security', Unset)
+    if configured_security is not Unset:
+        operation['security'] = _security_requirements(
+            configured_security,
+            security_scheme_names,
+            context=f'{route.method} {route.path}',
+        )
+
     parameters = _operation_parameters(route_index, route, path_parameters, registry)
     if parameters:
         operation['parameters'] = parameters
@@ -470,12 +576,44 @@ def _info(config: OpenAPIConfig) -> dict[str, Any]:
     return info
 
 
+def _components(
+    registry: _SchemaRegistry,
+    *,
+    has_validation: bool,
+    security_schemes: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
+    schemas = dict(registry.components)
+    if has_validation:
+        for name, validation_schema in (
+            ('RapidyValidationError', _VALIDATION_ERROR_SCHEMA),
+            ('RapidyHTTPValidationError', _HTTP_VALIDATION_ERROR_SCHEMA),
+        ):
+            if name in schemas and schemas[name] != validation_schema:
+                msg = f'OpenAPI component name {name!r} is reserved by rAPIdy'
+                raise OpenAPIGenerationError(msg)
+            schemas[name] = deepcopy(validation_schema)
+
+    sections: dict[str, Any] = {}
+    if schemas:
+        sections['schemas'] = schemas
+    if security_schemes:
+        sections['securitySchemes'] = dict(security_schemes)
+    return sections
+
+
 def create_openapi_schema(
     routes: Sequence[RouteRecord],
     config: OpenAPIConfig | None = None,
 ) -> dict[str, Any]:
     """Build a deterministic OpenAPI 3.1 document from rAPIdy's public route registry."""
     current_config = config or OpenAPIConfig()
+    security_schemes = _security_schemes(current_config)
+    security_scheme_names = set(security_schemes)
+    security = _security_requirements(
+        current_config.security,
+        security_scheme_names,
+        context='the OpenAPI document',
+    )
     included_routes = tuple(route for route in routes if _route_is_included(route))
     registry = _SchemaRegistry()
     _collect_schemas(included_routes, registry)
@@ -491,7 +629,14 @@ def create_openapi_schema(
         if method in path_item:
             msg = f'Conflicting OpenAPI operation for {route.method} {openapi_path}'
             raise OpenAPIGenerationError(msg)
-        operation = _operation(route_index, route, openapi_path, path_parameters, registry)
+        operation = _operation(
+            route_index,
+            route,
+            openapi_path,
+            path_parameters,
+            registry,
+            security_scheme_names=security_scheme_names,
+        )
         operation_id = operation['operationId']
         if operation_id in operation_ids:
             msg = f'Duplicate OpenAPI operationId: {operation_id!r}'
@@ -500,24 +645,20 @@ def create_openapi_schema(
         path_item[method] = operation
         has_validation = has_validation or bool(route.parameters)
 
-    components = dict(registry.components)
-    if has_validation:
-        for name, validation_schema in (
-            ('RapidyValidationError', _VALIDATION_ERROR_SCHEMA),
-            ('RapidyHTTPValidationError', _HTTP_VALIDATION_ERROR_SCHEMA),
-        ):
-            if name in components and components[name] != validation_schema:
-                msg = f'OpenAPI component name {name!r} is reserved by rAPIdy'
-                raise OpenAPIGenerationError(msg)
-            components[name] = deepcopy(validation_schema)
-
     schema: dict[str, Any] = {
         'openapi': '3.1.0',
         'info': _info(current_config),
         'paths': paths,
     }
-    if components:
-        schema['components'] = {'schemas': components}
+    component_sections = _components(
+        registry,
+        has_validation=has_validation,
+        security_schemes=security_schemes,
+    )
+    if component_sections:
+        schema['components'] = component_sections
+    if security:
+        schema['security'] = security
     if current_config.servers:
         schema['servers'] = [dict(server) for server in current_config.servers]
     if current_config.tags:

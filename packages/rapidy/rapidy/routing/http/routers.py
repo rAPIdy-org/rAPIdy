@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import inspect
 from abc import ABC
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping, Sequence
 from concurrent.futures import Executor
 from http import HTTPStatus
 from typing import Any, cast, NamedTuple, TYPE_CHECKING
@@ -67,6 +67,7 @@ _OPENAPI_ROUTE_KWARGS = frozenset(
         'operation_id',
         'response_description',
         'responses',
+        'security',
         'summary',
         'tags',
     }
@@ -291,6 +292,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         deprecated: bool | UnsetType = Unset,
         response_description: str | UnsetType | None = Unset,
         responses: dict[int | str, dict[str, Any]] | UnsetType = Unset,
+        security: Sequence[Mapping[str, Sequence[str]]] | UnsetType = Unset,
         **kwargs: Any,
     ) -> None:
         raw_kwargs = {
@@ -317,6 +319,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
             'deprecated': deprecated,
             'response_description': response_description,
             'responses': responses,
+            'security': security,
             **kwargs,
         }
         self._set_route_kwargs = {key: value for key, value in raw_kwargs.items() if value is not Unset}
@@ -349,6 +352,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         deprecated: bool = False,
         response_description: str | None = None,
         responses: dict[int | str, dict[str, Any]] | None = None,
+        security: Sequence[Mapping[str, Sequence[str]]] | UnsetType = Unset,
         **kwargs: Any,
     ) -> None:
         self._route_kwargs = {
@@ -375,6 +379,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
             'deprecated': deprecated,
             'response_description': response_description,
             'responses': responses,
+            'security': security,
             **kwargs,
         }
         super().__init__(path=path)
@@ -412,6 +417,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         deprecated: bool | UnsetType = Unset,
         response_description: str | UnsetType | None = Unset,
         responses: dict[int | str, dict[str, Any]] | UnsetType = Unset,
+        security: Sequence[Mapping[str, Sequence[str]]] | UnsetType = Unset,
         **kwargs: Any,
     ) -> HTTPRouteHandler:
         route = cls(
@@ -439,6 +445,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
             deprecated=deprecated,
             response_description=response_description,
             responses=responses,
+            security=security,
             **kwargs,
         )
         return route(cast('Handler', handler))
@@ -451,9 +458,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
             view = cast('type[View]', self._handler)
             route_kwargs = dict(self._route_kwargs)
             route_kwargs.pop('allow_head', None)
-            terminal_kwargs = {
-                key: value for key, value in route_kwargs.items() if key not in _OPENAPI_ROUTE_KWARGS
-            }
+            terminal_kwargs = {key: value for key, value in route_kwargs.items() if key not in _OPENAPI_ROUTE_KWARGS}
             original_handlers = {
                 name.upper(): cast('Handler', getattr(view, name))
                 for name in ('get', 'post', 'put', 'patch', 'delete', 'head', 'options')
@@ -467,9 +472,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
                 if method_name not in methods:
                     continue
                 method_handler = (
-                    original_handlers[method_name]
-                    if method_name in original_handlers
-                    else original_handlers['GET']
+                    original_handlers[method_name] if method_name in original_handlers else original_handlers['GET']
                 )
                 application._matcher.add_route(  # noqa: SLF001
                     method_name,
@@ -508,9 +511,7 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
 
         route_kwargs = dict(self._route_kwargs)
         allow_head = bool(route_kwargs.pop('allow_head', True))
-        terminal_kwargs = {
-            key: value for key, value in route_kwargs.items() if key not in _OPENAPI_ROUTE_KWARGS
-        }
+        terminal_kwargs = {key: value for key, value in route_kwargs.items() if key not in _OPENAPI_ROUTE_KWARGS}
         terminal = handler_validation_wrapper(self._handler, **terminal_kwargs)
         parameters = _get_handler_parameters(self._handler)
         application._matcher.add_route(  # noqa: SLF001

@@ -8,7 +8,7 @@ from pydantic import BaseModel, computed_field, Field, Json
 from rapidy_core.enums import ContentType
 
 from rapidy import Rapidy
-from rapidy.http import Body, Cookie, get, head, Header, PathParam, post, QueryParam, QueryParams
+from rapidy.http import Body, controller, Cookie, get, head, Header, PathParam, post, QueryParam, QueryParams
 from rapidy.openapi import create_openapi_schema, OpenAPIConfig, OpenAPIGenerationError
 
 
@@ -133,6 +133,99 @@ def test_auto_head_and_hidden_routes_are_omitted_but_explicit_head_is_documented
     assert schema['paths']['/visible'].keys() == {'get'}
     assert schema['paths']['/health'].keys() == {'head'}
     assert 'content' not in schema['paths']['/health']['head']['responses']['200']
+
+
+def test_security_schemes_global_security_and_operation_overrides_are_documented() -> None:
+    @get('/inherited')
+    async def inherited() -> str:
+        return 'protected by the document default'
+
+    @get('/public', security=[])
+    async def public() -> str:
+        return 'public'
+
+    @post('/scoped', security=[{'oauth': ['items:write']}])
+    async def scoped() -> str:
+        return 'scoped'
+
+    @get('/optional', security=[{}])
+    async def optional() -> str:
+        return 'optional'
+
+    config = OpenAPIConfig(
+        security_schemes={
+            'bearerAuth': {
+                'type': 'http',
+                'scheme': 'bearer',
+                'bearerFormat': 'JWT',
+            },
+            'oauth': {
+                'type': 'oauth2',
+                'flows': {
+                    'clientCredentials': {
+                        'tokenUrl': 'https://auth.example.test/token',
+                        'scopes': {'items:write': 'Create items'},
+                    },
+                },
+            },
+        },
+        security=({'bearerAuth': ()},),
+    )
+
+    schema = create_openapi_schema(
+        Rapidy(http_route_handlers=[inherited, public, scoped, optional]).routes,
+        config,
+    )
+
+    assert schema['components']['securitySchemes'] == config.security_schemes
+    assert schema['security'] == [{'bearerAuth': []}]
+    assert 'security' not in schema['paths']['/inherited']['get']
+    assert schema['paths']['/public']['get']['security'] == []
+    assert schema['paths']['/scoped']['post']['security'] == [{'oauth': ['items:write']}]
+    assert schema['paths']['/optional']['get']['security'] == [{}]
+
+
+def test_invalid_security_metadata_is_rejected_during_schema_generation() -> None:
+    @get('/protected', security=[{'missing': []}])
+    async def protected() -> str:
+        return 'protected'
+
+    with pytest.raises(OpenAPIGenerationError, match="Unknown OpenAPI security scheme 'missing'"):
+        create_openapi_schema(Rapidy(http_route_handlers=[protected]).routes)
+
+    with pytest.raises(OpenAPIGenerationError, match='requires a non-empty `scheme`'):
+        create_openapi_schema(
+            (),
+            OpenAPIConfig(security_schemes={'bearerAuth': {'type': 'http'}}),
+        )
+
+
+def test_controller_security_is_inherited_and_can_be_removed_by_a_child_route() -> None:
+    @controller('/admin', security=[{'apiKey': []}])
+    class AdminController:
+        @get('/protected')
+        async def protected(self) -> str:
+            return 'protected'
+
+        @get('/public', security=[])
+        async def public(self) -> str:
+            return 'public'
+
+    schema = create_openapi_schema(
+        Rapidy(http_route_handlers=[AdminController]).routes,
+        OpenAPIConfig(
+            security_schemes={
+                'apiKey': {
+                    'type': 'apiKey',
+                    'name': 'X-API-Key',
+                    'in': 'header',
+                },
+            },
+        ),
+    )
+
+    assert schema['paths']['/admin/protected']['get']['security'] == [{'apiKey': []}]
+    assert schema['paths']['/admin/public']['get']['security'] == []
 
 
 def test_plural_query_model_expands_into_individual_openapi_parameters() -> None:
