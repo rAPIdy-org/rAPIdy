@@ -8,7 +8,7 @@ import websockets
 
 import httpx
 import pytest
-from examples import di, middleware_mounts, openapi, parameters, quickstart, realtime
+from examples import di, middleware_mounts, openapi, parameters, quickstart, realtime, testing
 
 from tests.live_server import live_server
 
@@ -97,6 +97,10 @@ def test_quickstart_live(runtime: str) -> None:
         with pytest.raises(HTTPError) as error, urlopen(f'{base_url}/missing', timeout=5):  # noqa: S310
             pass
         assert error.value.code == 404
+
+
+def test_testing_example() -> None:
+    testing.test_health()
 
 
 @pytest.mark.asyncio

@@ -17,6 +17,7 @@ EXPECTED_EXTRAS = {
     'granian': ['granian>=2.7,<3'],
     'uvicorn': ['uvicorn>=0.34,<1'],
     'hypercorn': ['hypercorn>=0.17,<1'],
+    'test': ['anyio>=4,<5', 'httpx>=0.28,<1'],
 }
 FORBIDDEN_SOURCE_PATHS = {
     '_client_errors.py',

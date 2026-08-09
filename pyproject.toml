@@ -38,6 +38,19 @@ source_modules = ["rapidy"]
 forbidden_modules = ["rapidy_client"]
 
 [[tool.importlinter.contracts]]
+name = "rapidy testing dependencies stay in rapidy.testing"
+type = "forbidden"
+source_modules = ["rapidy"]
+forbidden_modules = ["anyio", "httpx"]
+ignore_imports = [
+    "rapidy.testing.client -> anyio",
+    "rapidy.testing.client -> httpx",
+    "rapidy.testing.sse -> anyio",
+    "rapidy.testing.sse -> httpx",
+    "rapidy.testing.websocket -> anyio",
+]
+
+[[tool.importlinter.contracts]]
 name = "rapidy server consumes Dishka through rapidy_core"
 type = "forbidden"
 source_modules = ["rapidy"]

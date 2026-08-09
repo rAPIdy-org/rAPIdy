@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Annotated
+from typing import Annotated, TYPE_CHECKING
 
 from pydantic import BaseModel
 
@@ -8,6 +8,13 @@ from rapidy import Rapidy
 from rapidy.depends import FromDI
 from rapidy.http import Body, get, PathParam, post
 from rapidy.openapi import create_openapi_schema, OpenAPIComponents, OpenAPIConfig, SwaggerRenderPlugin
+from rapidy.testing import (
+    AsyncSSESession,
+    AsyncTestClient,
+    AsyncWebSocketSession,
+    create_test_client,
+    TestClient,
+)
 
 
 class Payload(BaseModel):
@@ -44,3 +51,9 @@ app: Rapidy = Rapidy(
 )
 openapi_schema: dict[str, object] | None = app.openapi_schema
 generated_schema: dict[str, object] = create_openapi_schema(app.routes, openapi_config)
+sync_client: TestClient = create_test_client([get_item])
+async_client: AsyncTestClient = AsyncTestClient(app)
+
+if TYPE_CHECKING:
+    websocket_session: AsyncWebSocketSession = async_client.websocket_connect('/ws')
+    sse_session: AsyncSSESession = async_client.sse_connect('/events')

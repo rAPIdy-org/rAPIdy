@@ -254,7 +254,8 @@ class Rapidy(MutableMapping[str, Any]):
         except HTTPException as exc:
             await self._send_response(_exception_response(exc), tracking_send)
             return
-        except Exception:
+        except Exception as exc:
+            _raise_server_exception_for_tests(scope, exc)
             logger.exception('Unhandled exception while initializing request')
             await self._send_response(_internal_server_error_response(), tracking_send)
             return
@@ -338,7 +339,8 @@ class Rapidy(MutableMapping[str, Any]):
                 except HTTPException:
                     code = 1000 if ws.client_state is WebSocketState.CONNECTING else 1011
                     await ws.close(code=code)
-                except Exception:
+                except Exception as exc:
+                    _raise_server_exception_for_tests(scope, exc)
                     logger.exception('Unhandled exception during WebSocket processing')
                     await ws.close(code=1011)
                 else:
@@ -379,7 +381,8 @@ class Rapidy(MutableMapping[str, Any]):
                 await _finalize_started_response(tracking_send)
             else:
                 await self._send_response(_exception_response(exc), tracking_send, app=request.app)
-        except Exception:
+        except Exception as exc:
+            _raise_server_exception_for_tests(request.scope, exc)
             logger.exception('Unhandled exception during request processing')
             if tracking_send.started:
                 await _finalize_started_response(tracking_send)
@@ -477,6 +480,11 @@ def _strip_root_path(path: str, root_path: str) -> str:
     if root_path and path.startswith(root_path):
         return path[len(root_path) :] or '/'
     return path
+
+
+def _raise_server_exception_for_tests(scope: ASGIScope, exc: Exception) -> None:
+    if scope.get('_rapidy_raise_server_exceptions'):
+        raise exc
 
 
 class _TrackingSend:

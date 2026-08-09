@@ -9,6 +9,7 @@ REQUIRED_WHEEL = {
     "rapidy/__init__.py",
     "rapidy/http.py",
     "rapidy/depends.py",
+    "rapidy/testing/__init__.py",
     "rapidy/py.typed",
 }
 FORBIDDEN_PARTS = (
@@ -45,6 +46,8 @@ def check_wheel(path: Path) -> None:
         assert expected in metadata, f"missing metadata: {expected}"
     assert "Requires-Dist: aiohttp" not in metadata
     assert "Requires-Dist: dishka" not in metadata
+    assert 'Provides-Extra: test' in metadata
+    assert 'Requires-Dist: httpx' in metadata and 'extra == "test"' in metadata
 
 
 def check_sdist(path: Path) -> None:

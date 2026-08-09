@@ -1832,6 +1832,10 @@ granian = [
 hypercorn = [
     { name = "hypercorn" },
 ]
+test = [
+    { name = "anyio" },
+    { name = "httpx" },
+]
 uvicorn = [
     { name = "uvicorn" },
 ]
@@ -1861,7 +1865,9 @@ test = [
 
 [package.metadata]
 requires-dist = [
+    { name = "anyio", marker = "extra == 'test'", specifier = ">=4,<5" },
     { name = "granian", marker = "extra == 'granian'", specifier = ">=2.7,<3" },
+    { name = "httpx", marker = "extra == 'test'", specifier = ">=0.28,<1" },
     { name = "hypercorn", marker = "extra == 'hypercorn'", specifier = ">=0.17,<1" },
     { name = "multidict", specifier = ">=6,<7" },
     { name = "pydantic", specifier = ">=2.9,<3" },
@@ -1869,7 +1875,7 @@ requires-dist = [
     { name = "rapidy-core", editable = "packages/rapidy_core" },
     { name = "uvicorn", marker = "extra == 'uvicorn'", specifier = ">=0.34,<1" },
 ]
-provides-extras = ["granian", "uvicorn", "hypercorn"]
+provides-extras = ["granian", "uvicorn", "hypercorn", "test"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pre-commit", specifier = ">=4.1.0,<5.0.0" }]

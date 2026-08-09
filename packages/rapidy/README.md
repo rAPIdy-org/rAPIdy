@@ -29,6 +29,7 @@ python -m pip install -e "packages/rapidy[granian]"
 ```
 
 Use `rapidy[uvicorn]` or `rapidy[hypercorn]` if that server is your deployment target.
+Install `rapidy[test]` for the public HTTP/WebSocket/SSE testing clients.
 
 ## Quickstart
 
@@ -113,6 +114,22 @@ async def update_user(
 JSON, text, bytes, urlencoded forms, and multipart uploads are supported. Raw access remains available through
 `Request.read()`, `Request.text()`, `Request.json()`, and `Request.post()`.
 
+## Testing
+
+```python
+from rapidy.testing import TestClient
+
+
+def test_hello() -> None:
+    with TestClient(app) as client:
+        response = client.get('/')
+
+    assert response.json() == {'message': 'Hello, rAPIdy 2.0!'}
+```
+
+`AsyncTestClient` provides the asynchronous HTTPX API. Both clients own application lifespan inside their context and
+provide in-process WebSocket/SSE sessions plus isolated Dishka provider overrides.
+
 ## Framework features
 
 - Dependency injection is exposed from `rapidy.depends`; application singletons are process-local, request resources
@@ -125,6 +142,7 @@ JSON, text, bytes, urlencoded forms, and multipart uploads are supported. Raw ac
 - `HTTPRouter('/v1', handlers)` creates nested mounts with their own middleware, limits, and lifespan while sharing
   the root DI container.
 - `@websocket`, `WebSocket`, `SSEResponse`, and `StreamResponse` provide native ASGI realtime and streaming APIs.
+- `rapidy.testing` provides sync/async HTTPX clients, lifespan, DI overrides, WebSocket, and incremental SSE testing.
 - Type checking uses `plugins = rapidy_core.mypy`; there is no `rapidy.mypy` package in 2.0.
 
 Executable examples live in [`examples/`](examples/), and the full guide is published at
@@ -146,21 +164,6 @@ hypercorn --workers 4 main:app
 Each worker has its own application lifespan and DI container, so application-scoped dependencies are per-process.
 Choose graceful-shutdown timeouts long enough for active streaming responses; rAPIdy closes accepted WebSockets with
 code 1001 during shutdown.
-
-## Testing
-
-Use any ASGI client. With HTTPX:
-
-```python
-import httpx
-
-async with httpx.AsyncClient(
-    transport=httpx.ASGITransport(app=app),
-    base_url='http://testserver',
-) as client:
-    response = await client.get('/')
-    assert response.status_code == 200
-```
 
 ## Migration and performance
 
