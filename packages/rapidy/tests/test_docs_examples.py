@@ -8,7 +8,17 @@ import websockets
 
 import httpx
 import pytest
-from examples import di, middleware_mounts, openapi, parameters, quickstart, realtime, security, testing
+from examples import (
+    di,
+    middleware_mounts,
+    openapi,
+    parameters,
+    production_middlewares,
+    quickstart,
+    realtime,
+    security,
+    testing,
+)
 
 from tests.live_server import live_server
 
@@ -100,6 +110,38 @@ async def test_di_middleware_mount_and_streaming_examples() -> None:
     assert streamed.text == 'first\nsecond\n'
     assert events.headers['content-type'] == 'text/event-stream; charset=utf-8'
     assert 'id: 0\nevent: tick\ndata: {"index": 0}' in events.text
+
+
+@pytest.mark.asyncio
+async def test_production_middlewares_example() -> None:
+    forwarded_https = {'X-Forwarded-Proto': 'https'}
+    async with production_middlewares.app.lifespan.ctx_manager():
+        response = await request(
+            production_middlewares.app,
+            'GET',
+            '/report',
+            headers={
+                **forwarded_https,
+                'Origin': 'https://console.example.com',
+                'Accept-Encoding': 'gzip',
+            },
+        )
+        preflight = await request(
+            production_middlewares.app,
+            'OPTIONS',
+            '/report',
+            headers={
+                **forwarded_https,
+                'Origin': 'https://console.example.com',
+                'Access-Control-Request-Method': 'GET',
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json()['request_id'] == response.headers['X-Request-ID']
+    assert response.headers['Content-Encoding'] == 'gzip'
+    assert response.headers['Access-Control-Allow-Origin'] == 'https://console.example.com'
+    assert preflight.status_code == 204
 
 
 @pytest.mark.parametrize('runtime', ['granian', 'uvicorn'])

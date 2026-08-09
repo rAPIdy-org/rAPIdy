@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import gzip
 import json
 import pkgutil
 from importlib import import_module, metadata
@@ -9,17 +10,26 @@ from typing import Any
 import rapidy
 from rapidy import Rapidy
 from rapidy.http import get
+from rapidy.middlewares import (
+    CompressionMiddleware,
+    GZipMiddleware,
+    MissingBrotliDependencyError,
+    RequestIDMiddleware,
+)
 
 OPTIONAL_IMPORT_PREFIXES = ('rapidy.testing',)
 
 
 @get("/")
 async def hello() -> dict[str, str]:
-    return {"message": "wheel-ok"}
+    return {"message": "wheel-ok" * 100}
 
 
 async def smoke() -> None:
-    app = Rapidy(http_route_handlers=[hello])
+    app = Rapidy(
+        http_route_handlers=[hello],
+        middlewares=[RequestIDMiddleware(generator=lambda: "wheel-request"), GZipMiddleware(minimum_size=1)],
+    )
     sent: list[dict[str, Any]] = []
     received = False
 
@@ -43,7 +53,7 @@ async def smoke() -> None:
         "raw_path": b"/",
         "query_string": b"",
         "root_path": "",
-        "headers": [],
+        "headers": [(b"host", b"testserver"), (b"accept-encoding", b"gzip")],
         "server": ("testserver", 80),
         "client": ("127.0.0.1", 1234),
         "state": {},
@@ -51,7 +61,10 @@ async def smoke() -> None:
     async with app.lifespan.ctx_manager():
         await app(scope, receive, send)
     assert sent[0]["status"] == 200
-    assert json.loads(sent[1]["body"]) == {"message": "wheel-ok"}
+    headers = {bytes(name).lower(): value for name, value in sent[0]["headers"]}
+    assert headers[b"content-encoding"] == b"gzip"
+    assert headers[b"x-request-id"] == b"wheel-request"
+    assert json.loads(gzip.decompress(sent[1]["body"])) == {"message": "wheel-ok" * 100}
 
 
 def main() -> int:
@@ -72,6 +85,12 @@ def main() -> int:
         ):
             continue
         import_module(module.name)
+    try:
+        CompressionMiddleware(algorithms=["br"])
+    except MissingBrotliDependencyError:
+        pass
+    else:
+        raise AssertionError("Brotli must stay optional in the base rAPIdy wheel")
     asyncio.run(smoke())
     print("rapidy wheel imports and ASGI quickstart: ok")
     return 0

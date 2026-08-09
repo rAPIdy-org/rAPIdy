@@ -24,6 +24,7 @@ if TYPE_CHECKING:
     from rapidy.application import Rapidy
     from rapidy.request import Request
     from rapidy.response import Response
+    from rapidy.responses.streaming import StreamResponse
 
 __all__ = (
     'ASGIApp',
@@ -36,6 +37,7 @@ __all__ = (
     'DictStrStr',
     'Handler',
     'HandlerOrView',
+    'HTTPResponse',
     'JSONDecoder',
     'JSONEncoder',
     'LifespanCTX',
@@ -69,9 +71,10 @@ type LooseHeaders = Mapping[str, str] | Iterable[LooseHeader] | CIMultiDict[str]
 
 type Handler = Callable[..., Awaitable[Any]]
 type ControllerHTTPRouterType = Any
-type TerminalHandler = Callable[[Request], Awaitable[Response]]
-type CallNext = Callable[[Request], Awaitable[Response]]
-type Middleware = Callable[[Request, CallNext], Awaitable[Response]]
+type HTTPResponse = Response | StreamResponse
+type TerminalHandler = Callable[[Request], Awaitable[HTTPResponse]]
+type CallNext = Callable[[Request], Awaitable[HTTPResponse]]
+type Middleware = Callable[[Request, CallNext], Awaitable[HTTPResponse]]
 
 type SyncOrAsync = Any | Awaitable[Any]
 type LifespanHook = Callable[[Rapidy], SyncOrAsync] | Callable[[], SyncOrAsync]

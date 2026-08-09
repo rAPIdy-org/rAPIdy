@@ -118,7 +118,7 @@ class Response(StreamResponse):
         text: Any | None = None,
         reason: str | None = None,
     ) -> None:
-        """Create a response; zlib options are accepted but compression is not performed."""
+        """Create a response; zlib options tune an active compression middleware."""
         self._json_encoder = json_encoder
         self._include_fields = include
         self._exclude_fields = exclude

@@ -19,6 +19,7 @@ from rapidy.di import (
 )
 from rapidy.exceptions import HTTPException, HTTPNotFound
 from rapidy.lifespan import Lifespan
+from rapidy.middlewares._utils import apply_response_hooks
 from rapidy.middlewares.runner import build_onion, prepare_middlewares
 from rapidy.openapi import create_openapi_schema, OpenAPIConfig, OpenAPIRenderPlugin
 from rapidy.request import Request, State
@@ -396,6 +397,7 @@ class Rapidy(MutableMapping[str, Any]):
     async def _handle_http(self, request: Request, tracking_send: _TrackingSend) -> None:
         try:
             response = await self._run_onion(request)
+            response = await apply_response_hooks(request, response)
             await self._send_response(response, tracking_send, app=request.app, request=request)
         except ConnectionResetError:
             logger.debug('Client disconnected while reading request body: %s %s', request.method, request.path)
@@ -404,20 +406,22 @@ class Rapidy(MutableMapping[str, Any]):
                 logger.exception('HTTP exception raised after response was started')
                 await _finalize_started_response(tracking_send)
             else:
-                await self._send_response(_exception_response(exc), tracking_send, app=request.app)
+                response = await apply_response_hooks(request, _exception_response(exc))
+                await self._send_response(response, tracking_send, app=request.app, request=request)
         except Exception as exc:
             _raise_server_exception_for_tests(request.scope, exc)
             logger.exception('Unhandled exception during request processing')
             if tracking_send.started:
                 await _finalize_started_response(tracking_send)
             else:
-                await self._send_response(_internal_server_error_response(), tracking_send, app=request.app)
+                response = await apply_response_hooks(request, _internal_server_error_response())
+                await self._send_response(response, tracking_send, app=request.app, request=request)
 
     async def _run_onion(self, request: Request) -> Response | StreamResponse:
         if self._onion is None:
             msg = 'Application middleware onion has not been built'
             raise RuntimeError(msg)
-        return cast('Response | StreamResponse', await self._onion(request))
+        return await self._onion(request)
 
     async def _dispatch_terminal(self, request: Request) -> Response | StreamResponse:
         path = str(request.scope['_rapidy_mount_path'])
@@ -435,7 +439,7 @@ class Rapidy(MutableMapping[str, Any]):
         request.scope['path_params'] = route_match.path_params
         request.path_params = route_match.path_params
         await self._authorize_route(request, route_match.route_kwargs)
-        return cast('Response | StreamResponse', await route_match.terminal(request))
+        return await route_match.terminal(request)
 
     async def _authorize_route(self, request: Request, route_kwargs: dict[str, Any]) -> None:
         configs = [

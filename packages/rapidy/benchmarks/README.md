@@ -53,3 +53,14 @@ rAPIdy 1.x и 2.0 имеют одно PyPI-имя `rapidy` и не могут о
 Это также не позволяет зависимостям FastAPI, aiohttp и gunicorn попасть в пакет rAPIdy 2.0.
 Для legacy-процесса `bench.py` создаёт изолированный import-root со ссылкой только на
 `benchmarks/`, иначе локальный каталог исходников 2.0 затенил бы установленный пакет 1.1.2.
+
+## Compression microbenchmark
+
+Отдельный transport-level microbenchmark проверяет round-trip, размер wire body и median cost для identity, gzip и
+установленного optional Brotli на одном и том же 64 KiB JSON payload:
+
+```bash
+uv run --group test python packages/rapidy/tests/perf/bench_compression.py --iterations 500
+```
+
+Числа предназначены для сравнения изменений на одной машине, а не для межмашинного performance gate.

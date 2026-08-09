@@ -154,6 +154,8 @@ provide in-process WebSocket/SSE sessions plus isolated Dishka provider override
   are finalized after the response is sent, and WebSocket resources use `Scope.SESSION`.
 - `@middleware` can extract and validate request parameters and accepts the same `response_*` serialization options
   as HTTP handlers.
+- Production middleware in `rapidy.middlewares` provides validated CORS/PNA, trusted hosts, HTTPS redirects,
+  trusted proxy headers, request IDs with async context, and real gzip/optional Brotli compression.
 - OpenAPI 3.1 generation is available from `rapidy.openapi`, including Pydantic components, request bodies,
   parameters, responses, all reusable component sections, callbacks, webhooks, response links, mounted routes,
   Swagger UI, and ReDoc.

@@ -121,6 +121,12 @@ class StreamResponse:
         """Send the response start frame once and bind the request transport."""
         if self._started:
             return
+        from rapidy.middlewares._utils import apply_response_hooks  # noqa: PLC0415
+
+        finalized = await apply_response_hooks(request, self)
+        if finalized is not self:
+            msg = 'Streaming response hooks cannot replace a response during prepare()'
+            raise RuntimeError(msg)
         self._send_fn = request._asgi_send  # noqa: SLF001
         self._http_version = str(request.scope.get('http_version', '1.1'))
         self._server_info = SERVER_INFO if request.app.server_info_in_response else None

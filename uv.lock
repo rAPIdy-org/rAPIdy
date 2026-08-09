@@ -1826,6 +1826,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+brotli = [
+    { name = "brotli" },
+]
 granian = [
     { name = "granian" },
 ]
@@ -1853,6 +1856,7 @@ docs = [
     { name = "mkdocs-static-i18n" },
 ]
 test = [
+    { name = "brotli" },
     { name = "granian" },
     { name = "httpx" },
     { name = "openapi-spec-validator" },
@@ -1866,6 +1870,7 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "anyio", marker = "extra == 'test'", specifier = ">=4,<5" },
+    { name = "brotli", marker = "extra == 'brotli'", specifier = ">=1.1,<2" },
     { name = "granian", marker = "extra == 'granian'", specifier = ">=2.7,<3" },
     { name = "httpx", marker = "extra == 'test'", specifier = ">=0.28,<1" },
     { name = "hypercorn", marker = "extra == 'hypercorn'", specifier = ">=0.17,<1" },
@@ -1875,7 +1880,7 @@ requires-dist = [
     { name = "rapidy-core", editable = "packages/rapidy_core" },
     { name = "uvicorn", marker = "extra == 'uvicorn'", specifier = ">=0.34,<1" },
 ]
-provides-extras = ["granian", "uvicorn", "hypercorn", "test"]
+provides-extras = ["brotli", "granian", "uvicorn", "hypercorn", "test"]
 
 [package.metadata.requires-dev]
 dev = [{ name = "pre-commit", specifier = ">=4.1.0,<5.0.0" }]
@@ -1888,6 +1893,7 @@ docs = [
     { name = "mkdocs-static-i18n", specifier = ">=1.3.0,<2.0.0" },
 ]
 test = [
+    { name = "brotli", specifier = ">=1.1,<2" },
     { name = "granian", specifier = ">=2.7,<3" },
     { name = "httpx", specifier = ">=0.28,<1" },
     { name = "openapi-spec-validator", specifier = ">=0.7.2,<1.0.0" },

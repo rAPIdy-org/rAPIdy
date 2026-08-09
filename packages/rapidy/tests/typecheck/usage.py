@@ -7,6 +7,17 @@ from pydantic import BaseModel
 from rapidy import Rapidy
 from rapidy.depends import FromDI
 from rapidy.http import Body, get, PathParam, post
+from rapidy.middlewares import (
+    CompressionMiddleware,
+    CORSMiddleware,
+    get_request_context,
+    GZipMiddleware,
+    HTTPSRedirectMiddleware,
+    ProxyHeadersMiddleware,
+    RequestContext,
+    RequestIDMiddleware,
+    TrustedHostMiddleware,
+)
 from rapidy.openapi import create_openapi_schema, OpenAPIComponents, OpenAPIConfig, SwaggerRenderPlugin
 from rapidy.security import APIKeyAuth, AuthCredentials, SecurityConfig, SecurityIdentity
 from rapidy.testing import (
@@ -52,6 +63,15 @@ security_config = SecurityConfig(
 )
 app: Rapidy = Rapidy(
     http_route_handlers=[get_item, create_item],
+    middlewares=[
+        ProxyHeadersMiddleware(['127.0.0.1']),
+        TrustedHostMiddleware(['example.com']),
+        HTTPSRedirectMiddleware(),
+        RequestIDMiddleware(),
+        CORSMiddleware(allow_origins=['https://example.com']),
+        CompressionMiddleware(algorithms=['gzip']),
+        GZipMiddleware(),
+    ],
     openapi_config=openapi_config,
     security=security_config,
 )
@@ -61,6 +81,7 @@ sync_client: TestClient = create_test_client([get_item])
 async_client: AsyncTestClient = AsyncTestClient(app)
 
 if TYPE_CHECKING:
+    request_context: RequestContext | None = get_request_context()
     security_identity: SecurityIdentity
     auth_credentials: AuthCredentials
     websocket_session: AsyncWebSocketSession = async_client.websocket_connect('/ws')

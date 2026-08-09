@@ -14,6 +14,7 @@ EXPECTED_DEPENDENCIES = {
     'python-multipart>=0.0.20,<1',
 }
 EXPECTED_EXTRAS = {
+    'brotli': ['brotli>=1.1,<2'],
     'granian': ['granian>=2.7,<3'],
     'uvicorn': ['uvicorn>=0.34,<1'],
     'hypercorn': ['hypercorn>=0.17,<1'],

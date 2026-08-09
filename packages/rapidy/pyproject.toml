@@ -54,6 +54,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+brotli = ["brotli>=1.1,<2"]
 granian = ["granian>=2.7,<3"]
 uvicorn = ["uvicorn>=0.34,<1"]
 hypercorn = ["hypercorn>=0.17,<1"]
@@ -71,6 +72,7 @@ packages = [
 [dependency-groups]
 dev = ["pre-commit>=4.1.0,<5.0.0"]
 test = [
+    "brotli>=1.1,<2",
     "openapi-spec-validator>=0.7.2,<1.0.0",
     "pytest>=8.0,<9.0",
     "pytest-asyncio>=1.0,<2.0",

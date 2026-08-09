@@ -48,6 +48,7 @@ def check_wheel(path: Path) -> None:
     assert "Requires-Dist: dishka" not in metadata
     assert 'Provides-Extra: test' in metadata
     assert 'Requires-Dist: httpx' in metadata and 'extra == "test"' in metadata
+    assert 'Requires-Dist: brotli' in metadata and 'extra == "brotli"' in metadata
 
 
 def check_sdist(path: Path) -> None:

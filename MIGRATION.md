@@ -34,8 +34,9 @@ Use `request.state` for request-local data. `transport` and `clone()` have no eq
 
 Ordinary responses and HTTP exceptions are value objects rendered by the framework. Normal
 `Response.prepare()` and `enable_compression()` are removed. The `zlib_executor` and
-`zlib_executor_size` arguments are accepted for signature compatibility but do not enable
-compression. HTTP exceptions retain mutable headers, but no longer inherit response-only APIs.
+`zlib_executor_size` arguments are accepted for signature compatibility and control buffered
+compression execution when `CompressionMiddleware` is active; they do not enable compression
+by themselves. HTTP exceptions retain mutable headers, but no longer inherit response-only APIs.
 
 **Before**
 
@@ -48,7 +49,12 @@ await response.prepare(request)
 **After**
 
 ```python
-response = Response(text='ready')
+from rapidy import Rapidy
+from rapidy.middlewares import GZipMiddleware
+
+
+response = Response(text='ready', zlib_executor_size=1024)
+app = Rapidy(middlewares=[GZipMiddleware()])
 
 async def chunks():
     yield b'first\n'
