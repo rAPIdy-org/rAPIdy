@@ -57,6 +57,21 @@ async def create_user(user: UserIn = Body()) -> UserIn:
 app = Rapidy(http_route_handlers=[hello, create_user])
 ```
 
+Enable OpenAPI 3.1 and interactive documentation explicitly:
+
+```python
+from rapidy.openapi import OpenAPIConfig
+
+app = Rapidy(
+    http_route_handlers=[hello, create_user],
+    openapi_config=OpenAPIConfig(title='Users API', version='1.0.0'),
+)
+```
+
+The schema is served at `/schema/openapi.json`, Swagger UI at `/schema`, and ReDoc at `/schema/redoc`. Request and
+response schemas come from the same Pydantic annotations used for runtime validation. The UI pages load their assets
+from a CDN; schema generation and JSON serving have no extra runtime dependency.
+
 Run it with Granian:
 
 ```bash
@@ -103,6 +118,8 @@ JSON, text, bytes, urlencoded forms, and multipart uploads are supported. Raw ac
   are finalized after the response is sent, and WebSocket resources use `Scope.SESSION`.
 - `@middleware` can extract and validate request parameters and accepts the same `response_*` serialization options
   as HTTP handlers.
+- OpenAPI 3.1 generation is available from `rapidy.openapi`, including Pydantic components, request bodies,
+  parameters, responses, mounted routes, Swagger UI, and ReDoc.
 - `HTTPRouter('/v1', handlers)` creates nested mounts with their own middleware, limits, and lifespan while sharing
   the root DI container.
 - `@websocket`, `WebSocket`, `SSEResponse`, and `StreamResponse` provide native ASGI realtime and streaming APIs.

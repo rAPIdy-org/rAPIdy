@@ -8,7 +8,7 @@ import websockets
 
 import httpx
 import pytest
-from examples import di, middleware_mounts, parameters, quickstart, realtime
+from examples import di, middleware_mounts, openapi, parameters, quickstart, realtime
 
 from tests.live_server import live_server
 
@@ -53,6 +53,19 @@ async def test_parameters_example() -> None:
         'page': 3,
         'session': 'session-id',
     }
+
+
+@pytest.mark.asyncio
+async def test_openapi_example() -> None:
+    async with openapi.app.lifespan.ctx_manager():
+        schema = await request(openapi.app, 'GET', '/schema/openapi.json')
+        created = await request(openapi.app, 'POST', '/items?notify=true', json={'name': 'Example'})
+
+    assert schema.status_code == 200
+    assert schema.json()['info']['title'] == 'Items API'
+    assert schema.json()['paths']['/items']['post']['operationId'] == 'createItem'
+    assert created.status_code == 201
+    assert created.json() == {'id': 1, 'name': 'Example'}
 
 
 @pytest.mark.asyncio

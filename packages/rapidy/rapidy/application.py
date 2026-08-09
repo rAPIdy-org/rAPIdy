@@ -19,10 +19,13 @@ from rapidy.di import (
 from rapidy.exceptions import HTTPException, HTTPNotFound
 from rapidy.lifespan import Lifespan
 from rapidy.middlewares.runner import build_onion, prepare_middlewares
+from rapidy.openapi import create_openapi_schema, OpenAPIConfig
+from rapidy.openapi.ui import render_redoc, render_swagger_ui
 from rapidy.request import Request, State
 from rapidy.response import Response
 from rapidy.responses.streaming import StreamResponse
 from rapidy.routing.http.base import raise_if_not_base_http_router
+from rapidy.routing.http.routers import get
 from rapidy.routing.matcher import RouteMatch, RouteRecord, UrlMatcher
 from rapidy.typedefs import ASGIScope, CallNext, Handler, LifespanCTX, LifespanHook, Middleware, Receive, Send
 from rapidy.version import SERVER_INFO
@@ -48,6 +51,8 @@ class Rapidy(MutableMapping[str, Any]):
         '_middlewares',
         '_onion',
         '_onion_built',
+        '_openapi_config',
+        '_openapi_schema',
         '_root_app',
         'lifespan',
         'server_info_in_response',
@@ -73,6 +78,7 @@ class Rapidy(MutableMapping[str, Any]):
         di_skip_validation: bool = False,
         di_start_scope: BaseScope | None = None,
         di_validation_settings: ValidationSettings = DEFAULT_DI_VALIDATION_SETTINGS,
+        openapi_config: OpenAPIConfig | None = None,
     ) -> None:
         self._client_max_size = client_max_size
         self._root_app: Rapidy | None = None
@@ -81,6 +87,8 @@ class Rapidy(MutableMapping[str, Any]):
         self._middlewares = list(middlewares or ())
         self._onion: CallNext | None = None
         self._onion_built = False
+        self._openapi_config = openapi_config
+        self._openapi_schema: dict[str, Any] | None = None
         self._di_config = DIConfig(
             container=di_container,
             providers=tuple(di_providers),
@@ -103,6 +111,8 @@ class Rapidy(MutableMapping[str, Any]):
             on_cleanup=list(on_cleanup),
         )
         self.add_http_routers(http_route_handlers)
+        if self._openapi_config is not None:
+            self._add_openapi_routes()
 
     @property
     def client_max_size(self) -> int:
@@ -116,6 +126,20 @@ class Rapidy(MutableMapping[str, Any]):
         for prefix, subapp in self._subapps:
             records.extend(record._replace(path=f'{prefix}{record.path}') for record in subapp.routes)
         return tuple(records)
+
+    @property
+    def openapi_config(self) -> OpenAPIConfig | None:
+        """Return the active OpenAPI configuration, or ``None`` when schema routes are disabled."""
+        return self._openapi_config
+
+    @property
+    def openapi_schema(self) -> dict[str, Any] | None:
+        """Build and cache this application's OpenAPI schema on first access."""
+        if self._openapi_config is None:
+            return None
+        if self._openapi_schema is None:
+            self._openapi_schema = create_openapi_schema(self.routes, self._openapi_config)
+        return self._openapi_schema
 
     @property
     def di_container(self) -> AsyncContainer | None:
@@ -142,6 +166,7 @@ class Rapidy(MutableMapping[str, Any]):
             raise RuntimeError(msg)
         raise_if_not_base_http_router(http_router)
         http_router.route_register(application=self)
+        self._invalidate_openapi_schema()
 
     def add_http_routers(self, route_handlers: Iterable[BaseHTTPRouter | Any]) -> None:
         """Register an iterable of HTTP router objects."""
@@ -169,7 +194,46 @@ class Rapidy(MutableMapping[str, Any]):
         subapp._bind_to_root(self)
         self._matcher.add_prefix(prefix, subapp)
         self.lifespan.append(_subapp_lifespan(subapp))
+        self._invalidate_openapi_schema()
         return subapp
+
+    def _invalidate_openapi_schema(self) -> None:
+        self._openapi_schema = None
+        if self._root_app is not None:
+            self._root_app._openapi_schema = None  # noqa: SLF001
+
+    def _add_openapi_routes(self) -> None:
+        config = cast('OpenAPIConfig', self._openapi_config)
+
+        async def openapi_json() -> dict[str, Any]:
+            return cast('dict[str, Any]', self.openapi_schema)
+
+        self.add_http_router(
+            get(
+                config.json_path,
+                include_in_schema=False,
+                response_content_type='application/json',
+                response_type=dict[str, Any],
+            )(openapi_json)
+        )
+
+        if config.swagger_path is not None:
+
+            async def swagger_ui(request: Request) -> Response:
+                prefix = str(request.scope.get('_rapidy_mount_prefix', ''))
+                document = render_swagger_ui(title=config.title, schema_url=f'{prefix}{config.json_path}')
+                return Response(document, content_type='text/html')
+
+            self.add_http_router(get(config.swagger_path, include_in_schema=False)(swagger_ui))
+
+        if config.redoc_path is not None:
+
+            async def redoc(request: Request) -> Response:
+                prefix = str(request.scope.get('_rapidy_mount_prefix', ''))
+                document = render_redoc(title=config.title, schema_url=f'{prefix}{config.json_path}')
+                return Response(document, content_type='text/html')
+
+            self.add_http_router(get(config.redoc_path, include_in_schema=False)(redoc))
 
     async def __call__(self, scope: ASGIScope, receive: Receive, send: Send) -> None:
         """Dispatch one ASGI connection by scope type."""

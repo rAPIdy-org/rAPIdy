@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from rapidy import Rapidy
 from rapidy.depends import FromDI
 from rapidy.http import Body, get, PathParam, post
+from rapidy.openapi import create_openapi_schema, OpenAPIConfig
 
 
 class Payload(BaseModel):
@@ -24,4 +25,10 @@ async def create_item(payload: Annotated[Payload, Body()], dependency: FromDI[st
     return payload
 
 
-app: Rapidy = Rapidy(http_route_handlers=[get_item, create_item])
+openapi_config = OpenAPIConfig(title='Typed API', version='1.0.0')
+app: Rapidy = Rapidy(
+    http_route_handlers=[get_item, create_item],
+    openapi_config=openapi_config,
+)
+openapi_schema: dict[str, object] | None = app.openapi_schema
+generated_schema: dict[str, object] = create_openapi_schema(app.routes, openapi_config)

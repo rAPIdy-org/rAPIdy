@@ -1,0 +1,89 @@
+# OpenAPI и интерактивная документация
+
+rAPIdy умеет строить OpenAPI 3.1 прямо из реестра маршрутов и Pydantic-аннотаций, которые уже используются для
+runtime-валидации. Функция включается явно и не добавляет маршруты в существующее приложение без настройки.
+
+```python
+from rapidy import Rapidy
+from rapidy.openapi import OpenAPIConfig
+
+
+app = Rapidy(
+    http_route_handlers=[read_item, create_item],
+    openapi_config=OpenAPIConfig(
+        title='Items API',
+        version='1.0.0',
+        description='Публичные операции с объектами.',
+    ),
+)
+```
+
+После включения доступны:
+
+| Путь | Документ |
+|---|---|
+| `/schema/openapi.json` | OpenAPI 3.1 JSON |
+| `/schema` | Swagger UI |
+| `/schema/redoc` | ReDoc |
+
+Swagger UI и ReDoc загружают browser assets из публичных CDN. Генерация и отдача JSON-схемы не добавляет runtime-
+зависимостей и не обращается к сети.
+
+## Метаданные операции
+
+HTTP-декораторы принимают OpenAPI-метаданные вместе с существующими настройками ответа:
+
+```python
+@post(
+    '/items',
+    status_code=201,
+    operation_id='createItem',
+    summary='Создать объект',
+    description='Проверить и сохранить один объект.',
+    tags=['items'],
+    responses={409: {'description': 'Объект уже существует'}},
+)
+async def create_item(payload: ItemIn = Body()) -> ItemOut:
+    ...
+```
+
+`include_in_schema=False` скрывает вызываемый HTTP-маршрут из документа. Автоматический `HEAD` не дублируется, а
+явный `@head` включается. Если `description` не задан, используется docstring хендлера. Идентификаторы операций по
+умолчанию детерминированы, а повтор пользовательского `operation_id` останавливает генерацию.
+
+## Что выводится автоматически
+
+- `PathParam`, `QueryParam`, `Header` и `Cookie` становятся параметрами с alias, default, constraints, description и
+  признаком обязательности.
+- Plural-маркеры моделей, например `QueryParams()`, разворачиваются в отдельные параметры свойств.
+- `Body()` становится `requestBody` и сохраняет настроенный content type.
+- Аннотация результата или `response_type` задаёт схему ответа; status и media type берутся из настроек маршрута.
+- Pydantic-модели и вложенные определения переиспользуются через `components.schemas`.
+- Для валидируемых маршрутов документируется ответ rAPIdy HTTP 422 с полем `errors`.
+- Маршруты mounted applications получают полный путь с префиксом в схеме корневого приложения.
+
+Схема строится лениво и кэшируется. Регистрация нового маршрута или mount до startup инвалидирует кэш.
+
+## Свои пути и генерация без HTTP endpoint'ов
+
+`swagger_path=None` или `redoc_path=None` отключает соответствующий UI; `json_path` переносит JSON-схему:
+
+```python
+config = OpenAPIConfig(
+    title='Internal API',
+    version='2026.1',
+    json_path='/openapi.json',
+    swagger_path='/docs',
+    redoc_path=None,
+)
+```
+
+Для инструмента, которому не нужны документационные HTTP-маршруты, используйте чистый генератор:
+
+```python
+from rapidy.openapi import create_openapi_schema
+
+schema = create_openapi_schema(app.routes, OpenAPIConfig(title='Items API', version='1.0.0'))
+```
+
+Полный исполняемый пример: [`examples/openapi.py`](https://github.com/rAPIdy-org/rAPIdy/blob/main/packages/rapidy/examples/openapi.py).

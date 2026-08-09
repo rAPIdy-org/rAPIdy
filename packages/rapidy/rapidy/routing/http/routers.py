@@ -59,6 +59,18 @@ __all__ = (
 
 MethodName = HTTPMethod
 DUNDER_NAME_MIN_LENGTH = 4
+_OPENAPI_ROUTE_KWARGS = frozenset(
+    {
+        'deprecated',
+        'description',
+        'include_in_schema',
+        'operation_id',
+        'response_description',
+        'responses',
+        'summary',
+        'tags',
+    }
+)
 
 
 class HandlerParameterRecord(NamedTuple):
@@ -271,6 +283,14 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         response_exclude_none: bool | UnsetType = Unset,
         response_custom_encoder: CustomEncoder | UnsetType | None = Unset,
         response_json_encoder: JSONEncoder | UnsetType = Unset,
+        include_in_schema: bool | UnsetType = Unset,
+        operation_id: str | UnsetType | None = Unset,
+        summary: str | UnsetType | None = Unset,
+        description: str | UnsetType | None = Unset,
+        tags: Iterable[str] | UnsetType = Unset,
+        deprecated: bool | UnsetType = Unset,
+        response_description: str | UnsetType | None = Unset,
+        responses: dict[int | str, dict[str, Any]] | UnsetType = Unset,
         **kwargs: Any,
     ) -> None:
         raw_kwargs = {
@@ -289,6 +309,14 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
             'response_exclude_none': response_exclude_none,
             'response_custom_encoder': response_custom_encoder,
             'response_json_encoder': response_json_encoder,
+            'include_in_schema': include_in_schema,
+            'operation_id': operation_id,
+            'summary': summary,
+            'description': description,
+            'tags': tags,
+            'deprecated': deprecated,
+            'response_description': response_description,
+            'responses': responses,
             **kwargs,
         }
         self._set_route_kwargs = {key: value for key, value in raw_kwargs.items() if value is not Unset}
@@ -313,6 +341,14 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         response_exclude_none: bool = False,
         response_custom_encoder: CustomEncoder | None = None,
         response_json_encoder: JSONEncoder = DEFAULT_JSON_ENCODER,
+        include_in_schema: bool = True,
+        operation_id: str | None = None,
+        summary: str | None = None,
+        description: str | None = None,
+        tags: Iterable[str] = (),
+        deprecated: bool = False,
+        response_description: str | None = None,
+        responses: dict[int | str, dict[str, Any]] | None = None,
         **kwargs: Any,
     ) -> None:
         self._route_kwargs = {
@@ -331,6 +367,14 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
             'response_exclude_none': response_exclude_none,
             'response_custom_encoder': response_custom_encoder,
             'response_json_encoder': response_json_encoder,
+            'include_in_schema': include_in_schema,
+            'operation_id': operation_id,
+            'summary': summary,
+            'description': description,
+            'tags': tuple(tags),
+            'deprecated': deprecated,
+            'response_description': response_description,
+            'responses': responses,
             **kwargs,
         }
         super().__init__(path=path)
@@ -360,6 +404,14 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         response_exclude_none: bool | UnsetType = Unset,
         response_custom_encoder: CustomEncoder | UnsetType | None = Unset,
         response_json_encoder: JSONEncoder | UnsetType = Unset,
+        include_in_schema: bool | UnsetType = Unset,
+        operation_id: str | UnsetType | None = Unset,
+        summary: str | UnsetType | None = Unset,
+        description: str | UnsetType | None = Unset,
+        tags: Iterable[str] | UnsetType = Unset,
+        deprecated: bool | UnsetType = Unset,
+        response_description: str | UnsetType | None = Unset,
+        responses: dict[int | str, dict[str, Any]] | UnsetType = Unset,
         **kwargs: Any,
     ) -> HTTPRouteHandler:
         route = cls(
@@ -379,6 +431,14 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
             response_exclude_none=response_exclude_none,
             response_custom_encoder=response_custom_encoder,
             response_json_encoder=response_json_encoder,
+            include_in_schema=include_in_schema,
+            operation_id=operation_id,
+            summary=summary,
+            description=description,
+            tags=tags,
+            deprecated=deprecated,
+            response_description=response_description,
+            responses=responses,
             **kwargs,
         )
         return route(cast('Handler', handler))
@@ -391,12 +451,15 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
             view = cast('type[View]', self._handler)
             route_kwargs = dict(self._route_kwargs)
             route_kwargs.pop('allow_head', None)
+            terminal_kwargs = {
+                key: value for key, value in route_kwargs.items() if key not in _OPENAPI_ROUTE_KWARGS
+            }
             original_handlers = {
                 name.upper(): cast('Handler', getattr(view, name))
                 for name in ('get', 'post', 'put', 'patch', 'delete', 'head', 'options')
                 if hasattr(view, name)
             }
-            view_terminal = view_validation_wrapper(view, method=MethodName.any, **route_kwargs)
+            view_terminal = view_validation_wrapper(view, method=MethodName.any, **terminal_kwargs)
             methods = {name.upper() for name in dir(view) if name.upper() in METH_ALL}
             if 'GET' in methods:
                 methods.add('HEAD')
@@ -445,7 +508,10 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
 
         route_kwargs = dict(self._route_kwargs)
         allow_head = bool(route_kwargs.pop('allow_head', True))
-        terminal = handler_validation_wrapper(self._handler, **route_kwargs)
+        terminal_kwargs = {
+            key: value for key, value in route_kwargs.items() if key not in _OPENAPI_ROUTE_KWARGS
+        }
+        terminal = handler_validation_wrapper(self._handler, **terminal_kwargs)
         parameters = _get_handler_parameters(self._handler)
         application._matcher.add_route(  # noqa: SLF001
             self._method_name.value,
