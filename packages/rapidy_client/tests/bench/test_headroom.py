@@ -82,6 +82,9 @@ def test_build_baseline_shape() -> None:
     assert data["auth_included"] is False
     assert data["di_included"] is True
     assert data["gate_variant"] == "+di"
+    assert data["gate_metric"] == "di_incremental_overhead_ratio"
+    assert data["di_incremental_overhead_ratio"] == 0.01
+    assert data["di_incremental_noise_floor_ratio"] == 0.1
     assert data["samples"] == 25
     variants = data["variants"]
     assert isinstance(variants, dict)
@@ -105,6 +108,7 @@ def test_baseline_json_committed_and_valid() -> None:
     assert data["auth_included"] is False
     assert data["di_included"] is True
     assert data["gate_variant"] == "+di"
+    assert data["gate_metric"] == "di_incremental_overhead_ratio"
     assert tuple(data["variants"]) == FULL_STACK_VARIANTS
 
 

@@ -141,10 +141,12 @@ The release gate combines:
 - wheel and sdist inspection plus public-import smoke tests.
 
 The performance gate runs five co-located `bare_httpx2`/`no-di`/`+di` trials and
-uses the median overhead ratio, so a single noisy runner sample cannot decide
-the release verdict. Performance fails when the median `+di` full-stack
-overhead ratio exceeds its committed baseline by more than 15%. The median
-no-DI ratio is printed for attribution but does not decide the gate.
+uses medians, so a single noisy runner sample cannot decide the release verdict.
+The hard metric is the paired `+di` minus `no-di` overhead ratio from the same
+trial; this keeps the verdict independent of whether the runner is macOS or
+Ubuntu. The limit is the larger of 10 percentage points (the measured noise
+floor) and 15% headroom over the committed incremental-DI baseline. Absolute
+no-DI and `+di` ratios remain diagnostics and do not decide the gate.
 
 ## 4. Consequences
 

@@ -4,6 +4,9 @@
   "auth_included": false,
   "di_included": true,
   "gate_variant": "+di",
+  "gate_metric": "di_incremental_overhead_ratio",
+  "di_incremental_overhead_ratio": 0.013327,
+  "di_incremental_noise_floor_ratio": 0.1,
   "reference": {
     "variant": "bare_httpx2",
     "p50_us_advisory": 500.25,

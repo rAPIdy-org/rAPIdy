@@ -22,6 +22,9 @@ def _baseline(tmp_path: Path, *, ratio: float = 0.2) -> Path:
         json.dumps(
             {
                 "gate_variant": "+di",
+                "gate_metric": "di_incremental_overhead_ratio",
+                "di_incremental_overhead_ratio": 0.1,
+                "di_incremental_noise_floor_ratio": 0.1,
                 "variants": {
                     "no-di": {"relative_overhead_ratio": 0.1},
                     "+di": {"relative_overhead_ratio": ratio},
@@ -35,17 +38,17 @@ def _baseline(tmp_path: Path, *, ratio: float = 0.2) -> Path:
 
 def test_check_baseline_passes_when_di_within_threshold(tmp_path: Path) -> None:
     passed, detail = check_baseline(
-        {"no-di": 99.0, "+di": 0.22},
+        {"no-di": 99.0, "+di": 0.22, "di-incremental": 0.11},
         baseline_path=_baseline(tmp_path),
     )
     assert passed
     assert detail["no_di_ratio"] == 99.0
-    assert detail["limit"] == pytest.approx(0.23)
+    assert detail["limit"] == pytest.approx(0.115)
 
 
 def test_check_baseline_fails_when_di_over_threshold(tmp_path: Path) -> None:
     passed, detail = check_baseline(
-        {"no-di": 0.0, "+di": 0.24},
+        {"no-di": 0.0, "+di": 0.24, "di-incremental": 0.12},
         baseline_path=_baseline(tmp_path),
     )
     assert not passed
@@ -61,7 +64,9 @@ def test_aggregate_full_stack_samples_uses_median() -> None:
         ]
     )
 
-    assert current == {"no-di": 0.2198, "+di": 0.2426}
+    assert current["no-di"] == 0.2198
+    assert current["+di"] == 0.2426
+    assert current["di-incremental"] == pytest.approx(0.0785)
 
 
 @pytest.mark.parametrize(
@@ -80,7 +85,14 @@ def test_default_gate_uses_odd_sample_count() -> None:
     assert DEFAULT_GATE_RUNS % 2 == 1
 
 
-@pytest.mark.parametrize("current", [{"+di": 0.2}, {"no-di": 0.1}])
+@pytest.mark.parametrize(
+    "current",
+    [
+        {"+di": 0.2, "di-incremental": 0.1},
+        {"no-di": 0.1, "di-incremental": 0.1},
+        {"no-di": 0.1, "+di": 0.2},
+    ],
+)
 def test_check_baseline_requires_both_variants(
     tmp_path: Path,
     current: dict[str, float],
@@ -92,6 +104,8 @@ def test_check_baseline_requires_both_variants(
 def test_baseline_json_committed_and_valid() -> None:
     data = json.loads(BASELINE_PATH.read_text(encoding="utf-8"))
     assert data["gate_variant"] == "+di"
+    assert data["gate_metric"] == "di_incremental_overhead_ratio"
+    assert data["di_incremental_noise_floor_ratio"] == 0.1
     for name in ("no-di", "+di"):
         values = data["variants"][name]
         assert isinstance(values["relative_overhead_ratio"], float)

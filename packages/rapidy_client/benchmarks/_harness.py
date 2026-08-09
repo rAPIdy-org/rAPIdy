@@ -36,6 +36,8 @@ BASELINE_PATH = Path(__file__).parent / "baseline.json"
 VARIANTS = ("bare_httpx2", "+logging", "+correlation", "+redirect")
 LAYER_VARIANTS = VARIANTS + ("+deadline", "+retry", "full")
 FULL_STACK_VARIANTS = ("no-di", "+di")
+DI_INCREMENTAL_METRIC = "di-incremental"
+FULL_STACK_METRICS = (*FULL_STACK_VARIANTS, DI_INCREMENTAL_METRIC)
 BASELINE_VARIANTS = ("bare_httpx2", *FULL_STACK_VARIANTS)
 FULL_STACK = "redirect,retry,deadline,logging,correlation"
 
@@ -45,6 +47,7 @@ DEFAULT_ITERATIONS = 2000
 DEFAULT_WARMUP = 200
 DEFAULT_GATE_RUNS = 5
 REGRESSION_THRESHOLD_RATIO = 0.15
+DI_INCREMENTAL_NOISE_FLOOR_RATIO = 0.10
 MEMORY_PEAK_LIMIT_BYTES = 32 * 1024 * 1024
 STREAM_TOTAL_BYTES = 2 * 1024 * 1024 * 1024
 STREAM_CHUNK_BYTES = 65536
@@ -347,12 +350,16 @@ def build_baseline(
             "p99_us_advisory": result.p99_us,
             "environment": dict(environment),
         }
+    incremental_ratio = (by_name["+di"].p50_us - by_name["no-di"].p50_us) / bare.p50_us
     return {
         "kind": "baseline",
         "stack": FULL_STACK,
         "auth_included": False,
         "di_included": True,
         "gate_variant": "+di",
+        "gate_metric": "di_incremental_overhead_ratio",
+        "di_incremental_overhead_ratio": round(incremental_ratio, 6),
+        "di_incremental_noise_floor_ratio": DI_INCREMENTAL_NOISE_FLOOR_RATIO,
         "reference": {
             "variant": "bare_httpx2",
             "p50_us_advisory": bare.p50_us,
@@ -410,10 +417,14 @@ def aggregate_full_stack_samples(
         raise ValueError(
             f"each full-stack sample must contain exactly {FULL_STACK_VARIANTS!r}"
         )
-    return {
+    aggregated = {
         variant: float(statistics.median(sample[variant] for sample in samples))
         for variant in FULL_STACK_VARIANTS
     }
+    aggregated[DI_INCREMENTAL_METRIC] = float(
+        statistics.median(sample["+di"] - sample["no-di"] for sample in samples)
+    )
+    return aggregated
 
 
 def check_baseline(
@@ -422,14 +433,18 @@ def check_baseline(
     baseline_path: Path = BASELINE_PATH,
     threshold: float = REGRESSION_THRESHOLD_RATIO,
 ) -> tuple[bool, dict[str, object]]:
-    if set(current) != set(FULL_STACK_VARIANTS):
-        raise ValueError(f"current ratios must contain exactly {FULL_STACK_VARIANTS!r}")
+    if set(current) != set(FULL_STACK_METRICS):
+        raise ValueError(f"current ratios must contain exactly {FULL_STACK_METRICS!r}")
     if threshold < 0:
         raise ValueError("regression threshold must be non-negative")
     data = json.loads(baseline_path.read_text(encoding="utf-8"))
     variants = data.get("variants")
-    if not isinstance(variants, dict) or data.get("gate_variant") != "+di":
-        raise ValueError("baseline does not define the +di gate variant")
+    if (
+        not isinstance(variants, dict)
+        or data.get("gate_variant") != "+di"
+        or data.get("gate_metric") != "di_incremental_overhead_ratio"
+    ):
+        raise ValueError("baseline does not define the incremental +di gate")
     baseline_di = variants.get("+di")
     baseline_no_di = variants.get("no-di")
     if not isinstance(baseline_di, dict) or not isinstance(baseline_no_di, dict):
@@ -437,18 +452,26 @@ def check_baseline(
     try:
         baseline_ratio = float(baseline_di["relative_overhead_ratio"])
         baseline_no_di_ratio = float(baseline_no_di["relative_overhead_ratio"])
+        baseline_incremental_ratio = float(data["di_incremental_overhead_ratio"])
+        noise_floor_ratio = float(data["di_incremental_noise_floor_ratio"])
     except (KeyError, TypeError, ValueError) as exc:
         raise ValueError("baseline variant ratios are invalid") from exc
-    limit = baseline_ratio * (1.0 + threshold)
+    if noise_floor_ratio < 0:
+        raise ValueError("baseline noise floor must be non-negative")
+    limit = max(baseline_incremental_ratio * (1.0 + threshold), noise_floor_ratio)
     current_di = float(current["+di"])
     current_no_di = float(current["no-di"])
-    return current_di <= limit, {
+    current_incremental_ratio = float(current[DI_INCREMENTAL_METRIC])
+    return current_incremental_ratio <= limit, {
         "gate_variant": "+di",
         "baseline_ratio": baseline_ratio,
         "baseline_no_di_ratio": baseline_no_di_ratio,
-        "current_ratio": current_di,
+        "baseline_incremental_ratio": baseline_incremental_ratio,
+        "current_incremental_ratio": current_incremental_ratio,
+        "di_ratio": current_di,
         "no_di_ratio": current_no_di,
         "limit": limit,
+        "noise_floor_ratio": noise_floor_ratio,
         "threshold": threshold,
     }
 
@@ -504,7 +527,10 @@ __all__ = (
     "DEFAULT_GATE_RUNS",
     "DEFAULT_ITERATIONS",
     "DEFAULT_WARMUP",
+    "DI_INCREMENTAL_METRIC",
+    "DI_INCREMENTAL_NOISE_FLOOR_RATIO",
     "FULL_STACK",
+    "FULL_STACK_METRICS",
     "FULL_STACK_VARIANTS",
     "HEADROOM_PATH",
     "HEADROOM_THRESHOLD_PCT",

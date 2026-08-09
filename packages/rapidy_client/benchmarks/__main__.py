@@ -119,9 +119,10 @@ def main(argv: list[str] | None = None) -> int:
                 f"no-di={sample['no-di']:.4f}; +di={sample['+di']:.4f}"
             )
         print(
-            f"no-di diagnostic={detail['no_di_ratio']:.4f}; "
-            f"+di baseline={detail['baseline_ratio']:.4f} "
-            f"median={detail['current_ratio']:.4f} "
+            f"no-di median={detail['no_di_ratio']:.4f}; "
+            f"+di median={detail['di_ratio']:.4f}; "
+            f"paired DI increment baseline={detail['baseline_incremental_ratio']:.4f} "
+            f"median={detail['current_incremental_ratio']:.4f} "
             f"limit={detail['limit']:.4f}"
         )
         return 0 if passed else 1
