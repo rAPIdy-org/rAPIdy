@@ -3,11 +3,11 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
-from typing import Literal, cast
 
 from ._harness import (
     BASELINE_PATH,
     BASELINE_VARIANTS,
+    DEFAULT_GATE_RUNS,
     DEFAULT_ITERATIONS,
     DEFAULT_WARMUP,
     FULL_STACK,
@@ -16,11 +16,12 @@ from ._harness import (
     MEMORY_PEAK_LIMIT_BYTES,
     VARIANTS,
     VariantResult,
+    aggregate_full_stack_samples,
     build_baseline,
     build_headroom,
     check_baseline,
     format_breakdown,
-    measure_full_stack_ratio,
+    measure_full_stack_samples,
     measure_stream_memory,
     run_breakdown,
 )
@@ -83,6 +84,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--variants")
     parser.add_argument("--iterations", type=int, default=DEFAULT_ITERATIONS)
     parser.add_argument("--warmup", type=int, default=DEFAULT_WARMUP)
+    parser.add_argument("--gate-runs", type=int, default=DEFAULT_GATE_RUNS)
     args = parser.parse_args(argv)
     if args.check_headroom:
         return _check_headroom()
@@ -96,25 +98,30 @@ def main(argv: list[str] | None = None) -> int:
         )
         if variants != FULL_STACK_VARIANTS:
             parser.error("--check-baseline requires --variants no-di,+di in that order")
-        current = {
-            variant: asyncio.run(
-                measure_full_stack_ratio(
-                    variant=cast("Literal['no-di', '+di']", variant),
-                    iterations=args.iterations,
-                    warmup=args.warmup,
-                )
+        if args.gate_runs <= 0:
+            parser.error("--gate-runs must be greater than zero")
+        samples = asyncio.run(
+            measure_full_stack_samples(
+                runs=args.gate_runs,
+                iterations=args.iterations,
+                warmup=args.warmup,
             )
-            for variant in variants
-        }
+        )
+        current = aggregate_full_stack_samples(samples)
         try:
             passed, detail = check_baseline(current)
         except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError) as exc:
             print(f"invalid baseline: {exc}")
             return 1
+        for index, sample in enumerate(samples, start=1):
+            print(
+                f"gate sample {index}/{len(samples)}: "
+                f"no-di={sample['no-di']:.4f}; +di={sample['+di']:.4f}"
+            )
         print(
             f"no-di diagnostic={detail['no_di_ratio']:.4f}; "
             f"+di baseline={detail['baseline_ratio']:.4f} "
-            f"current={detail['current_ratio']:.4f} "
+            f"median={detail['current_ratio']:.4f} "
             f"limit={detail['limit']:.4f}"
         )
         return 0 if passed else 1

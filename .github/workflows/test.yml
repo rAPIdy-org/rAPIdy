@@ -141,7 +141,7 @@ jobs:
       - name: Check full-stack performance baseline
         run: >-
           uv run --python 3.13 python -m packages.rapidy_client.benchmarks
-          --check-baseline --variants no-di,+di
+          --check-baseline --variants no-di,+di --gate-runs 5
       - name: Check streaming memory ceiling
         run: >-
           uv run --python 3.13 python -m packages.rapidy_client.benchmarks

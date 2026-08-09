@@ -4,13 +4,14 @@ import json
 import logging
 import math
 import platform
+import statistics
 import time
 import tracemalloc
-from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
+from collections.abc import AsyncIterator, Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Literal, cast
+from typing import cast
 
 import httpx2
 from rapidy_client import (
@@ -42,6 +43,7 @@ ADVISORY_P99_US = 300.0
 HEADROOM_THRESHOLD_PCT = 10.0
 DEFAULT_ITERATIONS = 2000
 DEFAULT_WARMUP = 200
+DEFAULT_GATE_RUNS = 5
 REGRESSION_THRESHOLD_RATIO = 0.15
 MEMORY_PEAK_LIMIT_BYTES = 32 * 1024 * 1024
 STREAM_TOTAL_BYTES = 2 * 1024 * 1024 * 1024
@@ -374,21 +376,44 @@ def format_breakdown(results: list[VariantResult]) -> str:
     return "\n".join(lines)
 
 
-async def measure_full_stack_ratio(
+async def measure_full_stack_samples(
     *,
-    variant: Literal["no-di", "+di"],
+    runs: int = DEFAULT_GATE_RUNS,
     iterations: int = DEFAULT_ITERATIONS,
     warmup: int = DEFAULT_WARMUP,
-) -> float:
-    results = await run_breakdown(
-        iterations=iterations,
-        warmup=warmup,
-        variants=("bare_httpx2", variant),
-    )
-    overhead = results[-1].overhead_pct
-    if overhead is None:
-        raise RuntimeError(f"benchmark variant {variant!r} has no overhead")
-    return overhead / 100.0
+) -> list[dict[str, float]]:
+    if runs <= 0:
+        raise ValueError("runs must be greater than zero")
+    samples: list[dict[str, float]] = []
+    for _ in range(runs):
+        results = await run_breakdown(
+            iterations=iterations,
+            warmup=warmup,
+            variants=BASELINE_VARIANTS,
+        )
+        sample: dict[str, float] = {}
+        for result in results[1:]:
+            if result.overhead_pct is None:
+                raise RuntimeError(f"benchmark variant {result.name!r} has no overhead")
+            sample[result.name] = result.overhead_pct / 100.0
+        samples.append(sample)
+    return samples
+
+
+def aggregate_full_stack_samples(
+    samples: Sequence[Mapping[str, float]],
+) -> dict[str, float]:
+    if not samples:
+        raise ValueError("at least one full-stack sample is required")
+    expected = set(FULL_STACK_VARIANTS)
+    if any(set(sample) != expected for sample in samples):
+        raise ValueError(
+            f"each full-stack sample must contain exactly {FULL_STACK_VARIANTS!r}"
+        )
+    return {
+        variant: float(statistics.median(sample[variant] for sample in samples))
+        for variant in FULL_STACK_VARIANTS
+    }
 
 
 def check_baseline(
@@ -476,6 +501,7 @@ __all__ = (
     "ADVISORY_P99_US",
     "BASELINE_PATH",
     "BASELINE_VARIANTS",
+    "DEFAULT_GATE_RUNS",
     "DEFAULT_ITERATIONS",
     "DEFAULT_WARMUP",
     "FULL_STACK",
@@ -489,11 +515,12 @@ __all__ = (
     "STREAM_TOTAL_BYTES",
     "VARIANTS",
     "VariantResult",
+    "aggregate_full_stack_samples",
     "build_baseline",
     "build_headroom",
     "check_baseline",
     "format_breakdown",
-    "measure_full_stack_ratio",
+    "measure_full_stack_samples",
     "measure_stream_memory",
     "run_breakdown",
 )

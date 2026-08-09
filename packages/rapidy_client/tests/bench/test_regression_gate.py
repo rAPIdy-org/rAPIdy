@@ -6,9 +6,11 @@ from pathlib import Path
 import pytest
 from benchmarks._harness import (
     BASELINE_PATH,
+    DEFAULT_GATE_RUNS,
     MEMORY_PEAK_LIMIT_BYTES,
     STREAM_CHUNK_BYTES,
     STREAM_TOTAL_BYTES,
+    aggregate_full_stack_samples,
     check_baseline,
     measure_stream_memory,
 )
@@ -48,6 +50,34 @@ def test_check_baseline_fails_when_di_over_threshold(tmp_path: Path) -> None:
     )
     assert not passed
     assert detail["gate_variant"] == "+di"
+
+
+def test_aggregate_full_stack_samples_uses_median() -> None:
+    current = aggregate_full_stack_samples(
+        [
+            {"no-di": 0.2198, "+di": 0.1889},
+            {"no-di": 0.2374, "+di": 0.3819},
+            {"no-di": 0.1641, "+di": 0.2426},
+        ]
+    )
+
+    assert current == {"no-di": 0.2198, "+di": 0.2426}
+
+
+@pytest.mark.parametrize(
+    "samples",
+    [[], [{"+di": 0.2}], [{"no-di": 0.1}]],
+)
+def test_aggregate_full_stack_samples_requires_complete_samples(
+    samples: list[dict[str, float]],
+) -> None:
+    with pytest.raises(ValueError, match="sample"):
+        aggregate_full_stack_samples(samples)
+
+
+def test_default_gate_uses_odd_sample_count() -> None:
+    assert DEFAULT_GATE_RUNS >= 3
+    assert DEFAULT_GATE_RUNS % 2 == 1
 
 
 @pytest.mark.parametrize("current", [{"+di": 0.2}, {"no-di": 0.1}])
