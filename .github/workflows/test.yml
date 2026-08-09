@@ -59,7 +59,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-      - run: uv sync --python 3.13 --group docs
+      - run: uv sync --python 3.13 --group docs --extra test
       - name: Strict server and usage typing
         working-directory: packages/rapidy
         run: uv run --python 3.13 mypy --strict rapidy tests/typecheck

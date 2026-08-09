@@ -10,6 +10,8 @@ import rapidy
 from rapidy import Rapidy
 from rapidy.http import get
 
+OPTIONAL_IMPORT_PREFIXES = ('rapidy.testing',)
+
 
 @get("/")
 async def hello() -> dict[str, str]:
@@ -64,6 +66,11 @@ def main() -> int:
     else:
         raise AssertionError("aiohttp must not be installed with the rAPIdy 2.0 wheel")
     for module in pkgutil.walk_packages(rapidy.__path__, f"{rapidy.__name__}."):
+        if any(
+            module.name == prefix or module.name.startswith(f'{prefix}.')
+            for prefix in OPTIONAL_IMPORT_PREFIXES
+        ):
+            continue
         import_module(module.name)
     asyncio.run(smoke())
     print("rapidy wheel imports and ASGI quickstart: ok")
