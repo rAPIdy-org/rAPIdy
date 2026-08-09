@@ -10,8 +10,6 @@ authors = [
 ]
 maintainers = [
     { name = "Daniil Grois", email = "daniil.grois@gmail.com" },
-    { name = "Lev Zaplatin", email = "lev@zaplatin.dev" },
-    { name = "Nikita Tolstoy", email = "nikitka.tolstoy@gmail.com" },
 ]
 keywords = [
     "rAPIdy",
