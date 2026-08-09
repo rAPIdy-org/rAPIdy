@@ -1,38 +1,42 @@
 # Deployment
 
-rAPIdy is an ASGI application. Install one server extra and point that server at `module:app`.
-
-## Granian
-
-Granian is the default used by `rapidy.run_app` and `python -m rapidy`.
+rAPIdy is a server-neutral ASGI application. The base installation contains no server:
 
 ```bash
-pip install "rapidy[granian]"
-granian --interface asgi \
-  --host 0.0.0.0 --port 8000 \
-  --workers 4 --workers-kill-timeout 30s \
-  main:app
+pip install rapidy
 ```
 
-Equivalent Python entry point:
+Select Uvicorn for the built-in launcher:
+
+```bash
+pip install "rapidy[uvicorn]"
+rapidy run main:app --host 0.0.0.0 --port 8000 \
+  --workers 4 --timeout-graceful-shutdown 30
+```
+
+`rapidy dev main:app` uses the same runtime with reload enabled and binds to `127.0.0.1` by default.
+
+## Uvicorn
+
+`rapidy run`, `rapidy dev`, `rapidy.run_app`, and `python -m rapidy` use Uvicorn's programmatic API. The equivalent
+Python entry point is:
 
 ```python
 from rapidy import run_app
 
-run_app('main:app', host='0.0.0.0', port=8000, workers=4, workers_kill_timeout=30)
+run_app('main:app', host='0.0.0.0', port=8000, workers=4, timeout_graceful_shutdown=30)
 ```
 
-The CLI wrapper is also available:
+Reload and multiple workers require an import string such as `main:app`; a direct application object remains valid
+for a single non-reloading process.
+
+## Granian and Hypercorn
+
+Alternative server extras do not pull in Uvicorn and are launched through their native CLIs:
 
 ```bash
-python -m rapidy main:app --host 0.0.0.0 --port 8000 --workers 4 --workers-kill-timeout 30
-```
-
-## Uvicorn and Hypercorn
-
-```bash
-pip install "rapidy[uvicorn]"
-uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
+pip install "rapidy[granian]"
+granian --interface asgi --host 0.0.0.0 --port 8000 --workers 4 main:app
 
 pip install "rapidy[hypercorn]"
 hypercorn --bind 0.0.0.0:8000 --workers 4 main:app

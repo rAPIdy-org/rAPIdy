@@ -27,8 +27,8 @@ app = Rapidy(http_route_handlers=[hello])
 ```
 
 ```bash
-pip install "rapidy[granian]"
-granian --interface asgi main:app
+pip install "rapidy[uvicorn]"
+rapidy dev main:app
 ```
 
 ## Основные возможности

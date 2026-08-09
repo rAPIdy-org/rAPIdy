@@ -12,7 +12,7 @@ from typing import Any
 import rapidy
 from rapidy import Rapidy
 from rapidy.background import BackgroundTask
-from rapidy.http import get, Response
+from rapidy.http import Response, get
 from rapidy.middlewares import (
     CompressionMiddleware,
     GZipMiddleware,
@@ -108,6 +108,16 @@ def main() -> int:
     assert rapidy.__version__ == "2.0.0"
     requirements = metadata.requires("rapidy") or []
     assert not any(requirement.lower().startswith(("aiohttp", "dishka")) for requirement in requirements)
+    assert all(
+        not requirement.lower().startswith("uvicorn") or "extra ==" in requirement
+        for requirement in requirements
+    )
+    try:
+        metadata.version("uvicorn")
+    except metadata.PackageNotFoundError:
+        pass
+    else:
+        raise AssertionError("Uvicorn must stay optional in the base rAPIdy wheel")
     try:
         metadata.version("aiohttp")
     except metadata.PackageNotFoundError:

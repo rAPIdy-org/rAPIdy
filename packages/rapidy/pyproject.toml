@@ -58,7 +58,7 @@ otel = [
     "opentelemetry-api>=1.44,<2",
     "opentelemetry-instrumentation-asgi>=0.65b0,<1",
 ]
-uvicorn = ["uvicorn>=0.34,<1"]
+uvicorn = ["uvicorn[standard]>=0.34,<1"]
 hypercorn = ["hypercorn>=0.17,<1"]
 test = [
     "anyio>=4,<5",

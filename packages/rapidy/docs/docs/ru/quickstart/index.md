@@ -5,14 +5,17 @@
 После публикации релиза:
 
 ```bash
-python -m pip install "rapidy[granian]"
+python -m pip install "rapidy[uvicorn]"
 ```
+
+`pip install rapidy` устанавливает framework без ASGI-сервера. Extra Uvicorn включает встроенные команды
+`rapidy run` и `rapidy dev`.
 
 До публикации `rapidy-core` установите пакеты из монорепозитория:
 
 ```bash
 python -m pip install -e packages/rapidy_core
-python -m pip install -e "packages/rapidy[granian]"
+python -m pip install -e "packages/rapidy[uvicorn]"
 ```
 
 ## Приложение
@@ -49,10 +52,11 @@ app = Rapidy(http_route_handlers=[hello, create_user])
 ## Запуск
 
 ```bash
-granian --interface asgi --host 127.0.0.1 --port 8000 main:app
+rapidy dev main:app
 ```
 
-Также можно использовать `uvicorn main:app` или `hypercorn main:app` с соответствующим extra.
+Команда использует Uvicorn из выбранного extra. Granian и Hypercorn доступны через собственные extras и не
+устанавливают Uvicorn.
 
 ```bash
 curl http://127.0.0.1:8000/

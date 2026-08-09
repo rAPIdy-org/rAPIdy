@@ -6,7 +6,8 @@
 
 rAPIdy is an async-first ASGI framework with Pydantic v2 validation, dependency injection, middleware, mounts,
 WebSockets, Server-Sent Events, streaming responses, post-response tasks, and safe file serving. Version 2.0 no longer
-depends on aiohttp: Granian is the default server, while Uvicorn and Hypercorn are supported through optional extras.
+depends on aiohttp or bundles an ASGI server. Uvicorn is the recommended launcher extra; Granian and Hypercorn remain
+independent alternatives.
 
 - Python 3.12+
 - Pydantic `>=2.9,<3`
@@ -18,17 +19,24 @@ depends on aiohttp: Granian is the default server, while Uvicorn and Hypercorn a
 After the 2.0 packages are published:
 
 ```bash
-python -m pip install "rapidy[granian]"
+python -m pip install rapidy
+```
+
+The base install is server-neutral. For the built-in `rapidy run` and `rapidy dev` commands:
+
+```bash
+python -m pip install "rapidy[uvicorn]"
 ```
 
 From this repository before publication, install core first:
 
 ```bash
 python -m pip install -e packages/rapidy_core
-python -m pip install -e "packages/rapidy[granian]"
+python -m pip install -e "packages/rapidy[uvicorn]"
 ```
 
-Use `rapidy[uvicorn]` or `rapidy[hypercorn]` if that server is your deployment target.
+Use `rapidy[granian]` or `rapidy[hypercorn]` instead if that server is your deployment target; these extras do not
+install Uvicorn.
 Install `rapidy[test]` for the public HTTP/WebSocket/SSE testing clients.
 
 ## Quickstart
@@ -94,10 +102,10 @@ app = Rapidy(
 Built-in API-key, Basic, and opaque Bearer schemes cover HTTP and WebSocket. Scopes, cumulative guards, public route
 overrides, `request.user`/`request.auth`, and typed DI are included without adding a cryptography dependency.
 
-Run it with Granian:
+Run it with the included Uvicorn server:
 
 ```bash
-granian --interface asgi --host 127.0.0.1 --port 8000 main:app
+rapidy dev main:app
 ```
 
 Or keep a Python entry point:
@@ -204,11 +212,11 @@ Executable examples live in [`examples/`](examples/), and the full guide is publ
 ## Deployment
 
 ```bash
-# Granian (recommended)
-granian --interface asgi --workers 4 --workers-kill-timeout 30s main:app
+# Uvicorn (recommended CLI runtime)
+rapidy run main:app --workers 4 --timeout-graceful-shutdown 30
 
-# Uvicorn
-uvicorn main:app --workers 4
+# Granian (optional)
+granian --interface asgi --workers 4 --workers-kill-timeout 30s main:app
 
 # Hypercorn
 hypercorn --workers 4 main:app

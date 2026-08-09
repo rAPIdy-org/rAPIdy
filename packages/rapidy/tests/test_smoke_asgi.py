@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import builtins
 from typing import Any
 from urllib.request import urlopen
 
@@ -9,7 +10,7 @@ from httpx import ASGITransport, AsyncClient
 import rapidy
 from rapidy import Rapidy
 from rapidy.http import get, Request, Response
-from rapidy.serve import run_app
+from rapidy.serve import MissingUvicornDependencyError, run_app
 from rapidy.version import SERVER_INFO
 from tests.live_server import live_server
 
@@ -87,22 +88,46 @@ def test_response_serializes_structured_body_types() -> None:
     assert response.text == '{"implemented": true}'
 
 
-def test_run_app_uses_programmatic_granian(monkeypatch: pytest.MonkeyPatch) -> None:
-    calls: dict[str, Any] = {}
+def test_run_app_uses_programmatic_uvicorn(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[Any, dict[str, Any]]] = []
 
-    class FakeServer:
-        def __init__(self, **kwargs: Any) -> None:
-            calls['init'] = kwargs
+    def fake_run(app: Any, **kwargs: Any) -> None:
+        calls.append((app, kwargs))
 
-        def serve(self, **kwargs: Any) -> None:
-            calls['serve'] = kwargs
+    monkeypatch.setattr('uvicorn.run', fake_run)
+    run_app(
+        'tests.apps.ping_app:app',
+        host='127.0.0.1',
+        port=9000,
+        workers=2,
+        timeout_graceful_shutdown=7,
+    )
 
-    monkeypatch.setattr('granian.server.Server', FakeServer)
+    assert calls == [
+        (
+            'tests.apps.ping_app:app',
+            {
+                'host': '127.0.0.1',
+                'port': 9000,
+                'workers': 2,
+                'timeout_graceful_shutdown': 7,
+            },
+        )
+    ]
+
     app = Rapidy(http_route_handlers=[ping])
-    run_app(app, host='127.0.0.1', port=9000, workers=2, workers_kill_timeout=7)
+    with pytest.raises(ValueError, match='import string'):
+        run_app(app, workers=2)
 
-    assert calls['init']['address'] == '127.0.0.1'
-    assert calls['init']['port'] == 9000
-    assert calls['init']['workers'] == 2
-    assert calls['init']['workers_kill_timeout'] == 7
-    assert calls['serve']['target_loader']('unused') is app
+
+def test_run_app_explains_missing_uvicorn_extra(monkeypatch: pytest.MonkeyPatch) -> None:
+    real_import = builtins.__import__
+
+    def missing_uvicorn(name: str, *args: Any, **kwargs: Any) -> Any:
+        if name == 'uvicorn':
+            raise ImportError
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr(builtins, '__import__', missing_uvicorn)
+    with pytest.raises(MissingUvicornDependencyError, match=r'rapidy\[uvicorn\]'):
+        run_app('tests.apps.ping_app:app')

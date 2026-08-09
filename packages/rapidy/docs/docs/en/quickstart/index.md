@@ -5,14 +5,17 @@
 For a published release:
 
 ```bash
-python -m pip install "rapidy[granian]"
+python -m pip install "rapidy[uvicorn]"
 ```
+
+`pip install rapidy` installs the framework without any ASGI server. The Uvicorn extra enables the built-in
+`rapidy run` and `rapidy dev` launchers.
 
 When working from the monorepo before `rapidy-core` is published:
 
 ```bash
 python -m pip install -e packages/rapidy_core
-python -m pip install -e "packages/rapidy[granian]"
+python -m pip install -e "packages/rapidy[uvicorn]"
 ```
 
 ## Create an application
@@ -53,10 +56,11 @@ The checked and tested source is [`examples/quickstart.py`](https://github.com/r
 ## Run it
 
 ```bash
-granian --interface asgi --host 127.0.0.1 --port 8000 main:app
+rapidy dev main:app
 ```
 
-You may instead use `uvicorn main:app` or `hypercorn main:app` after installing the corresponding extra.
+This uses the Uvicorn runtime selected by the extra. Granian and Hypercorn remain available through their own extras
+without installing Uvicorn.
 
 ```bash
 curl http://127.0.0.1:8000/
@@ -69,7 +73,7 @@ The second response has status 201. An invalid age produces HTTP 422 and a JSON 
 
 ## Use a Python entry point
 
-`run_app` uses Granian's programmatic API:
+`run_app` uses Uvicorn's programmatic API:
 
 ```python
 from rapidy import run_app

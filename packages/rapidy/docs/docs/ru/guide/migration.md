@@ -8,8 +8,8 @@
 | 1.x | 2.0 |
 |---|---|
 | `request['key']` | `request.state.key` |
-| aiohttp `run_app` options | Granian `workers` / `workers_kill_timeout` |
-| aiohttp Gunicorn worker | Granian/Uvicorn/Hypercorn |
+| aiohttp `run_app` options | Uvicorn `workers` / `timeout_graceful_shutdown` |
+| aiohttp Gunicorn worker | Uvicorn/Granian/Hypercorn |
 | `WebSocketResponse` в `@get` | `@websocket` + `WebSocket` |
 | `cleanup_ctx` | `app.lifespan.append(...)` |
 | `app.router.*` | decorators / `add_http_router(s)` |

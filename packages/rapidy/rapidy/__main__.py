@@ -8,7 +8,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from rapidy.application import Rapidy
-from rapidy.serve import run_app
+from rapidy.serve import MissingUvicornDependencyError, run_app
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -16,7 +16,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog='rapidy')
     commands = parser.add_subparsers(dest='command', required=True)
 
-    run_parser = commands.add_parser('run', help='run an application with Granian')
+    run_parser = commands.add_parser('run', help='run an application with Uvicorn')
     _add_server_arguments(run_parser, host='0.0.0.0')  # noqa: S104
 
     dev_parser = commands.add_parser('dev', help='run a development server')
@@ -40,14 +40,17 @@ def main(argv: Sequence[str] | None = None) -> None:
         arguments.insert(0, 'run')
     args = build_parser().parse_args(arguments)
     if args.command in {'run', 'dev'}:
-        run_app(
-            args.target,
-            host=args.host,
-            port=args.port,
-            workers=args.workers,
-            workers_kill_timeout=args.workers_kill_timeout,
-            **({'reload': args.reload} if args.command == 'dev' else {}),
-        )
+        try:
+            run_app(
+                args.target,
+                host=args.host,
+                port=args.port,
+                workers=args.workers,
+                timeout_graceful_shutdown=args.timeout_graceful_shutdown,
+                **({'reload': args.reload} if args.command == 'dev' else {}),
+            )
+        except MissingUvicornDependencyError as exc:
+            raise SystemExit(str(exc)) from exc
         return
 
     app = load_app(args.target)
@@ -81,7 +84,7 @@ def _add_server_arguments(parser: argparse.ArgumentParser, *, host: str) -> None
     parser.add_argument('--host', default=host)
     parser.add_argument('--port', type=int, default=8080)
     parser.add_argument('--workers', type=int, default=1)
-    parser.add_argument('--workers-kill-timeout', type=int)
+    parser.add_argument('--timeout-graceful-shutdown', type=int)
 
 
 def _print_routes(app: Rapidy, *, as_json: bool) -> None:

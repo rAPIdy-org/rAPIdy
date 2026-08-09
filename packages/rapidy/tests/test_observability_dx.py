@@ -33,6 +33,7 @@ from rapidy.routing import (
     UnexpectedPathParameterError,
     URLPath,
 )
+from rapidy.serve import MissingUvicornDependencyError
 from rapidy.staticfiles import StaticFiles
 from rapidy.testing import AsyncTestClient
 
@@ -299,7 +300,7 @@ def test_cli_routes_check_dev_and_subprocess(
                 'host': '127.0.0.1',
                 'port': 9001,
                 'workers': 1,
-                'workers_kill_timeout': None,
+                'timeout_graceful_shutdown': None,
                 'reload': True,
             },
         )
@@ -321,3 +322,10 @@ def test_cli_routes_check_dev_and_subprocess(
     )
     routes = json.loads(result.stdout)
     assert any(route['name'] == 'user' for route in routes)
+
+    def missing_uvicorn(_target: str, **_kwargs: Any) -> None:
+        raise MissingUvicornDependencyError
+
+    monkeypatch.setattr('rapidy.__main__.run_app', missing_uvicorn)
+    with pytest.raises(SystemExit, match=r"install 'rapidy\[uvicorn\]'"):
+        main(['run', 'tests.apps.observability_dx:app'])

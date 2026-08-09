@@ -55,9 +55,9 @@ app = Rapidy(
 
 if __name__ == '__main__':
     run_app(
-        app,
+        'tests.ported.migration_app.app_rapidy_2x:app',
         host='127.0.0.1',
         port=8000,
         workers=2,
-        workers_kill_timeout=30,
+        timeout_graceful_shutdown=30,
     )

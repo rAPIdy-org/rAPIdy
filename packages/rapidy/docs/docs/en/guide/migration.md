@@ -13,8 +13,8 @@ Read the complete, executable before/after guide in
 |---|---|
 | aiohttp `Request`/`Response` internals | Native ASGI rAPIdy objects |
 | `request['key']` | `request.state.key` |
-| aiohttp `run_app` options | Granian `workers` / `workers_kill_timeout` |
-| aiohttp Gunicorn worker | Granian/Uvicorn/Hypercorn worker processes |
+| aiohttp `run_app` options | Uvicorn `workers` / `timeout_graceful_shutdown` |
+| aiohttp Gunicorn worker | Uvicorn/Granian/Hypercorn worker processes |
 | `WebSocketResponse` inside `@get` | `@websocket` and `WebSocket` |
 | `cleanup_ctx` | `app.lifespan.append(...)` |
 | `app.router.*` / `add_routes` | decorators and `add_http_router(s)` |

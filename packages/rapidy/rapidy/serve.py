@@ -2,9 +2,17 @@ from __future__ import annotations
 
 from typing import Any
 
+from rapidy_core.exceptions import RapidyException
+
 from rapidy.typedefs import ASGIApp
 
-__all__ = ('run_app',)
+__all__ = ('MissingUvicornDependencyError', 'run_app')
+
+
+class MissingUvicornDependencyError(RapidyException):
+    """Raised when the Uvicorn-oriented launcher is used without its server extra."""
+
+    message = "Uvicorn is required for run_app and the rapidy CLI; install 'rapidy[uvicorn]'."
 
 
 def run_app(
@@ -13,28 +21,24 @@ def run_app(
     port: int = 8080,
     *,
     workers: int = 1,
-    workers_kill_timeout: int | None = None,
+    timeout_graceful_shutdown: int | None = None,
     **server_kwargs: Any,
 ) -> None:
-    """Run an ASGI application through Granian's programmatic API."""
+    """Run an ASGI application through Uvicorn's programmatic API."""
     try:
-        from granian.constants import Interfaces  # noqa: PLC0415
-        from granian.server import Server  # noqa: PLC0415
+        import uvicorn  # noqa: PLC0415
     except ImportError as exc:
-        msg = "Granian is required to run the server; install 'rapidy[granian]'"
-        raise RuntimeError(msg) from exc
+        raise MissingUvicornDependencyError from exc
 
-    target = app if isinstance(app, str) else f'{app.__class__.__module__}:{app.__class__.__qualname__}'
-    server = Server(
-        target=target,
-        address=host,
+    if not isinstance(app, str) and (workers != 1 or bool(server_kwargs.get('reload'))):
+        msg = "Uvicorn reload and multiple workers require an application import string such as 'main:app'"
+        raise ValueError(msg)
+
+    uvicorn.run(
+        app,
+        host=host,
         port=port,
-        interface=Interfaces.ASGI,
         workers=workers,
-        workers_kill_timeout=workers_kill_timeout,
+        timeout_graceful_shutdown=timeout_graceful_shutdown,
         **server_kwargs,
     )
-    if isinstance(app, str):
-        server.serve()
-    else:
-        server.serve(target_loader=lambda _target: app)

@@ -66,10 +66,10 @@ stream = StreamResponse(body=chunks())
 `StreamResponse` also keeps the imperative `prepare()`, `write()`, and `write_eof()` flow for
 code that needs explicit streaming control.
 
-### 03. run_app and Granian options
+### 03. run_app and Uvicorn options
 
-`run_app` now delegates to Granian. Server-specific keyword arguments must use Granian's
-programmatic API names.
+`run_app` now delegates to Uvicorn. Server-specific keyword arguments must use Uvicorn's
+programmatic API names and require `pip install "rapidy[uvicorn]"`.
 
 **Before**
 
@@ -89,16 +89,17 @@ run_app(
 
 ```python
 run_app(
-    app,
+    'main:app',
     host='0.0.0.0',
     port=8000,
     workers=2,
-    workers_kill_timeout=30,
+    timeout_graceful_shutdown=30,
 )
 ```
 
-In particular, `shutdown_timeout` becomes Granian's `workers_kill_timeout`. Pass other runtime
-settings using the corresponding Granian keyword arguments.
+In particular, `shutdown_timeout` becomes Uvicorn's `timeout_graceful_shutdown`. Reload and multiple workers require
+an import string such as `main:app`; direct application objects are supported for one non-reloading process. Pass
+other runtime settings using the corresponding Uvicorn keyword arguments.
 
 ### 04. Gunicorn workers
 
@@ -116,7 +117,7 @@ gunicorn app:app --worker-class rapidy.GunicornWebWorker --workers 4
 ```python
 from rapidy import run_app
 
-run_app(app, workers=4)
+run_app('main:app', workers=4)
 ```
 
 The dishka application container is created once per process, not once for the whole worker
@@ -321,7 +322,7 @@ app = Application(logger=logger, handler_args={'expect_handler': expect_handler}
 app = Rapidy(http_route_handlers=routes)
 ```
 
-Configure server logging through `run_app`/Granian settings and express handler behavior through
+Configure server logging through `run_app`/Uvicorn settings and express handler behavior through
 route handlers or middleware.
 
 ### 13. Observability, errors, and reverse URLs
