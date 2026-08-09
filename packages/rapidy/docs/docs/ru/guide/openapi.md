@@ -99,6 +99,40 @@ config = OpenAPIConfig(
 используйте `operationRef`. В явно заданных `responses` стандартное поле `links` можно записывать непосредственно в
 Response Object.
 
+## Переиспользуемые компоненты
+
+Если несколько операций, callbacks или webhooks используют один OpenAPI-объект, объявите его через
+`OpenAPIComponents`:
+
+```python
+from rapidy.openapi import OpenAPIComponents, OpenAPIConfig
+
+components = OpenAPIComponents(
+    responses={
+        'NotFound': {'description': 'Item not found'},
+    },
+    schemas={
+        'TraceId': {'type': 'string', 'format': 'uuid'},
+    },
+)
+
+config = OpenAPIConfig(components=components)
+
+
+@get(
+    '/items/{item_id}',
+    responses={404: {'$ref': '#/components/responses/NotFound'}},
+)
+async def read_item(item_id: int = PathParam()) -> ItemOut:
+    ...
+```
+
+Контейнер предоставляет все десять секций OpenAPI 3.1 с Python-именами: `schemas`, `responses`, `parameters`,
+`examples`, `request_bodies`, `headers`, `security_schemes`, `links`, `callbacks` и `path_items`. Значения сохраняют
+нативную структуру OpenAPI и могут ссылаться друг на друга через `$ref`. Явные schemas объединяются со схемами,
+сгенерированными из Pydantic; несовместимые определения останавливают генерацию. Прежний сокращённый параметр
+`OpenAPIConfig.security_schemes` остаётся доступен и объединяется с `components.security_schemes` по тому же правилу.
+
 ## Метаданные безопасности
 
 Переиспользуемые OpenAPI security schemes задаются в конфигурации приложения, а требования выбираются глобально

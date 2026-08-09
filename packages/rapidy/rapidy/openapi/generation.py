@@ -26,6 +26,19 @@ __all__ = ('OpenAPIGenerationError', 'create_openapi_schema')
 _REF_TEMPLATE = '#/components/schemas/{model}'
 _NO_BODY_STATUSES = {204, 304}
 _SECURITY_SCHEME_TYPES = frozenset({'apiKey', 'http', 'mutualTLS', 'oauth2', 'openIdConnect'})
+_COMPONENT_NAME_PATTERN = re.compile(r'^[a-zA-Z0-9.\-_]+$')
+_COMPONENT_SECTIONS = (
+    ('schemas', 'schemas'),
+    ('responses', 'responses'),
+    ('parameters', 'parameters'),
+    ('examples', 'examples'),
+    ('request_bodies', 'requestBodies'),
+    ('headers', 'headers'),
+    ('security_schemes', 'securitySchemes'),
+    ('links', 'links'),
+    ('callbacks', 'callbacks'),
+    ('path_items', 'pathItems'),
+)
 _NON_ARRAY_TYPES = (str, bytes, bytearray)
 _VALIDATION_ERROR_SCHEMA = {
     'properties': {
@@ -584,19 +597,52 @@ def _validate_security_scheme(name: str, scheme: Mapping[str, Any]) -> None:
         _validate_openid_security_scheme(name, scheme)
 
 
-def _security_schemes(config: OpenAPIConfig) -> dict[str, dict[str, Any]]:
-    result: dict[str, dict[str, Any]] = {}
-    for name, configured_scheme in config.security_schemes.items():
-        if not isinstance(name, str) or not name:
-            msg = f'OpenAPI security scheme name must be a non-empty string: {name!r}'
-            raise OpenAPIGenerationError(msg)
-        if not isinstance(configured_scheme, Mapping):
-            msg = f'OpenAPI security scheme {name!r} must be a mapping'
+def _configured_component_sections(config: OpenAPIConfig) -> dict[str, dict[str, Any]]:
+    sections: dict[str, dict[str, Any]] = {}
+    for attribute_name, openapi_name in _COMPONENT_SECTIONS:
+        configured = getattr(config.components, attribute_name)
+        if not isinstance(configured, Mapping):
+            msg = f'OpenAPI components.{attribute_name} must be a mapping'
             raise OpenAPIGenerationError(msg)
 
-        scheme = deepcopy(dict(configured_scheme))
-        _validate_security_scheme(name, scheme)
-        result[name] = scheme
+        objects: dict[str, Any] = {}
+        for name, value in configured.items():
+            if not isinstance(name, str) or _COMPONENT_NAME_PATTERN.fullmatch(name) is None:
+                msg = f'Invalid OpenAPI component name in {openapi_name}: {name!r}'
+                raise OpenAPIGenerationError(msg)
+            if openapi_name == 'schemas' and isinstance(value, bool):
+                objects[name] = value
+                continue
+            if not isinstance(value, Mapping):
+                msg = f'OpenAPI components.{openapi_name}.{name} must be a mapping'
+                raise OpenAPIGenerationError(msg)
+            objects[name] = deepcopy(dict(value))
+        if objects:
+            sections[openapi_name] = objects
+    return sections
+
+
+def _security_schemes(
+    config: OpenAPIConfig,
+    component_schemes: Mapping[str, Any],
+) -> dict[str, dict[str, Any]]:
+    result: dict[str, dict[str, Any]] = {}
+    for configured_schemes in (component_schemes, config.security_schemes):
+        for name, configured_scheme in configured_schemes.items():
+            if not isinstance(name, str) or _COMPONENT_NAME_PATTERN.fullmatch(name) is None:
+                msg = f'Invalid OpenAPI security scheme component name: {name!r}'
+                raise OpenAPIGenerationError(msg)
+            if not isinstance(configured_scheme, Mapping):
+                msg = f'OpenAPI security scheme {name!r} must be a mapping'
+                raise OpenAPIGenerationError(msg)
+
+            scheme = deepcopy(dict(configured_scheme))
+            _validate_security_scheme(name, scheme)
+            existing = result.get(name)
+            if existing is not None and existing != scheme:
+                msg = f'Conflicting OpenAPI security scheme component: {name!r}'
+                raise OpenAPIGenerationError(msg)
+            result[name] = scheme
     return result
 
 
@@ -700,13 +746,19 @@ def _info(config: OpenAPIConfig) -> dict[str, Any]:
     return info
 
 
-def _components(
+def _component_schemas(
     registry: _SchemaRegistry,
     *,
+    configured_schemas: Mapping[str, Any],
     has_validation: bool,
-    security_schemes: Mapping[str, Mapping[str, Any]],
 ) -> dict[str, Any]:
     schemas = dict(registry.components)
+    for name, schema in configured_schemas.items():
+        existing = schemas.get(name)
+        if existing is not None and existing != schema:
+            msg = f'Conflicting OpenAPI component schema name: {name!r}'
+            raise OpenAPIGenerationError(msg)
+        schemas[name] = deepcopy(schema)
     if has_validation:
         for name, validation_schema in (
             ('RapidyValidationError', _VALIDATION_ERROR_SCHEMA),
@@ -716,12 +768,33 @@ def _components(
                 msg = f'OpenAPI component name {name!r} is reserved by rAPIdy'
                 raise OpenAPIGenerationError(msg)
             schemas[name] = deepcopy(validation_schema)
+    return schemas
+
+
+def _components(
+    registry: _SchemaRegistry,
+    *,
+    configured_components: Mapping[str, Mapping[str, Any]],
+    has_validation: bool,
+    security_schemes: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
+    schemas = _component_schemas(
+        registry,
+        configured_schemas=configured_components.get('schemas', {}),
+        has_validation=has_validation,
+    )
 
     sections: dict[str, Any] = {}
     if schemas:
         sections['schemas'] = schemas
-    if security_schemes:
-        sections['securitySchemes'] = dict(security_schemes)
+    for _attribute_name, openapi_name in _COMPONENT_SECTIONS[1:]:
+        if openapi_name == 'securitySchemes':
+            if security_schemes:
+                sections[openapi_name] = dict(security_schemes)
+            continue
+        configured = configured_components.get(openapi_name)
+        if configured:
+            sections[openapi_name] = deepcopy(dict(configured))
     return sections
 
 
@@ -732,7 +805,11 @@ def create_openapi_schema(
     """Build a deterministic OpenAPI 3.1 document from rAPIdy's public route registry."""
     current_config = config or OpenAPIConfig()
     webhooks = _webhooks(current_config)
-    security_schemes = _security_schemes(current_config)
+    configured_components = _configured_component_sections(current_config)
+    security_schemes = _security_schemes(
+        current_config,
+        configured_components.get('securitySchemes', {}),
+    )
     security_scheme_names = set(security_schemes)
     security = _security_requirements(
         current_config.security,
@@ -785,6 +862,7 @@ def create_openapi_schema(
     }
     component_sections = _components(
         registry,
+        configured_components=configured_components,
         has_validation=has_validation,
         security_schemes=security_schemes,
     )

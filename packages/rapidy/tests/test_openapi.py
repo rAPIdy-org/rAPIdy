@@ -13,6 +13,7 @@ from rapidy import Rapidy
 from rapidy.http import Body, controller, Cookie, get, head, Header, PathParam, post, QueryParam, QueryParams
 from rapidy.openapi import (
     create_openapi_schema,
+    OpenAPIComponents,
     OpenAPIConfig,
     OpenAPIGenerationError,
     OpenAPIRenderPlugin,
@@ -254,6 +255,142 @@ def test_callbacks_webhooks_and_response_links_are_documented_and_meta_schema_va
     assert schema['webhooks']['paymentReceived'] != webhook
     assert operation['responses']['201']['links']['item']['description'] == 'Read the created item.'
     validate(schema)
+
+
+def test_reusable_components_merge_with_generated_sections_and_resolve_internal_refs() -> None:
+    callback = {
+        '{$request.body#/callback_url}': {
+            'post': {'responses': {'204': {'description': 'Callback accepted'}}},
+        },
+    }
+    webhook = {
+        'post': {'responses': {'204': {'description': 'Webhook accepted'}}},
+    }
+    reusable_response = {'description': 'Item not found'}
+    components = OpenAPIComponents(
+        schemas={
+            'TraceId': {'type': 'string', 'format': 'uuid'},
+            'Never': False,
+        },
+        responses={'NotFound': reusable_response},
+        parameters={
+            'TraceHeader': {
+                'name': 'X-Trace-Id',
+                'in': 'header',
+                'schema': {'$ref': '#/components/schemas/TraceId'},
+            },
+        },
+        examples={'Item': {'value': {'item_id': 1, 'name': 'linked'}}},
+        request_bodies={
+            'Item': {
+                'content': {'application/json': {'schema': {'type': 'object'}}},
+                'required': True,
+            },
+        },
+        headers={'RateLimit': {'schema': {'type': 'integer'}}},
+        security_schemes={
+            'apiKey': {
+                'type': 'apiKey',
+                'name': 'X-API-Key',
+                'in': 'header',
+            },
+        },
+        links={
+            'ReadItem': {
+                'operationId': 'readItem',
+                'parameters': {'item_id': '$response.body#/item_id'},
+            },
+        },
+        callbacks={'Delivery': callback},
+        path_items={'PaymentReceived': webhook},
+    )
+
+    @get('/items/{item_id}', operation_id='readItem')
+    async def read_item(item_id: int = PathParam()) -> ItemOut:
+        return ItemOut(item_id=item_id, name='linked')
+
+    @post(
+        '/subscriptions',
+        callbacks={'delivery': {'$ref': '#/components/callbacks/Delivery'}},
+        response_links={'item': {'$ref': '#/components/links/ReadItem'}},
+        responses={404: {'$ref': '#/components/responses/NotFound'}},
+    )
+    async def subscribe() -> ItemOut:
+        return ItemOut(item_id=1, name='linked')
+
+    schema = create_openapi_schema(
+        Rapidy(http_route_handlers=[read_item, subscribe]).routes,
+        OpenAPIConfig(
+            components=components,
+            security=({'apiKey': ()},),
+            webhooks={'paymentReceived': {'$ref': '#/components/pathItems/PaymentReceived'}},
+        ),
+    )
+
+    assert tuple(schema['components']) == (
+        'schemas',
+        'responses',
+        'parameters',
+        'examples',
+        'requestBodies',
+        'headers',
+        'securitySchemes',
+        'links',
+        'callbacks',
+        'pathItems',
+    )
+    assert schema['components']['schemas']['Never'] is False
+    assert schema['components']['schemas'].keys() >= {'ItemOut', 'TraceId'}
+    assert schema['components']['responses']['NotFound'] == reusable_response
+    assert schema['security'] == [{'apiKey': []}]
+    assert schema['paths']['/subscriptions']['post']['callbacks']['delivery'] == {
+        '$ref': '#/components/callbacks/Delivery',
+    }
+    assert schema['paths']['/subscriptions']['post']['responses']['200']['links']['item'] == {
+        '$ref': '#/components/links/ReadItem',
+    }
+    assert schema['webhooks']['paymentReceived'] == {'$ref': '#/components/pathItems/PaymentReceived'}
+
+    reusable_response['description'] = 'changed'
+    assert schema['components']['responses']['NotFound']['description'] == 'Item not found'
+    validate(schema)
+
+
+def test_conflicting_generated_and_explicit_components_are_rejected() -> None:
+    @get('/items')
+    async def read_items() -> ItemOut:
+        return ItemOut(item_id=1, name='item')
+
+    with pytest.raises(OpenAPIGenerationError, match="Conflicting OpenAPI component schema name: 'ItemOut'"):
+        create_openapi_schema(
+            Rapidy(http_route_handlers=[read_items]).routes,
+            OpenAPIConfig(components=OpenAPIComponents(schemas={'ItemOut': {'type': 'string'}})),
+        )
+
+    with pytest.raises(OpenAPIGenerationError, match="Conflicting OpenAPI security scheme component: 'apiKey'"):
+        create_openapi_schema(
+            (),
+            OpenAPIConfig(
+                components=OpenAPIComponents(
+                    security_schemes={'apiKey': {'type': 'apiKey', 'name': 'one', 'in': 'header'}},
+                ),
+                security_schemes={'apiKey': {'type': 'apiKey', 'name': 'two', 'in': 'header'}},
+            ),
+        )
+
+
+@pytest.mark.parametrize(
+    ('components', 'match'),
+    [
+        (OpenAPIComponents(responses=[]), 'components.responses must be a mapping'),
+        (OpenAPIComponents(responses={'bad name': {}}), 'Invalid OpenAPI component name'),
+        (OpenAPIComponents(responses={'NotFound': []}), 'components.responses.NotFound must be a mapping'),
+        (OpenAPIComponents(schemas={'Broken': 1}), 'components.schemas.Broken must be a mapping'),
+    ],
+)
+def test_invalid_reusable_components_are_rejected(components: OpenAPIComponents, match: str) -> None:
+    with pytest.raises(OpenAPIGenerationError, match=match):
+        create_openapi_schema((), OpenAPIConfig(components=components))
 
 
 @pytest.mark.parametrize(
@@ -566,6 +703,8 @@ def test_openapi_is_opt_in_and_config_rejects_ambiguous_paths() -> None:
         OpenAPIConfig(render_plugins=(object(),))  # type: ignore[arg-type]
     with pytest.raises(ValueError, match='must be a sequence'):
         OpenAPIConfig(render_plugins=iter(()))  # type: ignore[arg-type]
+    with pytest.raises(TypeError, match='OpenAPI components must be an OpenAPIComponents instance'):
+        OpenAPIConfig(components={})  # type: ignore[arg-type]
 
 
 def test_duplicate_operation_ids_are_rejected() -> None:

@@ -9,7 +9,7 @@ from rapidy.version import __version__
 if TYPE_CHECKING:
     from rapidy.openapi.plugins import OpenAPIRenderPlugin
 
-__all__ = ('OpenAPIConfig',)
+__all__ = ('OpenAPIComponents', 'OpenAPIConfig')
 
 
 def _default_servers() -> tuple[Mapping[str, Any], ...]:
@@ -32,6 +32,32 @@ def _default_webhooks() -> Mapping[str, Mapping[str, Any]]:
     return {}
 
 
+def _default_component_objects() -> Mapping[str, Any]:
+    return {}
+
+
+def _validate_components(components: Any) -> None:
+    if not isinstance(components, OpenAPIComponents):
+        msg = 'OpenAPI components must be an OpenAPIComponents instance'
+        raise TypeError(msg)
+
+
+@dataclass(frozen=True, slots=True)
+class OpenAPIComponents:
+    """Reusable OpenAPI 3.1 objects referenced by operations, callbacks, and webhooks."""
+
+    schemas: Mapping[str, Any] = field(default_factory=_default_component_objects)
+    responses: Mapping[str, Any] = field(default_factory=_default_component_objects)
+    parameters: Mapping[str, Any] = field(default_factory=_default_component_objects)
+    examples: Mapping[str, Any] = field(default_factory=_default_component_objects)
+    request_bodies: Mapping[str, Any] = field(default_factory=_default_component_objects)
+    headers: Mapping[str, Any] = field(default_factory=_default_component_objects)
+    security_schemes: Mapping[str, Any] = field(default_factory=_default_component_objects)
+    links: Mapping[str, Any] = field(default_factory=_default_component_objects)
+    callbacks: Mapping[str, Any] = field(default_factory=_default_component_objects)
+    path_items: Mapping[str, Any] = field(default_factory=_default_component_objects)
+
+
 @dataclass(frozen=True, slots=True)
 class OpenAPIConfig:
     """Configure OpenAPI 3.1 schema generation and the bundled documentation routes."""
@@ -45,6 +71,7 @@ class OpenAPIConfig:
     license: Mapping[str, str] | None = None
     servers: Sequence[Mapping[str, Any]] = field(default_factory=_default_servers)
     tags: Sequence[Mapping[str, Any]] = field(default_factory=_default_tags)
+    components: OpenAPIComponents = field(default_factory=OpenAPIComponents)
     security_schemes: Mapping[str, Mapping[str, Any]] = field(default_factory=_default_security_schemes)
     security: Sequence[Mapping[str, Sequence[str]]] = field(default_factory=_default_security)
     webhooks: Mapping[str, Mapping[str, Any]] = field(default_factory=_default_webhooks)
@@ -75,6 +102,7 @@ class OpenAPIConfig:
         if not self.version:
             msg = 'OpenAPI version must not be empty'
             raise ValueError(msg)
+        _validate_components(self.components)
         if self.render_plugins is not None and (
             not isinstance(self.render_plugins, Sequence) or isinstance(self.render_plugins, (str, bytes, bytearray))
         ):

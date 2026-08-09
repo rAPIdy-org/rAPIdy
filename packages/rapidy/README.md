@@ -69,9 +69,9 @@ app = Rapidy(
 ```
 
 The schema is served at `/schema/openapi.json`, Swagger UI at `/schema`, and ReDoc at `/schema/redoc`. Request and
-response schemas come from the same Pydantic annotations used for runtime validation. Callbacks, webhooks, and
-response links use their native OpenAPI 3.1 object shapes. UI render plugins can use CDN, internal-host, or
-application-local asset URLs and support custom renderers without adding runtime dependencies.
+response schemas come from the same Pydantic annotations used for runtime validation. Reusable components,
+callbacks, webhooks, and response links use their native OpenAPI 3.1 object shapes. UI render plugins can use CDN,
+internal-host, or application-local asset URLs and support custom renderers without adding runtime dependencies.
 
 Run it with Granian:
 
@@ -120,7 +120,8 @@ JSON, text, bytes, urlencoded forms, and multipart uploads are supported. Raw ac
 - `@middleware` can extract and validate request parameters and accepts the same `response_*` serialization options
   as HTTP handlers.
 - OpenAPI 3.1 generation is available from `rapidy.openapi`, including Pydantic components, request bodies,
-  parameters, responses, callbacks, webhooks, response links, mounted routes, Swagger UI, and ReDoc.
+  parameters, responses, all reusable component sections, callbacks, webhooks, response links, mounted routes,
+  Swagger UI, and ReDoc.
 - `HTTPRouter('/v1', handlers)` creates nested mounts with their own middleware, limits, and lifespan while sharing
   the root DI container.
 - `@websocket`, `WebSocket`, `SSEResponse`, and `StreamResponse` provide native ASGI realtime and streaming APIs.

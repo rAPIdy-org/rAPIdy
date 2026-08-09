@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 from rapidy import Rapidy, run_app
 from rapidy.http import Body, get, PathParam, post, QueryParam
-from rapidy.openapi import OpenAPIConfig, RedocRenderPlugin, SwaggerRenderPlugin
+from rapidy.openapi import OpenAPIComponents, OpenAPIConfig, RedocRenderPlugin, SwaggerRenderPlugin
 
 
 class ItemIn(BaseModel):
@@ -21,7 +21,14 @@ class ItemOut(ItemIn):
     id: int
 
 
-@get('/items/{item_id:\\d+}', tags=['items'], operation_id='readItem', summary='Read an item', security=[])
+@get(
+    '/items/{item_id:\\d+}',
+    tags=['items'],
+    operation_id='readItem',
+    summary='Read an item',
+    responses={404: {'$ref': '#/components/responses/NotFound'}},
+    security=[],
+)
 async def read_item(item_id: int = PathParam()) -> ItemOut:
     """Return one public item by its integer identifier."""
     return ItemOut(id=item_id, name='Example')
@@ -55,6 +62,9 @@ app = Rapidy(
         version='1.0.0',
         description='A small OpenAPI-enabled rAPIdy application.',
         tags=({'name': 'items', 'description': 'Item operations'},),
+        components=OpenAPIComponents(
+            responses={'NotFound': {'description': 'Item not found'}},
+        ),
         security_schemes={
             'bearerAuth': {
                 'type': 'http',

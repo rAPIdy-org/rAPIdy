@@ -100,6 +100,39 @@ ensures that every `operationId` used by `response_links` names an operation in 
 `operationRef` for an external or JSON Pointer reference. Links inside explicitly supplied `responses` can also be
 written directly as standard Response Object metadata.
 
+## Reusable components
+
+Use `OpenAPIComponents` when several operations, callbacks, or webhooks share the same OpenAPI object:
+
+```python
+from rapidy.openapi import OpenAPIComponents, OpenAPIConfig
+
+components = OpenAPIComponents(
+    responses={
+        'NotFound': {'description': 'Item not found'},
+    },
+    schemas={
+        'TraceId': {'type': 'string', 'format': 'uuid'},
+    },
+)
+
+config = OpenAPIConfig(components=components)
+
+
+@get(
+    '/items/{item_id}',
+    responses={404: {'$ref': '#/components/responses/NotFound'}},
+)
+async def read_item(item_id: int = PathParam()) -> ItemOut:
+    ...
+```
+
+The container exposes all ten OpenAPI 3.1 component sections using Python names: `schemas`, `responses`,
+`parameters`, `examples`, `request_bodies`, `headers`, `security_schemes`, `links`, `callbacks`, and `path_items`.
+Values retain their native OpenAPI shapes and can reference each other with `$ref`. Explicit schemas merge with
+Pydantic-generated schemas; conflicting definitions fail generation. The existing `OpenAPIConfig.security_schemes`
+shortcut remains supported and merges with `components.security_schemes` under the same conflict rule.
+
 ## Security metadata
 
 Declare reusable OpenAPI security schemes in the application config and select them globally or per operation:
