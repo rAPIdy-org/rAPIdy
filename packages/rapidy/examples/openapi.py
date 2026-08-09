@@ -21,13 +21,24 @@ class ItemOut(ItemIn):
     id: int
 
 
-@get('/items/{item_id:\\d+}', tags=['items'], summary='Read an item', security=[])
+@get('/items/{item_id:\\d+}', tags=['items'], operation_id='readItem', summary='Read an item', security=[])
 async def read_item(item_id: int = PathParam()) -> ItemOut:
     """Return one public item by its integer identifier."""
     return ItemOut(id=item_id, name='Example')
 
 
-@post('/items', status_code=201, tags=['items'], operation_id='createItem')
+@post(
+    '/items',
+    status_code=201,
+    tags=['items'],
+    operation_id='createItem',
+    response_links={
+        'item': {
+            'operationId': 'readItem',
+            'parameters': {'item_id': '$response.body#/id'},
+        },
+    },
+)
 async def create_item(
     payload: Annotated[ItemIn, Body(description='Item to create')],
     notify: Annotated[bool, QueryParam(default=False)],

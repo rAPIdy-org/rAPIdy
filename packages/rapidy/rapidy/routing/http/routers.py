@@ -61,12 +61,14 @@ MethodName = HTTPMethod
 DUNDER_NAME_MIN_LENGTH = 4
 _OPENAPI_ROUTE_KWARGS = frozenset(
     {
+        'callbacks',
         'deprecated',
         'description',
         'include_in_schema',
         'operation_id',
         'response_description',
         'responses',
+        'response_links',
         'security',
         'summary',
         'tags',
@@ -292,6 +294,8 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         deprecated: bool | UnsetType = Unset,
         response_description: str | UnsetType | None = Unset,
         responses: dict[int | str, dict[str, Any]] | UnsetType = Unset,
+        response_links: Mapping[str, Mapping[str, Any]] | UnsetType = Unset,
+        callbacks: Mapping[str, Mapping[str, Any]] | UnsetType = Unset,
         security: Sequence[Mapping[str, Sequence[str]]] | UnsetType = Unset,
         **kwargs: Any,
     ) -> None:
@@ -319,6 +323,8 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
             'deprecated': deprecated,
             'response_description': response_description,
             'responses': responses,
+            'response_links': response_links,
+            'callbacks': callbacks,
             'security': security,
             **kwargs,
         }
@@ -352,6 +358,8 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         deprecated: bool = False,
         response_description: str | None = None,
         responses: dict[int | str, dict[str, Any]] | None = None,
+        response_links: Mapping[str, Mapping[str, Any]] | UnsetType = Unset,
+        callbacks: Mapping[str, Mapping[str, Any]] | UnsetType = Unset,
         security: Sequence[Mapping[str, Sequence[str]]] | UnsetType = Unset,
         **kwargs: Any,
     ) -> None:
@@ -379,6 +387,8 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
             'deprecated': deprecated,
             'response_description': response_description,
             'responses': responses,
+            'response_links': response_links,
+            'callbacks': callbacks,
             'security': security,
             **kwargs,
         }
@@ -417,6 +427,8 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
         deprecated: bool | UnsetType = Unset,
         response_description: str | UnsetType | None = Unset,
         responses: dict[int | str, dict[str, Any]] | UnsetType = Unset,
+        response_links: Mapping[str, Mapping[str, Any]] | UnsetType = Unset,
+        callbacks: Mapping[str, Mapping[str, Any]] | UnsetType = Unset,
         security: Sequence[Mapping[str, Sequence[str]]] | UnsetType = Unset,
         **kwargs: Any,
     ) -> HTTPRouteHandler:
@@ -445,6 +457,8 @@ class HTTPRouteHandler(BaseHTTPRouter, ABC):
             deprecated=deprecated,
             response_description=response_description,
             responses=responses,
+            response_links=response_links,
+            callbacks=callbacks,
             security=security,
             **kwargs,
         )

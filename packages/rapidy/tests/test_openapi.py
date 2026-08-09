@@ -5,6 +5,7 @@ from typing import Any
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from openapi_spec_validator import validate
 from pydantic import BaseModel, computed_field, Field, Json
 from rapidy_core.enums import ContentType
 
@@ -192,6 +193,146 @@ def test_security_schemes_global_security_and_operation_overrides_are_documented
     assert schema['paths']['/public']['get']['security'] == []
     assert schema['paths']['/scoped']['post']['security'] == [{'oauth': ['items:write']}]
     assert schema['paths']['/optional']['get']['security'] == [{}]
+
+
+def test_callbacks_webhooks_and_response_links_are_documented_and_meta_schema_valid() -> None:
+    callback = {
+        '{$request.body#/callback_url}': {
+            'post': {
+                'requestBody': {
+                    'content': {'application/json': {'schema': {'type': 'object'}}},
+                    'required': True,
+                },
+                'responses': {'204': {'description': 'Callback accepted'}},
+            },
+        },
+    }
+    webhook = {
+        'post': {
+            'requestBody': {
+                'content': {'application/json': {'schema': {'type': 'object'}}},
+                'required': True,
+            },
+            'responses': {'204': {'description': 'Webhook accepted'}},
+        },
+    }
+    link = {
+        'operationId': 'readItem',
+        'parameters': {'item_id': '$response.body#/item_id'},
+        'description': 'Read the created item.',
+    }
+
+    @get('/items/{item_id}', operation_id='readItem')
+    async def read_item(item_id: int = PathParam()) -> ItemOut:
+        return ItemOut(item_id=item_id, name='linked')
+
+    @post(
+        '/subscriptions',
+        status_code=201,
+        operation_id='createSubscription',
+        callbacks={'delivery': callback},
+        responses={201: {'description': 'Subscription created'}},
+        response_links={'item': link},
+    )
+    async def create_subscription(payload: dict[str, str] = Body()) -> ItemOut:
+        return ItemOut(item_id=1, name=payload['name'])
+
+    schema = create_openapi_schema(
+        Rapidy(http_route_handlers=[read_item, create_subscription]).routes,
+        OpenAPIConfig(webhooks={'paymentReceived': webhook}),
+    )
+
+    operation = schema['paths']['/subscriptions']['post']
+    assert operation['callbacks'] == {'delivery': callback}
+    assert operation['responses']['201']['links'] == {'item': link}
+    assert schema['webhooks'] == {'paymentReceived': webhook}
+
+    callback['{$request.body#/callback_url}']['post']['responses']['204']['description'] = 'changed'
+    webhook['post']['responses']['204']['description'] = 'changed'
+    link['description'] = 'changed'
+    assert operation['callbacks']['delivery'] != callback
+    assert schema['webhooks']['paymentReceived'] != webhook
+    assert operation['responses']['201']['links']['item']['description'] == 'Read the created item.'
+    validate(schema)
+
+
+@pytest.mark.parametrize(
+    ('link', 'match'),
+    [
+        ({}, 'exactly one'),
+        ({'operationId': 'readItem', 'operationRef': '#/paths/~1items~1%7Bitem_id%7D/get'}, 'exactly one'),
+        ({'operationId': '', 'operationRef': '#/paths/~1items/get'}, 'invalid `operationId`'),
+        ({'operationId': 'readItem', 'operationRef': ''}, 'invalid `operationRef`'),
+        ({'operationId': 'readItem', 'parameters': []}, 'invalid `parameters`'),
+        ({'operationId': 'readItem', 'server': []}, 'invalid `server`'),
+        ({'$ref': ''}, r'invalid `\$ref`'),
+    ],
+)
+def test_invalid_response_links_are_rejected(link: dict[str, Any], match: str) -> None:
+    @get('/items', operation_id='readItem')
+    async def read_item() -> str:
+        return 'item'
+
+    @post('/items', response_links={'item': link})
+    async def create_item() -> str:
+        return 'item'
+
+    with pytest.raises(OpenAPIGenerationError, match=match):
+        create_openapi_schema(Rapidy(http_route_handlers=[read_item, create_item]).routes)
+
+
+def test_unknown_response_link_operation_id_and_referenced_primary_response_are_rejected() -> None:
+    @post('/unknown', response_links={'missing': {'operationId': 'missing'}})
+    async def unknown() -> str:
+        return 'unknown'
+
+    with pytest.raises(OpenAPIGenerationError, match="Unknown OpenAPI operationId 'missing'"):
+        create_openapi_schema(Rapidy(http_route_handlers=[unknown]).routes)
+
+    @post(
+        '/referenced',
+        responses={200: {'$ref': '#/components/responses/Created'}},
+        response_links={'created': {'operationRef': '#/paths/~1created/get'}},
+    )
+    async def referenced() -> str:
+        return 'referenced'
+
+    with pytest.raises(OpenAPIGenerationError, match='cannot be added to a referenced response'):
+        create_openapi_schema(Rapidy(http_route_handlers=[referenced]).routes)
+
+
+@pytest.mark.parametrize(
+    ('callbacks', 'match'),
+    [
+        ([], 'callbacks.*must be a mapping'),
+        ({'': {}}, 'name must be a non-empty string'),
+        ({'delivery': []}, "callbacks.*'delivery'.*must be a mapping"),
+        ({'delivery': {'$ref': ''}}, r'invalid `\$ref`'),
+        ({'delivery': {1: {}}}, 'expression.*must be a non-empty string'),
+        ({'delivery': {'{$request.body#/url}': []}}, 'path item.*must be a mapping'),
+    ],
+)
+def test_invalid_callbacks_are_rejected(callbacks: Any, match: str) -> None:
+    @post('/subscriptions', callbacks=callbacks)
+    async def subscribe() -> str:
+        return 'subscribed'
+
+    with pytest.raises(OpenAPIGenerationError, match=match):
+        create_openapi_schema(Rapidy(http_route_handlers=[subscribe]).routes)
+
+
+@pytest.mark.parametrize(
+    ('webhooks', 'match'),
+    [
+        ([], 'webhooks must be a mapping'),
+        ({'': {}}, 'name must be a non-empty string'),
+        ({'delivery': []}, "webhooks 'delivery' must be a mapping"),
+        ({'delivery': {'$ref': ''}}, r'invalid `\$ref`'),
+    ],
+)
+def test_invalid_webhooks_are_rejected(webhooks: Any, match: str) -> None:
+    with pytest.raises(OpenAPIGenerationError, match=match):
+        create_openapi_schema((), OpenAPIConfig(webhooks=webhooks))
 
 
 def test_invalid_security_metadata_is_rejected_during_schema_generation() -> None:

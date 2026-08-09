@@ -52,6 +52,54 @@ Use `include_in_schema=False` for an HTTP route that must remain callable but hi
 `HEAD` routes are omitted; an explicitly declared `@head` operation is included. When `description` is absent, the
 handler docstring is used. Default operation IDs are deterministic and duplicate custom IDs fail schema generation.
 
+## Callbacks, webhooks, and response links
+
+Describe provider-initiated requests with operation `callbacks`, document application-level `webhooks`, and connect
+a generated primary response to another operation with `response_links`:
+
+```python
+@post(
+    '/subscriptions',
+    operation_id='createSubscription',
+    callbacks={
+        'delivery': {
+            '{$request.body#/callback_url}': {
+                'post': {
+                    'responses': {'204': {'description': 'Callback accepted'}},
+                },
+            },
+        },
+    },
+    response_links={
+        'subscription': {
+            'operationId': 'readSubscription',
+            'parameters': {'subscription_id': '$response.body#/id'},
+        },
+    },
+)
+async def create_subscription(payload: SubscriptionIn = Body()) -> SubscriptionOut:
+    ...
+
+
+config = OpenAPIConfig(
+    title='Subscriptions API',
+    version='1.0.0',
+    webhooks={
+        'paymentReceived': {
+            'post': {
+                'responses': {'204': {'description': 'Webhook accepted'}},
+            },
+        },
+    },
+)
+```
+
+The values follow the OpenAPI 3.1 Callback, Path Item, and Link object shapes, so runtime expressions and `$ref`
+remain available without a framework-specific translation layer. rAPIdy validates the surrounding structure and
+ensures that every `operationId` used by `response_links` names an operation in the generated document. Use
+`operationRef` for an external or JSON Pointer reference. Links inside explicitly supplied `responses` can also be
+written directly as standard Response Object metadata.
+
 ## Security metadata
 
 Declare reusable OpenAPI security schemes in the application config and select them globally or per operation:

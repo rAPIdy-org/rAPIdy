@@ -28,6 +28,10 @@ def _default_security() -> tuple[Mapping[str, Sequence[str]], ...]:
     return ()
 
 
+def _default_webhooks() -> Mapping[str, Mapping[str, Any]]:
+    return {}
+
+
 @dataclass(frozen=True, slots=True)
 class OpenAPIConfig:
     """Configure OpenAPI 3.1 schema generation and the bundled documentation routes."""
@@ -43,6 +47,7 @@ class OpenAPIConfig:
     tags: Sequence[Mapping[str, Any]] = field(default_factory=_default_tags)
     security_schemes: Mapping[str, Mapping[str, Any]] = field(default_factory=_default_security_schemes)
     security: Sequence[Mapping[str, Sequence[str]]] = field(default_factory=_default_security)
+    webhooks: Mapping[str, Mapping[str, Any]] = field(default_factory=_default_webhooks)
     json_path: str = '/schema/openapi.json'
     swagger_path: str | None = '/schema'
     redoc_path: str | None = '/schema/redoc'

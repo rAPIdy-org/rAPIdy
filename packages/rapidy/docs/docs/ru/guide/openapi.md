@@ -51,6 +51,54 @@ async def create_item(payload: ItemIn = Body()) -> ItemOut:
 явный `@head` включается. Если `description` не задан, используется docstring хендлера. Идентификаторы операций по
 умолчанию детерминированы, а повтор пользовательского `operation_id` останавливает генерацию.
 
+## Callbacks, webhooks и связи ответов
+
+Запросы, которые провайдер инициирует сам, описываются через `callbacks` операции, webhooks уровня приложения —
+через `OpenAPIConfig.webhooks`, а `response_links` связывает основной сгенерированный ответ с другой операцией:
+
+```python
+@post(
+    '/subscriptions',
+    operation_id='createSubscription',
+    callbacks={
+        'delivery': {
+            '{$request.body#/callback_url}': {
+                'post': {
+                    'responses': {'204': {'description': 'Callback accepted'}},
+                },
+            },
+        },
+    },
+    response_links={
+        'subscription': {
+            'operationId': 'readSubscription',
+            'parameters': {'subscription_id': '$response.body#/id'},
+        },
+    },
+)
+async def create_subscription(payload: SubscriptionIn = Body()) -> SubscriptionOut:
+    ...
+
+
+config = OpenAPIConfig(
+    title='Subscriptions API',
+    version='1.0.0',
+    webhooks={
+        'paymentReceived': {
+            'post': {
+                'responses': {'204': {'description': 'Webhook accepted'}},
+            },
+        },
+    },
+)
+```
+
+Значения повторяют структуры Callback, Path Item и Link из OpenAPI 3.1, поэтому runtime expressions и `$ref`
+доступны без отдельного преобразующего API фреймворка. rAPIdy проверяет внешнюю структуру и гарантирует, что каждый
+`operationId` из `response_links` существует в сгенерированном документе. Для внешней ссылки или JSON Pointer
+используйте `operationRef`. В явно заданных `responses` стандартное поле `links` можно записывать непосредственно в
+Response Object.
+
 ## Метаданные безопасности
 
 Переиспользуемые OpenAPI security schemes задаются в конфигурации приложения, а требования выбираются глобально

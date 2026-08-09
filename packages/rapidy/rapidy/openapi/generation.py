@@ -381,7 +381,110 @@ def _status_description(status_code: int) -> str:
         return 'Response'
 
 
-def _responses(route_index: int, route: RouteRecord, registry: _SchemaRegistry) -> dict[str, Any]:
+def _named_openapi_objects(configured: Any, *, context: str) -> dict[str, dict[str, Any]]:
+    if not isinstance(configured, Mapping):
+        msg = f'OpenAPI {context} must be a mapping'
+        raise OpenAPIGenerationError(msg)
+
+    result: dict[str, dict[str, Any]] = {}
+    for name, value in configured.items():
+        if not isinstance(name, str) or not name:
+            msg = f'OpenAPI {context} name must be a non-empty string: {name!r}'
+            raise OpenAPIGenerationError(msg)
+        if not isinstance(value, Mapping):
+            msg = f'OpenAPI {context} {name!r} must be a mapping'
+            raise OpenAPIGenerationError(msg)
+        result[name] = deepcopy(dict(value))
+    return result
+
+
+def _validate_reference(value: Mapping[str, Any], *, context: str) -> bool:
+    if '$ref' not in value:
+        return False
+    reference = value['$ref']
+    if not isinstance(reference, str) or not reference:
+        msg = f'OpenAPI {context} has an invalid `$ref`'
+        raise OpenAPIGenerationError(msg)
+    return True
+
+
+def _response_links(
+    configured: Any,
+    *,
+    context: str,
+    referenced_operation_ids: set[str],
+) -> dict[str, dict[str, Any]]:
+    links = _named_openapi_objects(configured, context=f'response links for {context}')
+    for name, link in links.items():
+        if _validate_reference(link, context=f'response link {name!r} for {context}'):
+            continue
+
+        operation_id = link.get('operationId')
+        operation_ref = link.get('operationRef')
+        has_operation_id = isinstance(operation_id, str) and bool(operation_id)
+        has_operation_ref = isinstance(operation_ref, str) and bool(operation_ref)
+        if has_operation_id == has_operation_ref:
+            msg = (
+                f'OpenAPI response link {name!r} for {context} must define exactly one of '
+                '`operationId` or `operationRef`'
+            )
+            raise OpenAPIGenerationError(msg)
+        if operation_id is not None and not has_operation_id:
+            msg = f'OpenAPI response link {name!r} for {context} has an invalid `operationId`'
+            raise OpenAPIGenerationError(msg)
+        if operation_ref is not None and not has_operation_ref:
+            msg = f'OpenAPI response link {name!r} for {context} has an invalid `operationRef`'
+            raise OpenAPIGenerationError(msg)
+        if isinstance(operation_id, str) and operation_id:
+            referenced_operation_ids.add(operation_id)
+        if 'parameters' in link and not isinstance(link['parameters'], Mapping):
+            msg = f'OpenAPI response link {name!r} for {context} has invalid `parameters`'
+            raise OpenAPIGenerationError(msg)
+        if 'server' in link and not isinstance(link['server'], Mapping):
+            msg = f'OpenAPI response link {name!r} for {context} has an invalid `server`'
+            raise OpenAPIGenerationError(msg)
+    return links
+
+
+def _callbacks(configured: Any, *, context: str) -> dict[str, dict[str, Any]]:
+    callbacks = _named_openapi_objects(configured, context=f'callbacks for {context}')
+    for name, callback in callbacks.items():
+        if _validate_reference(callback, context=f'callback {name!r} for {context}'):
+            continue
+        for expression, path_item in callback.items():
+            if not isinstance(expression, str) or not expression:
+                msg = f'OpenAPI callback expression for {name!r} in {context} must be a non-empty string'
+                raise OpenAPIGenerationError(msg)
+            if expression.startswith('x-'):
+                continue
+            if not isinstance(path_item, Mapping):
+                msg = f'OpenAPI callback path item for {name!r} in {context} must be a mapping'
+                raise OpenAPIGenerationError(msg)
+    return callbacks
+
+
+def _operation_callback_section(route: RouteRecord) -> dict[str, Any]:
+    configured = route.route_kwargs.get('callbacks', Unset)
+    if configured is Unset:
+        return {}
+    callbacks = _callbacks(configured, context=f'{route.method} {route.path}')
+    return {'callbacks': callbacks} if callbacks else {}
+
+
+def _webhooks(config: OpenAPIConfig) -> dict[str, dict[str, Any]]:
+    webhooks = _named_openapi_objects(config.webhooks, context='webhooks')
+    for name, path_item in webhooks.items():
+        _validate_reference(path_item, context=f'webhook {name!r}')
+    return webhooks
+
+
+def _responses(
+    route_index: int,
+    route: RouteRecord,
+    registry: _SchemaRegistry,
+    *,
+    referenced_operation_ids: set[str],
+) -> dict[str, Any]:
     status_code = int(route.route_kwargs.get('status_code', HTTPStatus.OK))
     description = route.route_kwargs.get('response_description') or _status_description(status_code)
     response: dict[str, Any] = {'description': str(description)}
@@ -407,6 +510,20 @@ def _responses(route_index: int, route: RouteRecord, registry: _SchemaRegistry) 
                 msg = f'OpenAPI response {configured_status!r} must be a mapping'
                 raise OpenAPIGenerationError(msg)
             result[str(configured_status)] = deepcopy(dict(configured_response))
+
+    configured_links = route.route_kwargs.get('response_links', Unset)
+    if configured_links is not Unset:
+        links = _response_links(
+            configured_links,
+            context=f'{route.method} {route.path}',
+            referenced_operation_ids=referenced_operation_ids,
+        )
+        if links:
+            primary_response = result[str(status_code)]
+            if '$ref' in primary_response:
+                msg = f'OpenAPI response links cannot be added to a referenced response for {route.method} {route.path}'
+                raise OpenAPIGenerationError(msg)
+            primary_response['links'] = links
     return result
 
 
@@ -522,10 +639,16 @@ def _operation(
     registry: _SchemaRegistry,
     *,
     security_scheme_names: set[str],
+    referenced_operation_ids: set[str],
 ) -> dict[str, Any]:
     operation: dict[str, Any] = {
         'operationId': route.route_kwargs.get('operation_id') or _default_operation_id(route, openapi_path),
-        'responses': _responses(route_index, route, registry),
+        'responses': _responses(
+            route_index,
+            route,
+            registry,
+            referenced_operation_ids=referenced_operation_ids,
+        ),
     }
     summary = route.route_kwargs.get('summary')
     if summary is None:
@@ -560,6 +683,7 @@ def _operation(
     request_body = _request_body(route_index, route, registry)
     if request_body is not None:
         operation['requestBody'] = request_body
+    operation.update(_operation_callback_section(route))
     return operation
 
 
@@ -607,6 +731,7 @@ def create_openapi_schema(
 ) -> dict[str, Any]:
     """Build a deterministic OpenAPI 3.1 document from rAPIdy's public route registry."""
     current_config = config or OpenAPIConfig()
+    webhooks = _webhooks(current_config)
     security_schemes = _security_schemes(current_config)
     security_scheme_names = set(security_schemes)
     security = _security_requirements(
@@ -621,6 +746,7 @@ def create_openapi_schema(
 
     paths: dict[str, dict[str, Any]] = {}
     operation_ids: set[str] = set()
+    referenced_operation_ids: set[str] = set()
     has_validation = False
     for route_index, route in enumerate(included_routes):
         openapi_path, path_parameters = _openapi_path(route.path)
@@ -636,6 +762,7 @@ def create_openapi_schema(
             path_parameters,
             registry,
             security_scheme_names=security_scheme_names,
+            referenced_operation_ids=referenced_operation_ids,
         )
         operation_id = operation['operationId']
         if operation_id in operation_ids:
@@ -644,6 +771,12 @@ def create_openapi_schema(
         operation_ids.add(operation_id)
         path_item[method] = operation
         has_validation = has_validation or bool(route.parameters)
+
+    unknown_operation_ids = referenced_operation_ids - operation_ids
+    if unknown_operation_ids:
+        unknown = min(unknown_operation_ids)
+        msg = f'Unknown OpenAPI operationId {unknown!r} referenced by a response link'
+        raise OpenAPIGenerationError(msg)
 
     schema: dict[str, Any] = {
         'openapi': '3.1.0',
@@ -663,4 +796,6 @@ def create_openapi_schema(
         schema['servers'] = [dict(server) for server in current_config.servers]
     if current_config.tags:
         schema['tags'] = [dict(tag) for tag in current_config.tags]
+    if webhooks:
+        schema['webhooks'] = webhooks
     return schema

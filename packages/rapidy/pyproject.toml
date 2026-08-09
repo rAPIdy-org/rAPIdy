@@ -67,6 +67,7 @@ packages = [
 [dependency-groups]
 dev = ["pre-commit>=4.1.0,<5.0.0"]
 test = [
+    "openapi-spec-validator>=0.7.2,<1.0.0",
     "pytest>=8.0,<9.0",
     "pytest-asyncio>=1.0,<2.0",
     "pytest-cov>=5.0,<7.0",
